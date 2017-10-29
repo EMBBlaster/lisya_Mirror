@@ -1,2 +1,0 @@
-﻿(log (run-command "cd .."))
-(log (run-command "ls"))
