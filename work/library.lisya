@@ -1,0 +1,432 @@
+﻿(log \БИБЛИОТЕКА)
+
+(var target-dir "./")
+
+
+(const ldfh-sign $04034B50)
+(const cdfh-sign $02014B50)
+(const eocd-sign $06054B50)
+
+(procedure inc (n) (set n (+ 1 n)))
+
+(procedure read-u32 (f)
+    (+
+        (read-byte f)
+        (* 256 (read-byte f))
+        (* 256 256 (read-byte f))
+        (* 256 256 256 (read-byte f))))
+
+
+(procedure read-u16 (f)
+    (+
+        (read-byte f)
+        (* 256 (read-byte f))))
+
+
+(procedure XML:CHILD (node name)
+    (FOR C node\C
+        (if (= C\N name) (break))))
+
+
+(procedure XML:CHILDREN (node name)
+    (var childREN)
+    (FOR C node\C
+        (if (= C\N name) (push children C)))
+    children)
+
+
+(procedure XML:NODE-TEXT (node)
+    (var text "")
+    (for n node\C
+        (if (= n\N :TEXT)
+            (append text n\C)
+            (append text (XML:NODE-TEXT n))))
+    text)
+
+
+(procedure содержателен (s)
+    (for ch s (if (member (list CR LF TAB SPACE) ch) nil (break))))
+
+
+(procedure last-message (em)
+    (var p)
+    (var i (length em))
+    (while (> i 1)
+        (if (= "=>" (subseq em (- i 2) i)) (break))
+        (set i (- i 1)))
+    (subseq em i))
+
+
+
+(procedure FB2:AUTHOR-TEXT (node-author)
+    "Извлекает текстовое представление имени автора из тега <author>
+    Тэг может содержать имя как непосредственно так и во вложенных тегах
+    <nickname>, <first-name>, <middle-name> и <last-name>. Любой из этих
+    тегов может быть пустым или отсутствовать"
+
+    (var nickname (XML:CHILD node-author "nickname"))
+    (var first-name (XML:CHILD node-author "first-name"))
+    (var middle-name (XML:CHILD node-author "middle-name"))
+    (var last-name (XML:CHILD node-author "last-name"))
+    (var names)
+    (if nickname (push names (XML:NODE-TEXT nickname)))
+    (if first-name (push names (XML:NODE-TEXT first-name)))
+    (if middle-name (push names (XML:NODE-TEXT middle-name)))
+    (if last-name (push names (XML:NODE-TEXT last-name)))
+    (default names (list (XML:NODE-TEXT node-author)))
+
+    (var au (fmt :result (lst names " ")))
+    (assertion
+        (for ch au (if (member (list CR LF TAB SPACE) ch) nil (break)))
+        "автор без имени")
+    au)
+
+
+(procedure split-string (S)
+    "split-string"
+    (var res)
+    (var acc "")
+    (for ch s
+        (if (= ch " ")
+            (when (<> acc "") (push res acc) (set acc ""))
+            (append acc ch)))
+    (if (<> acc "") (push res acc))
+    res)
+
+
+(procedure read-utf8-bytes (f n)
+    (var i 0)
+    (var b1 0)
+    (var b2 0)
+    (var res "")
+    (while (< i n)
+        (set b1 (read-byte f))
+        (set i (+ i 1))
+        (if (< b1 127)
+        (then
+            (append res (character b1)))
+        (else
+            (set b2 (read-byte f))
+            (set i (+ i 1))
+            (append res (character (+ (* (- b1 192) 64) (- b2 128)))))))
+    res)
+
+
+(procedure read-LDFH (f)
+    (var ldfh)
+    (push ldfh :versionToExtract        (read-u16 f))
+    (push ldfh :generalPurposeBitFlag   (read-u16 f))
+    (push ldfh :compressionMethod       (read-u16 f))
+    (push ldfh :modificationTime        (read-u16 f))
+    (push ldfh :modificationDate        (read-u16 f))
+    (push ldfh :crc32                   (read-u32 f))
+    (push ldfh :compressedSize          (read-u32 f))
+    (push ldfh :uncompressedSize        (read-u32 f))
+    (push ldfh :filenameLength          (read-u16 f))
+    (push ldfh :extraFieldLength        (read-u16 f))
+    (var fn "")
+    (for i (key ldfh :filenameLength) (append fn (read-character f)))
+    (push ldfh :filename fn)
+    (stream-position f (+ (stream-position f) (key ldfh :extraFieldLength)))
+    ldfh)
+
+
+(procedure read-LDFH-minimum (f)
+    (var ldfh)
+                                        (read-bytes f 4)
+    (push ldfh :compressionMethod       (read-u16 f))
+                                        (read-bytes f 4)
+    (push ldfh :crc32                   (read-u32 f))
+    (push ldfh :compressedSize          (read-u32 f))
+    (push ldfh :uncompressedSize        (read-u32 f))
+    (var filenameLength                 (read-u16 f))
+    (var extraFieldLength               (read-u16 f))
+    ;(var fn (bytes-to-utf8 (read-bytes f filenameLength)))
+    ;(var fn (read-utf8-bytes f filenameLength))
+    ;(for i filenameLength (append fn (read-character f)))
+    (push ldfh :filename (read-utf8-bytes f filenameLength))
+    (stream-position f (+ (stream-position f) extraFieldLength))
+    ldfh)
+
+
+(procedure read-CDFH (f)
+    (var cdfh)
+    (push cdfh :versionMadeBy           (read-u16 f))
+    (push cdfh :versionToExtract        (read-u16 f))
+    (push cdfh :generalPurposeBitFlag   (read-u16 f))
+    (push cdfh :compressionMethod       (read-u16 f))
+    (push cdfh :modificationTime        (read-u16 f))
+    (push cdfh :modificationDate        (read-u16 f))
+    (push cdfh :crc32                   (read-u32 f))
+    (push cdfh :compressedSize          (read-u32 f))
+    (push cdfh :uncompressedSize        (read-u32 f))
+    (push cdfh :filenameLength          (read-u16 f))
+    (push cdfh :extraFieldLength        (read-u16 f))
+    (push cdfh :fileCommentLength       (read-u16 f))
+    (push cdfh :diskNumber              (read-u16 f))
+    (push cdfh :internalFileAttributes  (read-u16 f))
+    (push cdfh :externalFileAttributes  (read-u32 f))
+    (push cdfh :localFileHeaderOffset   (read-u32 f))
+    (var fn "")
+    (for i (key cdfh :filenameLength) (append fn (read-character f)))
+    (stream-position f (+
+        (stream-position f)
+        (key cdfh :extraFieldLength)
+        (key cdfh :fileCommentLength)))
+    cdfh)
+
+
+(procedure skip-CDFH (f)
+    (read-bytes f 24)
+    (var var-length (+ (read-u16 f) (read-u16 f) (read-u16 f)))
+    (read-bytes f 12)
+    (stream-position f (+ (stream-position f) var-length))
+    t)
+
+
+(var recs)
+(var warnings)
+
+
+(procedure  read-fb2 (z)
+    (var prologue)
+    (case (list (read-byte z) (read-byte z) (read-byte z) (read-byte z))
+        (($3C $3F $78 $6D) (set-encoding z :UTF8)    (set prologue "<?xm"))
+        (($EF $BB $BF $3C) (set-encoding z :UTF8)    (set prologue "<"))
+        (($FF $FE $3C $00) (set-encoding z :UTF16LE) (set prologue "<"))
+        (($FE $FF $00 $3C) (set-encoding z :UTF16BE) (set prologue "<"))
+        (($FF $FE $00 $00) (set-encoding z :UTF32LE) (set prologue ""))
+        (($00 $00 $FE $FF) (set-encoding z :UTF32BE) (set prologue ""))
+        (otherwise (assertion nil "damaged BOM")))
+    (var ch)
+    (for i 100
+        (set ch (read-character z))
+        (append prologue ch)
+        (if (= ch ">") (break))
+        (assertion (< i 99) "invalid prologue"))
+    (var encoding (key (elt (car (xml:read-from-string prologue)) \A) \encoding))
+
+    (case (upper-case encoding)
+        ("UTF-8" (set-encoding z :UTF-8))
+        ("WINDOWS-1251" (set-encoding z :CP1251))
+        ("UTF-16")
+        ("UTF-32")
+        ("WINDOWS-1252" (set-encoding z :CP1252))
+        (otherwise
+            (set-encoding z :CP1251)
+            (fmt warnings "unknown encoding: " encoding NL)))
+
+    (var header "")
+    (var tag "")
+    (for i 100000
+        (set ch (read-character z))
+        (append tag ch)
+        (append header ch)
+        (case ch
+            ("<" (set tag "<"))
+            (">"
+                (if (equal-case-insensitive tag "<title-info>") (set header tag))
+                (if (equal-case-insensitive tag "</title-info>") (break))))
+         (assertion (< i 99999) "invalid header"))
+
+    (var title-info (car (xml:read-from-string header)) )
+
+
+    (var title (XML:NODE-TEXT (XML:CHILD title-info "book-title")))
+    (assertion (<> title "") "книга без названия")
+
+    (var authors (map FB2:AUTHOR-TEXT (XML:CHILDREN title-info "author")))
+    (assertion authors "авторы не найдены")
+    (fmt :result (lst authors ", ") " -- " title))
+
+
+
+(procedure read-zip (fn fl)
+    (var z (open-file fn))
+    (var sign (read-u32 z))
+    (var pos)
+    (var file)
+    (var auti)
+    (var res t)
+    (while (<> sign $06054B50)
+        (set-encoding z :utf8)
+        (case sign
+            ($04034B50
+                (var ldfh (read-LDFH-minimum z))
+                (set file (key ldfh :filename))
+                (set pos (stream-position z))
+                (if (member fl file) (goto :skip-file))
+                (fmt nil file " => ")
+                (set-compression-method z :deflate)
+                (case (upper-case (extract-file-ext file))
+                    (".FB2" (block
+                        (set auti (read-fb2 z))
+                        (print recs (structure auti auti arch fn file file))
+                        (push fl file)
+                        (fmt nil auti)
+                        (exception
+                            (set res nil)
+                            (fmt warnings "ошибка " exception-message
+                                " в " fn ":" file NL)
+                            (fmt nil "ОШИБКА" (last-message exception-message)))))
+                    ((".TXT" ".PDF" ".DOC" ".DOCX" ".ODT")
+                        (set auti (extract-file-name file))
+                        (print recs (structure auti auti arch fn file file))
+                        (push fl file)
+                        (fmt nil auti))
+                    (otherwise
+                        (fmt warnings "неизвестный формат " file NL)
+                        (set res nil)
+                        (fmt nil "?")))
+                (log)
+                :skip-file
+                (stream-position z (+ pos (key ldfh :compressedSize))))
+            ($02014B50
+                (skip-CDFH z))
+            (otherwize
+                (fmt warnings "неверная сигнатура в " fn NL)
+                (set res nil)
+                (break)))
+        (set sign (read-u32 z)))
+    (if res (set fl fn))
+    res)
+
+
+(procedure extract-zip (arch file target)
+    (var z (open-file arch))
+    (var sign (read-u32 z))
+    (var pos)
+    (while (<> sign $06054B50)
+        (set-encoding z :utf8)
+        (case sign
+            ($04034B50
+                (var ldfh (read-ldfh-minimum z))
+                (set pos (stream-position z))
+                ;(set file (key ldfh :filename))
+                (when (= (key ldfh :filename) file)
+                    (set-compression-method z :deflate)
+                    (write-byte
+                        (open-file target :mode :write)
+                        (read-bytes z (key ldfh :uncompressedSize)))
+                        )
+                (stream-position z (+ pos (key ldfh :compressedSize))))
+            ($02014B50
+                (read-cdfh z)))
+        (set sign (read-u32 z)))
+    t)
+
+
+(procedure extract-file (file target)
+    (var in (open-file file))
+    (var out (open-file target))
+    (var b (read-byte in))
+    (while b (write-byte target b) (set b (read-byte in)))
+    t)
+
+
+
+(procedure scan (&optional dir) "scan"
+    (var start-time (now))
+    (default dir "/home/marina/Библиотека/test/*.zip")
+    (var files (if (file-exists "files.txt") (read (open-file "files.txt"))))
+    ;(print nil files)
+    (let (
+        (recs (open-file "library.recs" :mode :append))
+        (warnings (open-file "warnings.txt" :mode :write)))
+
+        :zip (log \ZIP)
+        (for z (directory (concatenate dir "*.zip"))
+            (if (member files z) (continue))
+            (log z)
+            (var zip-files-index (for i (range files)
+                (if (and (list? files/i) (= (car files/i) z)) (break))))
+            (default zip-files-index (block
+                (push files (list z))
+                \last))
+
+            (block
+                (read-zip z files/zip-files-index)
+                (exception
+                    (fmt warnings "ошибка " exception-message NL
+                            "в архиве " z NL)))
+            )
+
+        :fb2 (log \FB2)
+
+        (var auti)
+        (for fb2 (directory (concatenate dir "*.fb2"))
+            (if (member files fb2) (continue))
+            (fmt nil fb2 " => ")
+            (block 1
+                (set auti (read-fb2 (open-file fb2)))
+                (log auti)
+                (print recs (structure auti auti arch nil file fb2))
+                (push files fb2)
+                (exception
+                    (fmt warnings "ошибка " exception-message " в " fb2 NL)
+                    (log \ОШИБКА (last-message exception-message))))
+            ))
+
+    (print (open-file "files.txt" :mode :write) files)
+    (log "каталогизация завершена за " (- (now) start-time))
+    t)
+
+
+
+(var found)
+
+
+(procedure format-found ()
+    (for i (range found)
+        (fmt nil "[" (col 2 i :right) "] " found/i\auti NL)))
+
+
+(procedure search (s)
+    (var words (split-string (upper-case s)))
+    (set found nil)
+    (var in (open-file "library.recs"))
+    (var book (read in))
+    (while book
+        ;(log book)
+        (var AUTI (upper-case book\auti))
+        (if (every (procedure (w) (position AUTI w)) words) (push found book))
+        (set book (read in)))
+    (format-found))
+
+
+(procedure extract (n target)
+    (var book found/n)
+    (var target.ext
+        (if (or (position target "/") (position target "\\"))
+            (concatenate target (extract-file-ext book\file))
+            (concatenate target-dir target (extract-file-ext book\file))))
+    (if book\arch
+        (extract-zip book\arch book\file target.ext)
+        (extract-file book\file target.ext)))
+
+
+
+
+;(scan "./")
+
+;(print nil (search "давайте все"))
+
+;(print nil found)
+
+
+
+(while t
+    (fmt nil ">")
+    (var input (read-line))
+    (if (= input "") (break))
+    (when (= "/" input\last) (scan input) (continue))
+    (var p (position input " "))
+    (var n (and p (read (subseq input 0 p))))
+    (when (integer? n)
+        (extract n (subseq input (+ p 1)))
+        (continue))
+    (search input)
+    (exception (log exception-message)))
+
+
+(log "БИБЛИОТЕКА закрывается")

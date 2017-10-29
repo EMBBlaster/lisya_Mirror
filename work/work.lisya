@@ -1,0 +1,3 @@
+﻿(log (run-command "cd .."))
+(sleep 1000)
+(log (run-command "ls"))
