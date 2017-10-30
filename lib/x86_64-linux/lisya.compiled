@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CONFIG>
-  <Compiler Value="/usr/bin/fpc" Date="1413312430"/>
-  <Params Value=" -MObjFPC -Scghi -O1 -g -gl -vewnhi -Fi/home/marina/projects/LISYA/lib/x86_64-linux -Fu/home/marina/projects/LISYA/ -FU/home/marina/projects/LISYA/lib/x86_64-linux/ -l lisya.lpr"/>
-</CONFIG>

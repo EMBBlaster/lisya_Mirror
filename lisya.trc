@@ -1,7 +1,0 @@
-/home/marina/projects/DLisp/DLisp 
-Heap dump by heaptrc unit
-10760 memory blocks allocated : 423629/462056
-10760 memory blocks freed     : 423629/462056
-0 unfreed memory blocks : 0
-True heap size : 294912
-True free heap : 294912
