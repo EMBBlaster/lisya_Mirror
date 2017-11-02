@@ -1,0 +1,78 @@
+﻿
+(block
+
+    (fmt nil "модифицирующие операторы... ")
+
+    (var l (list 1 2 3))
+    (var su (structure slot1 1 slot2 2))
+    (var si "abcd")
+    (var b (byte-vector 1 2 3))
+    ;(goto :work)
+    (assertion (= 2 l\1) "elt list")
+    (assertion (= 1 su\slot1) "elt struct")
+    (assertion (= "b" si\1) "elt string")
+    (assertion (= 2 b\1) "elt byte-vector")
+
+    (assertion (= 2 (elt (list 1 2 3) 1)) "elt list val")
+    (assertion (= 1 (elt (structure slot1 1) \slot1)) "elt struct val")
+    (assertion (= "b" (elt "abcd" 1)) "elt string val")
+    (assertion (= 2 (elt (byte-vector 1 2 3) 1)) "elt byte-vector val")
+
+    (set l\1 9)
+    (assertion (= 9 l\1) "set elt list")
+    (set su\slot1 9)
+    (assertion (= 9 su\slot1) "set elt struct")
+    (set si\1 "Q")
+    (assertion (= "aQcd" si) "set elt string")
+    (set b\1 9)
+    (assertion (= 9 b\1) "set elt byte-vector")
+
+    (assertion (= 3 l\last) "elt last list")
+    (assertion (= "d" si\last) "elt last string")
+    (assertion (= 3 b\last) "elt last byte-vector")
+
+    (assertion (= 3 (last l)) "last list")
+    (assertion (= "d" (last si)) "last string")
+    (assertion (= 3 (last b)) "last byte-vector")
+
+    (push l 4 5)
+    (assertion (= 5 l\last) "push")
+    (assertion (= 5 (pop l)) "pop")
+    (assertion (= 4 (pop l)) "pop")
+
+    (push l (list "a" "b"))
+    (push l\last "c")
+    (assertion (= (list "a" "b" "c") l\last) "push elt")
+    (assertion (= "c" (pop l\last)) "pop elt")
+    (assertion (= "b" (pop l\last)) "pop elt")
+
+    (append si "ef")
+    (assertion (= "aQcdef" si) "apend string")
+
+    (set su\slot2 "ab")
+    (append su\slot2 "cd")
+    (assertion (= (structure slot1 9 slot2 "abcd") su) "append elt")
+
+    (var LL (list 0 (structure slot "text")))
+    (assertion (= "x" (elt (last LL) \slot 2)) "elt/last nested")
+
+    :work
+    (var a 1)
+    (procedure p (x) (set x (+ 1 x)))
+    (p a)
+    (assertion (= 2 a) "proc var")
+    (var b (list 1 2 3))
+    (p b\1)
+    (assertion (= 3 b\1) "proc elt var")
+
+    (procedure pp (x) (procedure () (set x 8)))
+    (const setx8 (pp b/2))
+    (setx8)
+    (assertion (= (list 1 3 8) b) "capture elt")
+
+
+    (log " успешно")
+    )
+
+
+
