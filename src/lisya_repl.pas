@@ -5,7 +5,11 @@ unit lisya_repl;
 interface
 
 uses
-    cwstring, Classes, SysUtils, dlisp_eval, dlisp_values, dlisp_read;
+    {$IFDEF LINUX}
+    cwstring,
+    {$ENDIF}
+
+    Classes, SysUtils, dlisp_eval, dlisp_values, dlisp_read;
 
 
 

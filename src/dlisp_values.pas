@@ -9,8 +9,10 @@
 interface
 
 uses
-  cwstring,
-  SysUtils, Classes, Contnrs, zlib, lisia_charset, zstream, mar;
+    {$IFDEF LINUX}
+    cwstring,
+    {$ENDIF}
+    SysUtils, Classes, Contnrs, zlib, lisia_charset, zstream, mar;
 
 
 const
@@ -246,6 +248,39 @@ type
     function value: TValue;
   end;
 
+
+  { TVPrimitive }
+
+  TVPrimitive = class (TValue)
+    //класс заглушка, позволяющий функции look вернуть информацию о том,
+    //что компонент является примитивным типом
+    procedure Print; override;
+    function Copy: TValue; override;
+    function AsString: unicodestring; override;
+  end;
+
+  { TVChainPointer }
+
+  TVChainPointer = class (TValue)
+  private
+    primitive: TVPrimitive;
+    V: PVariable;
+    index: array of integer;
+  public
+    constructor Create(P: PVariable); overload;
+    constructor Create(P: PVariable; indices: array of integer); overload;
+    destructor Destroy;
+    procedure Print; override;
+    function Copy: TValue; override;
+    function AsString: unicodestring; override;
+
+    function constant: boolean;
+    function value: TValue;
+    function look: TValue;
+    procedure add_index(i: integer);
+    procedure set_target(_V: TValue);
+  end;
+
   { TVString }
 
   TVString = class (TVCompoundOfPrimitive)
@@ -478,6 +513,7 @@ type
     { TVProcedure }
 
     TVProcedure = class (TVSubprogram)
+        is_macro: boolean;
         evaluated: boolean;
         fsignature: TSubprogramSignature;
         stack_pointer: integer;
@@ -489,6 +525,15 @@ type
         procedure Print; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+    end;
+
+    TVMacro = class (TVProcedure)
+        //макрос является обычной функцией за тем исключением, что
+        //возвращаемый им результат выполняется в месте вызова
+        //данный клас нужен, только для того, чтобы eval мог отличить макрос
+        //от процедуры
+
+        //неправда это всё надо переделать
     end;
 
     type TEvalProc = function (V: TValue): TValue of Object;
@@ -545,6 +590,7 @@ type
             oeIF_NIL,
             oeLAST,
             oeLET,
+            oeMACRO,
             oeMAP,
             oeOR,
             oePOP,
@@ -559,6 +605,7 @@ type
             oeVAR,
             oeWHEN,
             oeWHILE);
+    //and append block break case cond const continue default elt exception filter for goto if if-nil last let map or pop procedure push quote set stack structure structure-as val var when while
 
     TVOperator = class (TVInternalSubprogram)
         name: unicodestring;
@@ -837,6 +884,125 @@ end;
 function op_is_error_class(V: TValue; e: TErrorClass): boolean;
 begin
     result := (V is TVError) and ((V as TVError).e=e);
+end;
+
+{ TVPrimitive }
+
+procedure TVPrimitive.Print;
+begin
+    WriteLn(asString);
+end;
+
+function TVPrimitive.Copy: TValue;
+begin
+    raise ELE.Create('primitive copy');
+end;
+
+function TVPrimitive.AsString: unicodestring;
+begin
+    result := '#<PRIMITIVE>'
+end;
+
+{ TVChainPointer }
+
+constructor TVChainPointer.Create(P: PVariable);
+begin
+    V := P;
+    SetLength(index, 0);
+    primitive := TVPrimitive.Create;
+end;
+
+constructor TVChainPointer.Create(P: PVariable; indices: array of integer);
+var i: integer;
+begin
+    V := P;
+    SetLength(index, Length(indices));
+    for i := 0 to High(indices) do index[i] := indices[i];
+    primitive := TVPrimitive.Create;
+end;
+
+destructor TVChainPointer.Destroy;
+begin
+    ReleaseVariable(V);
+    SetLength(index,0);
+    primitive.Free;
+    inherited;
+end;
+
+procedure TVChainPointer.Print;
+begin
+    WriteLn(AsString);
+end;
+
+function TVChainPointer.Copy: TValue;
+var i: integer;
+begin
+    result := TVChainPointer.Create(RefVariable(V));
+    SetLength((result as TVChainPointer).index, Length(index));
+    for i := 0 to high(index) do
+        (result as TVChainPointer).index[i] := index[i];
+end;
+
+function TVChainPointer.AsString: unicodestring;
+var i: integer;
+begin
+    result := '#<CHAIN-POINTER';
+    for i := 0 to high(index) do result := result+' '+IntToStr(index[i]);
+    result := result + '>';
+end;
+
+function TVChainPointer.constant: boolean;
+begin
+    result := V.constant;
+end;
+
+function TVChainPointer.value: TValue;
+var i: integer; tmp : TVCompound;
+begin
+    if Length(index)=0
+    then result := V.V.Copy
+    else begin
+        tmp := V.V as TVCompound;
+        for i := 0 to high(index)-1 do tmp := tmp.look_n(index[i]) as TVCompound;
+        result := tmp.get_n(index[high(index)]);
+    end;
+end;
+
+function TVChainPointer.look: TValue;
+var i: integer;
+begin
+    if Length(index)=0
+    then result := V.V
+    else begin
+        result := V.V;
+        for i := 0 to high(index)-1 do
+            result := (result as TVCompound).look_n(index[i]);
+        //костыль
+        if result is TVCompoundOfPrimitive
+        then result := primitive
+        else result := (result as TVCompound).look_n(index[high(index)]);
+    end;
+end;
+
+procedure TVChainPointer.add_index(i: integer);
+begin
+    SetLength(index, Length(index)+1);
+    index[high(index)] := i;
+end;
+
+procedure TVChainPointer.set_target(_V: TValue);
+var tmp: TVCompound; i: integer;
+begin
+    if V.constant then raise ELE.Create('target is not variable');
+    if Length(index)=0 then begin
+        V.V.Free;
+        V.V := _V;
+    end
+    else begin
+        tmp := V.V as TVCompound;
+        for i := 0 to high(index)-1 do tmp := tmp.look_n(index[i]) as TVCompound;
+        tmp.set_n(index[high(index)], _V);
+    end;
 end;
 
 { TVTime }
@@ -2302,6 +2468,7 @@ begin
     fsignature := nil;
     evaluated := false;
     stack_pointer := -1;
+    is_macro := false;
 end;
 
 constructor TVProcedure.CreateEmpty;
@@ -2313,6 +2480,7 @@ begin
     fsignature := nil;
     evaluated := false;
     stack_pointer := -1;
+    is_macro := false;
 end;
 
 destructor TVProcedure.Destroy;
@@ -2349,6 +2517,7 @@ begin
 
     (result as TVProcedure).stack_pointer := stack_pointer;
 
+    (result as tVProcedure).is_macro:=is_macro;
 end;
 
 function TVProcedure.AsString: unicodestring;
@@ -2594,6 +2763,7 @@ function TVString.set_n(n: integer; V: TValue): boolean;
 begin
     //TODO: нужно вставить проверки при замене буквы в TVString
     S[n+1] := (V as TVString).S[1];
+    V.Free;
     result := true;
 end;
 

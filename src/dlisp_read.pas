@@ -5,7 +5,9 @@
 interface
 
 uses
+    {$IFDEF LINUX}
     cwstring,
+    {$ENDIF}
     Classes, SysUtils, dlisp_values, mar;
 
 
@@ -22,7 +24,6 @@ procedure print_ln(V:TValue; stream: TStream);
 var
     stdout: TVStreamDefault;
 
-const field_separator: unicodestring = '/';
 
 implementation
 
@@ -218,6 +219,21 @@ begin
     end
     else
 
+    if (acc[1]='/') and (acc[2]='(') and (acc[Length(acc)]=')')
+    then begin
+        result := TVList.Create([TVSymbol.Create('LIST')]);
+        ss := TStringStream.Create(acc[3..Length(acc)-1]);
+        vi := read_s(ss);
+        //vi.Print;
+        while not op_is_error_class(vi, ecEoS) do begin
+            (result as TVList).Add(vi);
+            vi := read_s(ss);
+        end;
+        vi.Free;
+        ss.Free;
+    end
+    else
+
     if (length(acc)>=4) and (UpperCaseU(acc[1..3])='#S(') and (acc[Length(acc)]=')')
     then begin
         result := TVStructure.Create;
@@ -327,7 +343,7 @@ begin
     acc := '';
     while read_char do begin
         case ch of
-            ' ', #13, #10, #$FEFF, #8: begin
+            ' ', #13, #10, #$FEFF, #9: begin
                     if (not q) and (p<=0) and (acc<>'') then break;
                     if q or (p>0) then accum;
                     if ((ch=#13) or (ch=#10)) then r := false;
@@ -383,6 +399,20 @@ begin
     end
     else
 
+    //if (Length(acc)>=3) and (acc[1]='/') and (acc[2]='(') and (acc[Length(acc)]=')')
+    //then begin
+    //    result := TVList.Create([TVSymbol.Create('LIST')]);
+    //    set_ss(acc[3..Length(acc)-1]);
+    //    vi := read_u(nil, @ss);
+    //    //vi.Print;
+    //    while not (vi is TVEndOfStream) do begin
+    //        (result as TVList).Add(vi);
+    //        vi := read_u(nil, @ss);
+    //    end;
+    //    vi.Free;
+    //end
+    //else
+
     if (length(acc)>=4) and (UpperCaseU(acc[1..3])='#S(') and (acc[Length(acc)]=')')
     then begin
         result := TVStructure.Create;
@@ -415,6 +445,13 @@ begin
     then begin
         set_ss(Copy(acc,2,length(acc)-1));
         result := TVList.Create([TVSymbol.Create('QUOTE'), read_u(nil, @ss)]);
+    end
+    else
+
+    if (Length(acc)>=2) and (acc[1]='/')
+    then begin
+        set_ss(Copy(acc,2,length(acc)-1));
+        result := TVList.Create([TVSymbol.Create('INS'), read_u(nil, @ss)]);
     end
     else
 
