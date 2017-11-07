@@ -153,6 +153,14 @@ type
     TVTime = class (TValue)
         fDT: TDateTime;
         procedure Print; override;
+
+        //function year: integer;
+        //function month: integer;
+        //function day: integer;
+        //function hours: integer;
+        //function minutes: integer;
+        //function seconds: integer;
+        //function milliseconds: integer;
     end;
 
     { TVTimeInterval }
@@ -169,6 +177,8 @@ type
         constructor Create(dt: TDateTime);
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+
+        function AsSQLDateTime: unicodestring;
     end;
 
 
@@ -350,15 +360,17 @@ type
 
     TVByteVector = class (TVCompoundOfPrimitive)
         private
-            fBytes: array of byte;
             function GetByte(Index: Integer): Int64;
             procedure SetByte(Index: Integer; V: Int64);
         public
+            fBytes: array of byte;
+
             constructor Create; overload;
             destructor Destroy; override;
             procedure Print; override;
             function Copy(): TValue; override;
             function AsString(): unicodestring; override;
+
 
             property bytes[Index: integer]: Int64 read GetByte write SetByte; default;
             procedure SetCount(l: integer);
@@ -684,6 +696,7 @@ type
         function Set_compression_mode(mode: TCompressionMode): boolean;
         function set_position(p: Int64): boolean;
         function get_position(var p: Int64): boolean;
+        function stream_length: Int64;
     end;
 
     { TVStreamDefault }
@@ -1067,11 +1080,32 @@ var year,month,day,hour,minute,second, ms: WORD;
         if Length(result)=1 then result := '0'+result;
     end;
 begin
+    //DecodeDate(fDT, year, month, day);
+    //DecodeTime(fDT, hour, minute, second, ms);
+    //result := '#<'+
+    //    IntToStr(Year)+'-'+dd(month)+'-'+dd(day)+
+        //' '+dd(hour)+':'+dd(minute)+':'+dd(second)+'>';
+    result := AsSQLDateTime;
+end;
+
+function TVDateTime.AsSQLDateTime: unicodestring;
+var year,month,day,hour,minute,second, ms: WORD;
+    function dd(i: integer): unicodestring;
+    begin
+        result := IntToStr(i);
+        if Length(result)=1 then result := '0'+result;
+    end;
+    function ddd(i: integer): unicodestring;
+    begin
+        result := IntToStr(i);
+        if Length(result)=2 then result := '0'+result;
+        if Length(result)=1 then result := '00'+result;
+    end;
+begin
     DecodeDate(fDT, year, month, day);
     DecodeTime(fDT, hour, minute, second, ms);
-    result := '#<'+
-        IntToStr(Year)+'-'+dd(month)+'-'+dd(day)+
-        ' '+dd(hour)+':'+dd(minute)+':'+dd(second)+'>';
+    result := ''''+IntToStr(Year)+'-'+dd(month)+'-'+dd(day)+
+        ' '+dd(hour)+':'+dd(minute)+':'+dd(second)+'.'+ddd(ms)+'''';
 end;
 
 { TVByteVector }
@@ -2007,6 +2041,11 @@ begin
         p := fStream.Position;
     end;
     result := true;
+end;
+
+function TVStreamPointer.stream_length: Int64;
+begin
+    (body.V as TVStreamBody).fstream.Size;
 end;
 
 { TVStreamBody }

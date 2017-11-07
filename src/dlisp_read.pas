@@ -49,7 +49,48 @@ except
 end;
 end;
 
+function str_is_datetime(s: unicodestring; var dt: TDateTime): boolean;
+var p_ym, p_md, p_dh, p_hm, p_hs, p_d: integer;
+    year, month, day, hours, minutes, seconds, milliseconds: word;
+label ret;
+begin try
+    result := false;
+    if not ((Length(s)>=12) and (s[1]='''') and (s[Length(s)]='''')
+        and (s[6]='-') and (s[9]='-') and (Length(s)<=25)) then exit;
 
+    year := StrToInt(s[2..5]);
+    month := StrToInt(s[7..8]);
+    day := StrToInt(s[10..11]);
+    dt := EncodeDate(year, month, day);
+
+    hours := 0;
+    minutes := 0;
+    seconds := 0;
+    milliseconds := 0;
+
+    if Length(s)=12 then begin result := true; exit; end;
+    if s[12]<>' ' then exit;
+    if Length(s)<18 then exit;
+    if s[15]<>':' then exit;
+    hours := StrToInt(s[13..14]);
+    minutes := StrToInt(s[16..17]);
+    dt := dt + hours/24 + minutes/(24*60);
+    if Length(s)=18 then begin result := true; exit; end;
+    if s[18]<>':' then exit;
+    if Length(s)<21 then exit;
+    seconds := StrToInt(s[19..20]);
+    dt := dt + seconds/(24*60*60);
+    if Length(s)=21 then begin result := true; exit; end;
+    if (s[21]<>'.') and (s[21]<>',') then exit;
+    if Length(s)<25 then exit;
+    milliseconds := StrToInt(s[22..24]);
+    dt := dt + milliseconds/(24*60*60*1000);
+
+    result := true;
+except
+    on EConvertError do result := false;
+end;
+end;
 
 function str_is_elt_call(s: unicodestring; var elt: unicodestring): boolean;
 var p2, p1: integer; sep: unicodestring;
@@ -308,13 +349,14 @@ end;
 //TODO: вся функциональность считывателя реализована в read_u нужно удалить read_s
 function read_u(sp: TVStreamPointer; ss_in: PSS = nil): TValue;
 var
-    q, e, r: boolean;
+    q, e, r, sq: boolean;
     p: integer;
-    l, h: Int64;
+    i,l, h: Int64;
     ch: unicodechar;
     acc, trans: unicodestring;
     ss: TSS;
     vi, vi2: TValue;
+    dt: TDateTime;
 
     function read_char: boolean;
     var b1, b2: byte;
@@ -337,6 +379,7 @@ var
 
 begin
     q := false;
+    sq := false;
     e := false;
     p := 0;
     r := false;
@@ -344,12 +387,16 @@ begin
     while read_char do begin
         case ch of
             ' ', #13, #10, #$FEFF, #9: begin
-                    if (not q) and (p<=0) and (acc<>'') then break;
-                    if q or (p>0) then accum;
+                    if (not q) and (not sq) and (p<=0) and (acc<>'') then break;
+                    if q or sq or (p>0) then accum;
                     if ((ch=#13) or (ch=#10)) then r := false;
                 end;
             '"': begin
                     if (not r) then q := not q;
+                    accum;
+                end;
+            '''': begin
+                    if (not q) and (not r) then sq := not sq;
                     accum;
                 end;
             '(': begin
@@ -453,6 +500,10 @@ begin
         set_ss(Copy(acc,2,length(acc)-1));
         result := TVList.Create([TVSymbol.Create('INS'), read_u(nil, @ss)]);
     end
+    else
+
+    if str_is_datetime(acc, dt)
+    then result := TVDateTime.Create(dt)
     else
 
     if (acc[Length(acc)]=')') or (Pos(' ',acc)>0)

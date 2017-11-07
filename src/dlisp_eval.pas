@@ -12,7 +12,10 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    process, Classes, SysUtils, dlisp_values, dlisp_read, math, lisya_xml, mar;
+    process, Classes, SysUtils, dlisp_values, dlisp_read, math, lisya_xml, mar,
+    lisya_mysql,
+    db,
+    variants;
 
 
 
@@ -127,6 +130,7 @@ begin
     result := V is TVInteger;
 end;
 
+
 function tpRange(V: TValue): boolean;
 begin
     result := V is TVRange;
@@ -140,6 +144,11 @@ end;
 function tpString(V: TValue): boolean;
 begin
     result := V is TVString;
+end;
+
+function tpStringOrNIL(V: TValue): boolean;
+begin
+    result := (V is TVString) or tpNIL(V);
 end;
 
 function tpList(V: TValue): boolean;
@@ -331,7 +340,9 @@ begin
         or (V is TVOperator)
         or (V is TVError)
         or (V is TVStructure)
-        or (V is TVRange);
+        or (V is TVRange)
+        or (V is TVDateTime)
+        or (V is TVTimeInterval);
 end;
 
 function tpReferenceOnly(V: TValue): boolean;
@@ -442,6 +453,11 @@ end;
 function vpIntegerNotNegative                       (V: TValue): boolean;
 begin
     result := (V is TVInteger) and ((V as TVInteger).fI >= 0);
+end;
+
+function vpIntegerNotNegativeORNIL                  (V: TValue): boolean;
+begin
+    result := tpNIL(V) or ((V is TVInteger) and ((V as TVInteger).fI >= 0));
 end;
 
 function vpIntegerRoundToRange                      (V: TValue): boolean;
@@ -661,6 +677,12 @@ function vpStreamPointerActive                      (V: TValue): boolean;
 begin
     result := (V is TVStreamPointer) and
         ((V as TVStreamPointer).body.V <> nil);
+end;
+
+function vpSQLPointerActive                         (V: TValue): boolean;
+begin
+    result := (V is TVSQLPointer) and
+        ((V as TVSQLPointer).body.V <> nil);
 end;
 
 function vpListHeaded_INS                           (V: TValue): boolean;
@@ -2086,6 +2108,81 @@ begin
     end;
 end;
 
+function if_bitwise_or          (const PL: TVList; ep: TEvalProc): TValue;
+var i: integer; a, b: TVByteVector;
+begin
+    //TODO: побитовые операторы имеют много общего кода нужно разделить
+    case params_is(PL, result, [
+        tpByteVector, tpByteVector,
+        tpInteger,      tpInteger]) of
+        1: begin
+            a := PL.look[0] as TVByteVector;
+            b := PL.look[1] as TVByteVector;
+            if a.Count<>b.Count then raise ELE.Create('inequal length', 'invalid parameters');
+            result := TVByteVector.Create;
+            (result as TVByteVector).SetCount(a.Count);
+            for i := 0 to a.High do
+                (result as TVByteVector).fBytes[i] := a.fBytes[i] or b.fBytes[i];
+        end;
+        2: result := TVInteger.Create(PL.I[0] or PL.I[1]);
+    end;
+end;
+
+function if_bitwise_not         (const PL: TVList; ep: TEvalProc): TValue;
+var i: integer; a, b: TVByteVector;
+begin
+    case params_is(PL, result, [
+        tpByteVector,
+        tpInteger]) of
+        1: begin
+            a := PL.look[0] as TVByteVector;
+            result := TVByteVector.Create;
+            (result as TVByteVector).SetCount(a.Count);
+            for i := 0 to a.High do
+                (result as TVByteVector).fBytes[i] := not a.fBytes[i];
+        end;
+        2: result := TVInteger.Create(not PL.I[0]);
+    end;
+end;
+
+function if_bitwise_and         (const PL: TVList; ep: TEvalProc): TValue;
+var i: integer; a, b: TVByteVector;
+begin
+    case params_is(PL, result, [
+        tpByteVector, tpByteVector,
+        tpInteger,      tpInteger]) of
+        1: begin
+            a := PL.look[0] as TVByteVector;
+            b := PL.look[1] as TVByteVector;
+            if a.Count<>b.Count then raise ELE.Create('inequal length', 'invalid parameters');
+            result := TVByteVector.Create;
+            (result as TVByteVector).SetCount(a.Count);
+            for i := 0 to a.High do
+                (result as TVByteVector).fBytes[i] := a.fBytes[i] and b.fBytes[i];
+        end;
+        2: result := TVInteger.Create(PL.I[0] and PL.I[1]);
+    end;
+end;
+
+function if_bitwise_xor         (const PL: TVList; ep: TEvalProc): TValue;
+var i: integer; a, b: TVByteVector;
+begin
+    case params_is(PL, result, [
+        tpByteVector, tpByteVector,
+        tpInteger,      tpInteger]) of
+        1: begin
+            a := PL.look[0] as TVByteVector;
+            b := PL.look[1] as TVByteVector;
+            if a.Count<>b.Count then raise ELE.Create('inequal length', 'invalid parameters');
+            result := TVByteVector.Create;
+            (result as TVByteVector).SetCount(a.Count);
+            for i := 0 to a.High do
+                (result as TVByteVector).fBytes[i] := a.fBytes[i] xor b.fBytes[i];
+        end;
+        2: result := TVInteger.Create(PL.I[0] xor PL.I[1]);
+    end;
+end;
+
 function if_character           (const PL: TVList; ep: TEvalProc): TValue;
 var i: integer;
 begin
@@ -2309,6 +2406,14 @@ begin
             then result := TVInteger.Create(p)
             else result := TVError.Create(ecStreamError, '');
         end;
+    end;
+end;
+
+function if_stream_length       (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpStreamPointerActive]) of
+        1: result := TVInteger.Create((PL.look[0] as TVStreamPointer).stream_length);
     end;
 end;
 
@@ -2722,7 +2827,111 @@ begin
     end;
 end;
 
-const int_dyn: array[1..85] of TInternalFunctionRec = (
+
+function if_sql_mysql_connection(const PL: TVList; ep: TEvalProc): TValue;
+var database, username, host, password: unicodestring; port: integer;
+const
+    P_database = 0;
+    P_host = 1;
+    P_port = 2;
+    P_username = 3;
+    P_password = 4;
+begin
+    case params_is(PL, result, [
+        tpString, tpStringOrNIL,vpIntegerNotNegativeOrNIL, tpStringOrNIL, tpStringOrNIL]) of
+        1: begin
+            database := PL.S[P_database];
+            if tpNIL(PL.look[P_host])
+            then host := 'localhost' else host := PL.S[P_host];
+            if tpNIL(PL.look[P_port])
+            then port := 3306 else port := PL.I[P_port];
+            if tpNIL(PL.look[P_username])
+            then username := '' else username := PL.S[P_username];
+            if tpNIL(PL.look[P_password])
+            then password := '' else password := PL.S[P_password];
+            result := TVSQLPointer.CreateMySQL(database, host, port, username, password);
+        end;
+    end;
+end;
+
+
+function if_sql_query           (const PL: TVList; ep: TEvalProc): TValue;
+var database: TVSQLPointer; rec: TVStructure; sl: TStringList; i,j: integer;
+    bool_val: boolean;
+begin
+    case params_is(PL, result, [
+        vpSQLPointerActive, tpString]) of
+        1: with (PL.look[0] as TVSQLPointer).query do try
+            rec := nil;
+            sl := TStringList.Create;
+
+            Active := false;
+            SQL.Text := PL.S[1];
+            if (Length(PL.S[1])>=6) and ('SELECT'=UpperCaseU(PL.S[1])[1..6])
+            then Active := true
+            else begin
+                result := TVT.Create;
+                ExecSQL;
+                (PL.look[0] as TVSQLPointer).Commit;
+                Exit;
+            end;
+            Last;
+
+            for j := 0 to FieldCount-1 do sl.Add(Fields[j].DisplayName);
+            rec := TVStructure.Create(sl);
+            result := TVList.Create;
+            First;
+            for i := 0 to RecordCount-1 do begin
+                for j := 0 to FieldCount-1 do
+                    if VarIsNull(fields[j].Value)
+                    then rec.set_n(j, TVList.Create)
+                    else
+                    case Fields[j].DataType of
+                        ftUnknown, ftString, ftWideString,
+                        ftFmtMemo, ftMemo, ftFixedWideChar,
+                        ftWideMemo,
+                        ftFixedChar: rec.set_n(j,
+                            TVString.Create(Fields[j].AsString));
+                        ftSmallint, ftInteger,
+                        ftWord: rec.set_n(j,
+                            TVInteger.Create(Fields[j].AsInteger));
+                        ftBoolean: if Fields[j].AsBoolean
+                            then rec.set_n(j, TVT.Create)
+                            else rec.set_n(j, TVList.Create);
+                        ftFloat: rec.set_n(j,
+                            TVFloat.Create(Fields[j].AsFloat));
+                        ftDateTime, ftDate, ftTimeStamp: rec.set_n(j,
+                            TVDateTime.Create(Fields[j].AsDateTime));
+                        ftTime: rec.set_n(j,
+                            TVTimeInterval.Create(Fields[j].AsDateTime));
+
+
+                        //ftCurrency, ftBCD,
+                        //ftBytes, ftVarBytes, ftAutoInc, ftBlob, , ftGraphic, ,
+                        //ftParadoxOle, ftDBaseOle, ftTypedBinary, ftCursor,
+                        //, ftLargeint, ftADT, ftArray, ftReference,
+                        //ftDataSet, ftOraBlob, ftOraClob, ftVariant, ftInterface,
+                        //ftIDispatch, ftGuid, ftFMTBcd, );
+                    end;
+                (result as TVList).Add(rec.Copy);
+                Next;
+            end;
+        finally
+            rec.Free;
+            //sl.Free;
+        end;
+    end;
+end;
+
+function if_sql_format_datetime (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpDatetime]) of
+        1: result := TVString.Create((PL.look[0] as TVDateTime).AsSQLDateTime);
+    end;
+end;
+
+const int_dyn: array[1..93] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
 (n:'NUMBER?';               f:if_number_p;              s:'(a)'),
@@ -2783,6 +2992,10 @@ const int_dyn: array[1..85] of TInternalFunctionRec = (
 (n:'KEY';                   f:if_key;                   s:'(l k)'),
 
 (n:'BYTE-VECTOR';           f:if_byte_vector;           s:'(:rest b)'),
+(n:'BITWISE-AND';           f:if_bitwise_and;           s:'(a b)'),
+(n:'BITWISE-NOT';           f:if_bitwise_not;           s:'(a)'),
+(n:'BITWISE-OR';            f:if_bitwise_or;            s:'(a b)'),
+(n:'BITWISE-XOR';           f:if_bitwise_xor;           s:'(a b)'),
 (n:'CHARACTER';             f:if_character;             s:'(n)'),
 
 (n:'ASSERTION';             f:if_assertion;             s:'(c m)'),
@@ -2797,6 +3010,7 @@ const int_dyn: array[1..85] of TInternalFunctionRec = (
 (n:'SET-ENCODING';          f:if_set_encoding;          s:'(s e)'),
 (n:'SET-COMPRESSION-METHOD';f:if_set_compression_method;s:'(s c)'),
 (n:'STREAM-POSITION';       f:if_stream_position;       s:'(s :optional p)'),
+(n:'STREAM-LENGTH';         f:if_stream_length;         s:'(s)'),
 (n:'READ-BYTE';             f:if_read_byte;             s:'(s)'),
 (n:'READ-BYTES';            f:if_read_bytes;            s:'(s c)'),
 (n:'WRITE-BYTE';            f:if_write_byte;            s:'(s i)'),
@@ -2825,7 +3039,11 @@ const int_dyn: array[1..85] of TInternalFunctionRec = (
 //(n:'STRUCTURE-AS';          f:if_structure_as;          s:'(t :rest a)'),
 (n:'STRUCTURE?';            f:if_structure_p;           s:'(s :optional t)'),
 
-(n:'XML:READ-FROM-STRING';  f:if_xml_read_from_string;  s:'(s)')
+(n:'XML:READ-FROM-STRING';  f:if_xml_read_from_string;  s:'(s)'),
+
+(n:'SQL:MYSQL-CONNECTION';  f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
+(n:'SQL:QUERY';             f:if_sql_query;             s:'(db q)'),
+(n:'SQL:FORMAT-DATETIME';   f:if_sql_format_datetime;   s:'(dt)')
 
 );
 
@@ -2896,13 +3114,15 @@ end;
 { TEvaluationFlow }
 
 constructor TEvaluationFlow.Create(parent_stack: TVSymbolStack = nil);
-var i: integer; o: TOperatorEnum;
+var i, n: integer; o: TOperatorEnum;  V: TValue;
 begin
     if parent_stack<> nil then begin
         main_stack := parent_stack;
         stack := main_stack;
         Exit;
     end;
+
+   // V := read_from_string(int_dyn[86].s);
 
     main_stack := TVSymbolStack.Create(nil);
     stack := main_stack;
@@ -3629,7 +3849,8 @@ var pc, i, j, sp_i, sp_L: integer;
     L: TVList; link: boolean; P: PVariable;
     V: TValue;
     s: unicodestring;
-    op_var : (null, var_list, val_list, range, times, str);
+    bv: TVBytevector;
+    op_var : (null, var_list, val_list, range, times, str, bytes);
 label br, next, return;
 begin try
     //оператор цикла возвращает NIL в случае завершения и последнее значение
@@ -3657,10 +3878,10 @@ begin try
                 else
                     if tpString(V) then op_var := str
                     else
-                        begin
-                            result := invalid_parameters(PL, '');
-                            exit;
-                        end;
+                        if tpByteVector(V) then op_var := bytes
+                        else
+                            raise ELE.InvalidParameters;
+
 
     result := TVList.Create;
     stack.new_var(' <for-list2>', TVT.Create);
@@ -3742,6 +3963,22 @@ begin try
             stack.new_var(PL.uname[1], TVString.Create(''), true);
             for i := 1 to Length(S) do begin
                 (stack.stack[sp_i].V.V as TVString).S := S[i];
+                result.Free;
+                result := oph_block(PL, 3, true);
+                if tpError(result) then exit;
+                if tpBreak(result) then begin
+                    FreeAndNil(result);
+                    result := stack.stack[sp_i].V.V.Copy;
+                    break;
+                end;
+            end;
+        end;
+
+        bytes: begin
+            bv := V as TVBytevector;
+            stack.new_var(PL.uname[1], TVInteger.Create(0), true);
+            for i := 0 to high(bv.fBytes) do begin
+                (stack.stack[sp_i].V.V as TVInteger).fI := bv.fBytes[i];
                 result.Free;
                 result := oph_block(PL, 3, true);
                 if tpError(result) then exit;

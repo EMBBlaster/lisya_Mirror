@@ -280,7 +280,8 @@
     (log))
     
     
-(execute-file "../test/mod_ops_test.lisya")   
+(execute-file "../test/mod_ops_test.lisya")
+(execute-file "../test/macro_test.lisya")
 
 (log \ЗАВЕРШЕНО)
 exit

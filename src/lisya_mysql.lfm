@@ -1,0 +1,57 @@
+object module_mysql: Tmodule_mysql
+  OldCreateOrder = False
+  Height = 150
+  HorizontalOffset = 517
+  VerticalOffset = 318
+  Width = 436
+  object MySQL55: TMySQL55Connection
+    Connected = True
+    LoginPrompt = False
+    DatabaseName = 'graph'
+    KeepConnection = True
+    Params.Strings = (
+      'AUTOCOMMIT=1'
+    )
+    Password = '1'
+    Transaction = SQLTransaction55
+    UserName = 'lisya'
+    CharSet = 'utf8'
+    HostName = 'localhost'
+    LogEvents = []
+    left = 360
+    top = 96
+  end
+  object MySQL50: TMySQL50Connection
+    Connected = False
+    LoginPrompt = False
+    KeepConnection = True
+    Params.Strings = (
+      'AUTOCOMMIT=1'
+    )
+    Transaction = SQLTransaction50
+    CharSet = 'utf8'
+    LogEvents = []
+    left = 360
+    top = 16
+  end
+  object SQLTransaction55: TSQLTransaction
+    Active = True
+    Database = MySQL55
+    left = 280
+    top = 96
+  end
+  object SQLTransaction50: TSQLTransaction
+    Active = False
+    Database = MySQL50
+    left = 280
+    top = 16
+  end
+  object Query: TSQLQuery
+    FieldDefs = <>
+    Database = MySQL55
+    Transaction = SQLTransaction55
+    Params = <>
+    left = 184
+    top = 56
+  end
+end
