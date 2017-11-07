@@ -7,11 +7,12 @@
     (var su (structure slot1 1 slot2 2))
     (var si "abcd")
     (var b (byte-vector 1 2 3))
-    ;(goto :work)
+
     (assertion (= 2 l\1) "elt list")
     (assertion (= 1 su\slot1) "elt struct")
     (assertion (= "b" si\1) "elt string")
     (assertion (= 2 b\1) "elt byte-vector")
+    (assertion (not (elt l NIL)) "elt nil")
 
     (assertion (= 2 (elt (list 1 2 3) 1)) "elt list val")
     (assertion (= 1 (elt (structure slot1 1) \slot1)) "elt struct val")
@@ -56,7 +57,7 @@
     (var LL (list 0 (structure slot "text")))
     (assertion (= "x" (elt (last LL) \slot 2)) "elt/last nested")
 
-    :work
+
     (var a 1)
     (procedure p (x) (set x (+ 1 x)))
     (p a)

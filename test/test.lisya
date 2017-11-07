@@ -120,10 +120,6 @@
 (assertion (= (length "") 0) "length ''")
 (assertion (= (length "figaфига") 8) "length str")
 
-(assertion (= (elt \(0 1 2 3) 2) 2) "elt list i")
-(assertion (= (elt \(0 (1) 2) 1) \(1)) "elt list l")
-(assertion (= (elt "0123" 2) "2") "elt str")
-
 (assertion (= (subseq \(0 1 2 3 4 5) 2 4) \(2 3)) "subseq list")
 (assertion (= (subseq \(0 1 2 3 4 5) 2) \(2 3 4 5)) "subseq list open")
 (assertion (= (subseq "012345" 2 4) "23") "subseq str")

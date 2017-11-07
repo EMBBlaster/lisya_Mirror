@@ -44,7 +44,6 @@ type
     { TValue }
 
     TValue = class
-        procedure Print; virtual; abstract;
         function Copy(): TValue; virtual; abstract;
         function AsString(): unicodestring; virtual; abstract;
     end;
@@ -53,7 +52,6 @@ type
     { TVEndOfStream }
 
     TVEndOfStream = class (TValue)
-        procedure Print; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
     end;
@@ -78,6 +76,7 @@ type
 
     TSymbolStack = class
         //TODO: требуется упорядочить и защитить от многопоточности работу со стеком
+        //TODO: удалить TSymbolStack
         stack: array of TStackRecord;
 
         constructor Create(parent: TSymbolStack);
@@ -102,7 +101,6 @@ type
   { TVT }
 
   TVT = class (TValue)
-    procedure Print; override;
     function Copy(): TValue; override;
     function AsString(): unicodestring; override;
   end;
@@ -118,7 +116,6 @@ type
   TVInteger = class (TVNumber)
     fI: Int64;
     constructor Create(I: Int64);
-    procedure Print; override;
     function Copy(): TValue; override;
     function AsString(): unicodestring; override;
 
@@ -130,7 +127,6 @@ type
   TVRange = class (TValue)
     low, high: Int64;
     constructor Create(l,h: Int64);
-    procedure Print; override;
     function Copy(): TValue; override;
     function AsString(): unicodestring; override;
   end;
@@ -140,7 +136,6 @@ type
   TVFloat = class (TVNumber)
     fF: double;
     constructor Create(F: double);
-    procedure Print; override;
     function Copy(): TValue; override;
     function AsString(): unicodestring; override;
 
@@ -152,7 +147,6 @@ type
 
     TVTime = class (TValue)
         fDT: TDateTime;
-        procedure Print; override;
 
         //function year: integer;
         //function month: integer;
@@ -194,7 +188,6 @@ type
       function uname: unicodestring;
       constructor Create(S: unicodestring);
       destructor Destroy; override;
-      procedure Print; override;
       function Copy(): TValue; override;
       function AsString(): unicodestring; override;
   end;
@@ -210,7 +203,6 @@ type
     constructor Create(name: unicodestring); overload;
     constructor Create(mark: TVSymbol); overload;
     destructor Destroy; override;
-    procedure Print; override;
     function Copy(): TValue; override;
     function AsString(): unicodestring; override;
   end;
@@ -218,7 +210,6 @@ type
   { TVBreak }
 
   TVBreak = class (TVGo)
-    procedure Print; override;
     function Copy: TVBreak; override;
     function AsString: unicodestring; override;
   end;
@@ -226,7 +217,6 @@ type
   { TVContinue }
 
   TVContinue = class (TVGo)
-    procedure Print; override;
     function Copy: TVContinue; override;
     function AsString: unicodestring; override;
   end;
@@ -243,28 +233,12 @@ type
 
   end;
 
-  { TVPointer }
-
-  TVPointer = class (TValue)
-    compound: TVCompound;
-    index: integer;
-
-    constructor Create(c: TVCompound; i: integer);
-    procedure Print; override;
-    function Copy: TValue; override;
-    function AsString: unicodestring; override;
-
-    function look: TValue;
-    function value: TValue;
-  end;
-
 
   { TVPrimitive }
 
   TVPrimitive = class (TValue)
     //класс заглушка, позволяющий функции look вернуть информацию о том,
     //что компонент является примитивным типом
-    procedure Print; override;
     function Copy: TValue; override;
     function AsString: unicodestring; override;
   end;
@@ -280,7 +254,6 @@ type
     constructor Create(P: PVariable); overload;
     constructor Create(P: PVariable; indices: array of integer); overload;
     destructor Destroy;
-    procedure Print; override;
     function Copy: TValue; override;
     function AsString: unicodestring; override;
 
@@ -297,7 +270,6 @@ type
     S: unicodestring;
     constructor Create(S: unicodestring);
     destructor Destroy; override;
-    procedure Print; override;
     function Copy(): TValue; override;
     function AsString(): unicodestring; override;
 
@@ -325,7 +297,6 @@ type
       constructor Create; overload;
       constructor Create(VL: array of TValue); overload;
       destructor Destroy; override;
-      procedure Print; override;
       function Copy(): TValue; override;
       function AsString(): unicodestring; override;
 
@@ -367,7 +338,6 @@ type
 
             constructor Create; overload;
             destructor Destroy; override;
-            procedure Print; override;
             function Copy(): TValue; override;
             function AsString(): unicodestring; override;
 
@@ -386,20 +356,6 @@ type
     end;
 
 
-  { TVClass }
-
-  TVClass = class (TValue)
-    uname: unicodestring;
-    unames: TStringList;
-    constructor Create(name: unicodestring; names: array of unicodestring); overload;
-    constructor Create; overload;
-    destructor Destroy; override;
-    procedure Print; override;
-    function Copy: TValue; override;
-    function AsString: unicodestring; override;
-  end;
-
-
   { TVStructure }
 
   TVStructure = class (TVCompound)
@@ -414,7 +370,6 @@ type
         constructor Create(names: TStringList); overload;
         constructor Create; overload;
         destructor Destroy; override;
-        procedure Print; override;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
 
@@ -445,7 +400,7 @@ type
 
         constructor Create(parent: TVSymbolStack);
         destructor Destroy; override;
-        procedure Print; override; overload;
+        procedure Print;  overload;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
 
@@ -498,7 +453,6 @@ type
         msg: unicodestring;
         constructor Create(e: TErrorClass; msg: unicodestring);
         destructor Destroy; override;
-        procedure Print; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
     end;
@@ -534,7 +488,6 @@ type
         constructor Create;
         constructor CreateEmpty;
         destructor Destroy; override;
-        procedure Print; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
     end;
@@ -577,7 +530,6 @@ type
                             body: TInternalFunctionBody;
                             name: unicodestring = '');
         destructor Destroy; override;
-        procedure Print; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
     end;
@@ -626,24 +578,10 @@ type
 
         constructor Create(name: unicodestring; en: TOperatorEnum; sign: TVList);
         destructor Destroy; override;
-        procedure Print; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
     end;
 
-  //  TVAccess = class (TValue)
-
-//type
-//  TVFunction = class (TValue)
-//    private
-//      L: TObjectList;
-//    public
-//      constructor Create(body: TVList);
-//      destructor Destroy; override;
-      
-//  end;
-
-//    TStreamType = (stFile);
 
     TFileMode = (fmRead, fmWrite, fmAppend);
     TStreamEncoding = (seBOM, seUTF8, seCP1251, seCP1252, seUTF16BE, seUTF16LE, seUTF32BE,
@@ -663,7 +601,6 @@ type
         constructor Create(fn: unicodestring; mode: TFileMode);
         destructor Destroy; override;
 
-        procedure Print; override;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
 
@@ -682,7 +619,6 @@ type
         constructor Create; overload;
         destructor Destroy; override;
 
-        procedure Print; override;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
 
@@ -699,128 +635,7 @@ type
         function stream_length: Int64;
     end;
 
-    { TVStreamDefault }
 
-    TVStreamDefault = class (TValue)
-        constructor Create;
-        destructor Destroy; override;
-
-        procedure Print; override;
-        function Copy: TValue; override;
-        function AsString: unicodestring; override;
-
-        function read_byte(var b: byte): boolean;
-        function write_byte(b: byte): boolean;
-        function read_char(var ch: unicodechar): boolean;
-        function write_char(ch: unicodechar): boolean;
-    end;
-
-
-    TVStream = class (TValue)
-        procedure Print(V: TValue); virtual; abstract;
-        function Read(): TValue; virtual; abstract;
-        procedure Close; virtual; abstract;
-    end;
-
-
-
-    { TVStreamTextFile }
-
-    TVStreamTextFile = class (TVStream)
-    private
-        fActive: boolean;
-
-    public
-        f: TFileStream;
-        constructor Create(fn: unicodestring; mode: TFileMode);
-        destructor Destroy; override;
-        function Copy(): TValue; override;
-        function AsString(): unicodestring; override;
-
-        procedure Print(V: TValue); override;
-        function Read(): TValue; override;
-        procedure Close(); override;
-    end;
-
-
-type
-
-    TPredicate = class
-        function test(V: TValue): boolean; virtual; abstract;
-    end;
-
-    { is_any }
-
-    is_any = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-    { is_number }
-
-    is_number = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-    { is_integer }
-
-    is_integer = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-    { is_float }
-
-    is_float = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-    { is_string }
-
-    is_string = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-    { is_symbol }
-
-    is_symbol = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-    { is_list }
-
-    is_list = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-    { is_atom }
-
-    is_atom = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-    { is_NIL }
-
-    is_NIL = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-    { is_keyword }
-
-    is_keyword = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-    { is_selfevaluating }
-
-    is_selfevaluating = class (TPredicate)
-        function test(V: TValue): boolean; override;
-    end;
-
-
-    Tforward = class
-        f: integer;
-    end;
-
-procedure PrintValue(V: TObject);
 
 procedure Assign(var v1, v2: TValue);
 
@@ -828,7 +643,7 @@ function op_null(V: TValue): boolean;
 
 function op_is_error_class(V: TValue; e: TErrorClass): boolean;
 
-function NewVariable(): PVariable;
+function NewVariable(_V: TValue = nil; _constant: boolean = false): PVariable;
 function RefVariable(P: PVariable): PVariable;
 procedure ReleaseVariable(var P: PVariable);
 
@@ -839,12 +654,12 @@ uses
 
     { TVariable }
 
-function NewVariable(): PVariable;
+function NewVariable(_V: TValue = nil; _constant: boolean = false): PVariable;
 begin
     New(result);
     result.ref_count:=1;
-    result.constant := false;
-    result.V := nil;
+    result.constant := _constant;
+    result.V := _V;
 
    // WriteLn('NewVariable>> ', IntToHex(qword(result),8));
 end;
@@ -877,11 +692,6 @@ begin
 end;
 
 
-procedure PrintValue(V: TObject);
-begin
-  (V as TValue).Print;
-end;
-
 procedure Assign(var v1, v2: TValue);
 begin
   v1.Free;
@@ -900,11 +710,6 @@ begin
 end;
 
 { TVPrimitive }
-
-procedure TVPrimitive.Print;
-begin
-    WriteLn(asString);
-end;
 
 function TVPrimitive.Copy: TValue;
 begin
@@ -940,11 +745,6 @@ begin
     SetLength(index,0);
     primitive.Free;
     inherited;
-end;
-
-procedure TVChainPointer.Print;
-begin
-    WriteLn(AsString);
 end;
 
 function TVChainPointer.Copy: TValue;
@@ -1016,13 +816,6 @@ begin
         for i := 0 to high(index)-1 do tmp := tmp.look_n(index[i]) as TVCompound;
         tmp.set_n(index[high(index)], _V);
     end;
-end;
-
-{ TVTime }
-
-procedure TVTime.Print;
-begin
-    WriteLn(asString);
 end;
 
 
@@ -1132,10 +925,6 @@ begin
     inherited Destroy;
 end;
 
-procedure TVByteVector.Print;
-begin
-    WriteLn(asstring);
-end;
 
 function TVByteVector.Copy: TValue;
 var i: integer; res: TVByteVector;
@@ -1233,11 +1022,6 @@ begin
 end;
 
 { TVEndOfStream }
-
-procedure TVEndOfStream.Print;
-begin
-    WriteLn(AsString);
-end;
 
 function TVEndOfStream.Copy: TValue;
 begin
@@ -1481,70 +1265,12 @@ begin
     end;
 end;
 
-{ TVPointer }
-
-constructor TVPointer.Create(c: TVCompound; i: integer);
-begin
-    compound := c;
-    index := i;
-end;
-
-procedure TVPointer.Print;
-begin
-    WriteLn(AsString);
-end;
-
-function TVPointer.Copy: TValue;
-begin
-    result := TVPointer.Create(compound, index);
-end;
-
-function TVPointer.AsString: unicodestring;
-var s: unicodestring;
-begin
-    try s := self.look.AsString; except s := 'XXXX'; end;
-//    result := '#<POINTER '+IntToStr(index)+' of '+compound.AsString+'>';
-    result := '#<POINTER to '+IntToStr(index)+' ('+S+') in '
-                +compound.AsString+'>';
-end;
-
-function TVPointer.look: TValue;
-begin
-  //  WriteLn('link compound ',compound.ClassName);
-    if compound is TVList
-    then result := (compound as TVList).look[index]
-    else
-        if compound is TVStructure
-        then result := (compound as TVStructure).look_n(index)
-        else
-            if compound is TVSymbolStack
-            then result := (compound as TVSymbolStack).stack[index].V.V
-            else
-                if compound is TVCompoundOfPrimitive
-                then result := TVError.Create(ecError,
-                    compound.ClassName+' не содержит объектов')
-                else
-                    raise ELisyaError.Create('неизвестный составной тип');
-end;
-
-function TVPointer.value: TValue;
-begin
-    if compound is TVCompoundOfPrimitive
-    then result := compound.get_n(index)
-    else result := look.Copy;
-end;
-
 { TVRange }
 
 constructor TVRange.Create(l, h: Int64);
 begin
     low := l;
     high := h;
-end;
-
-procedure TVRange.Print;
-begin
-    WriteLn(AsString);
 end;
 
 function TVRange.Copy: TValue;
@@ -1557,50 +1283,6 @@ begin
     result := IntToStr(low)+'..'+IntToStr(high);
 end;
 
-{ TVClass }
-
-constructor TVClass.Create(name: unicodestring; names: array of unicodestring);
-var i: integer;
-begin
-    uname := UpperCaseU(Name);
-    unames := TStringList.Create;
-    for i := low(names) to high(names) do unames.Add(UpperCaseU(names[i]));
-    unames.Sort;
-end;
-
-constructor TVClass.Create;
-begin
-    uname := '';
-    unames := TStringList.Create;
-end;
-
-destructor TVClass.Destroy;
-begin
-    unames.free;
-    inherited Destroy;
-end;
-
-procedure TVClass.Print;
-begin
-    WriteLn(self.AsString);
-end;
-
-function TVClass.Copy: TValue;
-var i: integer;
-begin
-    result := TVClass.Create;
-    (result as TVClass).uname := uname;
-    (result as TVClass).unames.capacity := unames.Count;
-    for i := 0 to unames.Count - 1 do (result as TVClass).unames.Add(unames[i]);
-end;
-
-function TVClass.AsString: unicodestring;
-var i: integer;
-begin
-    //result := '#<CLASS '+uname+;
-    //for i := 0 to unames.Count-1 do result := result + ' ' + unames[i];
-    //result := result + '>';
-end;
 
 { TVStructure }
 
@@ -1658,11 +1340,6 @@ begin
     unames.Free;
     slots.Free;
     inherited Destroy;
-end;
-
-procedure TVStructure.Print;
-begin
-    WriteLn(AsString);
 end;
 
 function TVStructure.Copy: TValue;
@@ -1757,57 +1434,6 @@ begin
 end;
 
 
-{ TVStreamDefault }
-
-constructor TVStreamDefault.Create;
-begin
-    //
-end;
-
-destructor TVStreamDefault.Destroy;
-begin
-    inherited Destroy;
-end;
-
-procedure TVStreamDefault.Print;
-begin
-    WriteLn('#<STREAM STD_OUT>');
-end;
-
-function TVStreamDefault.Copy: TValue;
-begin
-    result := self;
-end;
-
-function TVStreamDefault.AsString: unicodestring;
-begin
-    result := '#<STREAM STD_OUT>';
-end;
-
-function TVStreamDefault.read_byte(var b: byte): boolean;
-begin
-    System.Read(b);
-    result := true;
-end;
-
-function TVStreamDefault.write_byte(b: byte): boolean;
-begin
-    System.Write(b);
-    result := true;
-end;
-
-function TVStreamDefault.read_char(var ch: unicodechar): boolean;
-begin
-    System.Read(ch);
-    result := true;
-end;
-
-function TVStreamDefault.write_char(ch: unicodechar): boolean;
-begin
-    System.Write(ch);
-    result := true;
-end;
-
 { TVStreamPointer }
 
 constructor TVStreamPointer.Create(fn: unicodestring;
@@ -1865,12 +1491,6 @@ begin
     inherited Destroy;
 end;
 
-procedure TVStreamPointer.Print;
-begin
-    if body.V<>nil
-    then WriteLn('#<STREAM POINTER '+body.V.AsString()+' >')
-    else WriteLn('#<STREAM POINTER closed>');
-end;
 
 function TVStreamPointer.Copy: TValue;
 begin
@@ -2084,11 +1704,6 @@ begin
     inherited Destroy;
 end;
 
-procedure TVStreamBody.Print;
-begin
-    WriteLn('#<STREAM '+file_name+' >');
-end;
-
 function TVStreamBody.Copy: TValue;
 begin
     result := nil;
@@ -2142,11 +1757,6 @@ begin
     //inherited Destroy;
 end;
 
-procedure TVOperator.Print;
-begin
-    writeLn('#<OPERATOR '+name+' '+signature.AsString()+'>');
-end;
-
 function TVOperator.Copy: TValue;
 begin
     //сигнатура копируется по ссылке, поскольку операторы не могут быть
@@ -2176,10 +1786,6 @@ begin
     inherited Destroy;
 end;
 
-procedure TVInternalFunction.Print;
-begin
-    WriteLn('#<INTERNAL '+name+' >');
-end;
 
 function TVInternalFunction.Copy: TValue;
 begin
@@ -2191,28 +1797,7 @@ begin
     result := '#<INTERNAL '+name+' '+signature.AsString()+'>';
 end;
 
-{ TVSubprogram }
-
-//constructor TVSubprogram.Create;
-//begin
-//    signature := TVList.Create;
-//    stack := TVSymbolStack.Create(nil);
-//end;
-
-//destructor TVSubprogram.Destroy;
-//begin
-//    signature.Free;
-//    stack.Free;
-//    inherited Destroy;
-//end;
-
-
 { TVContinue }
-
-procedure TVContinue.Print;
-begin
-     write('#<CONTINUE>');
-end;
 
 function TVContinue.Copy: TVContinue;
 begin
@@ -2225,11 +1810,6 @@ begin
 end;
 
 { TVBreak }
-
-procedure TVBreak.Print;
-begin
-    write('#<BREAK>');
-end;
 
 function TVBreak.Copy: TVBreak;
 begin
@@ -2432,68 +2012,6 @@ begin
 end;
 
 
-
-
-
-
-{ TVStreamTextFile }
-
-constructor TVStreamTextFile.Create(fn: unicodestring; mode: TFileMode);
-var tf: file;
-begin
-    //Writeln('create text file');
-    case mode of
-        fmRead: f := TFileStream.Create(fn, fmOpenRead);
-        fmWrite: begin
-            AssignFile(tf, fn);
-            Rewrite(tf);
-            CloseFile(tf);
-            f := TFileStream.Create(fn, fmOpenWrite);
-        end;
-        fmAppend: begin
-            f := TFileStream.Create(fn, fmOpenReadWrite);
-            f.Seek(f.Size,0);
-        end;
-    end;
-    fActive := true;
-end;
-
-destructor TVStreamTextFile.Destroy;
-begin
-    FreeAndNil(F);
-    //CloseFile(F);
-    inherited Destroy;
-end;
-
-function TVStreamTextFile.Copy: TValue;
-begin
-    Assert(false, 'Копирование потока');
-    result := TVError.Create(ecError, '');
-end;
-
-function TVStreamTextFile.AsString: unicodestring;
-begin
-    if F=nil
-    then result := '#<TEXTFILE closed>'
-    else result := '#<TEXTFILE opened>';
-end;
-
-procedure TVStreamTextFile.Print(V: TValue);
-begin
-    dlisp_read.print_s(V, f);
-end;
-
-function TVStreamTextFile.Read: TValue;
-begin
-   // result := dlisp_read.read_s(F);
-   //TODO: удалить TVStreamTextFile
-end;
-
-procedure TVStreamTextFile.Close;
-begin
-    FreeAndNil(F);
-end;
-
 { TVProcedure }
 
 var pc: integer=0;
@@ -2533,13 +2051,6 @@ begin
     inherited Destroy;
 end;
 
-procedure TVProcedure.Print;
-var i: integer;
-begin
-    WriteLn('#<PROCEDURE');
-    body.Print;
-    WriteLn(' PROCEDURE>');
-end;
 
 function TVProcedure.Copy: TValue;
 var i: integer;
@@ -2602,11 +2113,6 @@ begin
     uname :='';
 end;
 
-procedure TVGoto.Print;
-begin
-    WriteLn('#<GOTO '+IntTostr(n)+uname+'>');
-end;
-
 function TVGoto.Copy: TValue;
 begin
     result := TVGoto.Create(uname);
@@ -2618,92 +2124,8 @@ begin
     result := '#<GOTO '+IntTostr(n)+' '+uname+'>';
 end;
 
-{ is_selfevaluating }
-
-function is_selfevaluating.test(V: TValue): boolean;
-begin
-    result := (V is TVNumber)
-        or (V is TVString)
-        or ((V is TVSymbol) and ((V as TVSymbol).name[1]=':'))
-        or ((V is TVList) and ((V as TVList).count=0));
-end;
-
-{ is_keyword }
-
-function is_keyword.test(V: TValue): boolean;
-begin
-    result := (V is TVSymbol) and ((V as TVSymbol).name[1]=':');
-end;
-
-{ is_NIL }
-
-function is_NIL.test(V: TValue): boolean;
-begin
-    result := (V is TVList) and ((V as TVList).Count=0);
-end;
-
-{ is_atom }
-
-function is_atom.test(V: TValue): boolean;
-begin
-    result := (not (V is TVList)) or ((V as TVList).Count=0);
-end;
-
-{ is_list }
-
-function is_list.test(V: TValue): boolean;
-begin
-    result := V is TVList;
-end;
-
-{ is_symbol }
-
-function is_symbol.test(V: TValue): boolean;
-begin
-    result := V is TVSymbol;
-end;
-
-{ is_string }
-
-function is_string.test(V: TValue): boolean;
-begin
-    result := V is TVString;
-end;
-
-{ is_float }
-
-function is_float.test(V: TValue): boolean;
-begin
-    result := (V is TVFloat);
-end;
-
-{ is_integer }
-
-function is_integer.test(V: TValue): boolean;
-begin
-    result := V is TVInteger;
-end;
-
-{ is_number }
-
-function is_number.test(V: TValue): boolean;
-begin
-    result := (V is TVInteger) or (V is TVFloat);
-end;
-
-{ is_any }
-
-function is_any.test(V: TValue): boolean;
-begin
-    result := true;
-end;
 
 { TVT }
-
-procedure TVT.Print;
-begin
-    WriteLn('T');
-end;
 
 function TVT.Copy: TValue;
 begin
@@ -2720,11 +2142,6 @@ end;
 constructor TVFloat.Create(F: double);
 begin
     fF := F;
-end;
-
-procedure TVFloat.Print;
-begin
-    WriteLn(F);
 end;
 
 function TVFloat.Copy: TValue;
@@ -2749,11 +2166,9 @@ constructor TVError.Create(e: TErrorClass; msg: unicodestring);
 begin self.e:=e; self.msg:=msg; end;
 
 destructor TVError.Destroy;
-begin msg := ''; inherited Destroy; end;
-
-procedure TVError.Print;
 begin
-    writeLn('#<ERROR ', ErrorClassName[e], '> ', msg);
+    msg := '';
+    inherited Destroy;
 end;
 
 function TVError.Copy: TValue;
@@ -2768,15 +2183,16 @@ end;
 { TVString }
 
 constructor TVString.Create(S: unicodestring);
-begin self.S := S; end;
+begin
+    self.S := S;
+end;
 
 destructor TVString.Destroy;
-begin self.S := ''; inherited; end;
-
-procedure TVString.Print;
 begin
-    WriteLn(AsString);
+    self.S := '';
+    inherited;
 end;
+
 
 function TVString.Copy: TValue;
 begin result := TVString.Create(self.S); end;
@@ -2834,8 +2250,6 @@ end;
 
 constructor TVInteger.Create(I: Int64); begin fI := I; end;
 
-procedure   TVInteger.Print; begin WriteLn(fI); end;
-
 
   { TVSymbol }
 
@@ -2866,10 +2280,6 @@ begin
     fname := '';
     inherited;
 end;
-
-procedure TVSymbol.Print;
-begin writeLn(fname); end;
-
 
 { TVList }
 
@@ -2964,10 +2374,6 @@ begin  // try
             result := result + (fL[i] as TValue).AsString() + ' ';
         result[length(result)]:=')';
     end;
-
-//except
-//    result := 'kgjg';
-//end;
 end;
 
 var lc: integer = 0;
@@ -2975,15 +2381,11 @@ var lc: integer = 0;
 constructor TVList.Create;
 begin
   fL := TObjectList.Create(true);
-  //  Inc(lc);
-  //WriteLn('cr', lc);
 end;
 
 constructor TVList.Create(VL: array of TValue);
 var i :integer;
 begin
-//Inc(lc);
- // WriteLn('cr', lc);
     fL := TObjectList.Create(true);
     fL.Capacity:=length(VL);
     for i:=0 to length(VL)-1 do fL.Add(VL[i]);
@@ -2991,8 +2393,6 @@ end;
 
 destructor TVList.Destroy;
 begin
-   // dec(lc);
-  //  WriteLn('ds', lc);
   fL.Free;
   inherited;
 end;
@@ -3000,19 +2400,6 @@ end;
 function TVList.GetItems(Index: Integer): TValue;
 begin
   result := (fL[Index] as TValue).Copy();
-end;
-
-procedure TVList.Print;
-var i: integer;
-begin
-    if fL.Count=0
-    then WriteLn('NIL')
-    else
-        begin
-            WriteLn('(');
-            for i := 0 to fL.Count-1 do (fL[i] as TValue).Print;
-            WriteLn(')');
-        end;
 end;
 
 procedure TVList.SetItems(Index: Integer; V: TValue);

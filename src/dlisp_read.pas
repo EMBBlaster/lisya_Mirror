@@ -21,9 +21,6 @@ procedure print_s(V:TValue; stream: TStream); overload;
 procedure print(V:TValue; stream: TVStreamPointer); overload;
 procedure print_ln(V:TValue; stream: TStream);
 
-var
-    stdout: TVStreamDefault;
-
 
 implementation
 

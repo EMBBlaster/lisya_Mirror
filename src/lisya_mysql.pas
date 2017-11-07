@@ -46,7 +46,6 @@ type
         destructor Destroy; override;
 
         function connection_parameters: unicodestring;
-        procedure Print; override;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
     end;
@@ -66,7 +65,6 @@ type
             password: unicodestring = '');
         destructor Destroy; override;
 
-        procedure Print; override;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
 
@@ -108,11 +106,6 @@ destructor TVSQLPointer.Destroy;
 begin
     ReleaseVariable(body);
     inherited Destroy;
-end;
-
-procedure TVSQLPointer.Print;
-begin
-    WriteLn(AsString);
 end;
 
 function TVSQLPointer.Copy: TValue;
@@ -168,10 +161,6 @@ begin
     result := connector.UserName+'@'+connector.DatabaseName+':'+connector.HostName;
 end;
 
-procedure TVSQL.Print;
-begin
-    WriteLn(AsString);
-end;
 
 function TVSQL.Copy: TValue;
 begin
