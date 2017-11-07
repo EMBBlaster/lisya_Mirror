@@ -1,0 +1,9 @@
+﻿(block
+    (fmt nil "макросы ...  ")
+    (macro m (a b) (list \var a b))
+    (m v "var")
+    (assertion (= "var" v) "macro var")
+
+    (macro plus (&rest args) (list + /args))
+    (assertion (= 6 (plus 1 2 3)) "macro eval")
+    (log "успешно"))
