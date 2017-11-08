@@ -10,8 +10,6 @@ uses
     lisya_mysql,
     dlisp_values, dlisp_read; //для отладки
 
-type t1=class end;
-    t2=class(t1) end;
 
 var
     i: integer;

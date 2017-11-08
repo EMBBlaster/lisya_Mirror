@@ -72,31 +72,6 @@ type
         V: PVariable;
     end;
 
-    { TSymbolStack }
-
-    TSymbolStack = class
-        //TODO: требуется упорядочить и защитить от многопоточности работу со стеком
-        //TODO: удалить TSymbolStack
-        stack: array of TStackRecord;
-
-        constructor Create(parent: TSymbolStack);
-        destructor Destroy; override;
-
-        procedure new_var(name: unicodestring; V: TValue; c: boolean = false);
-        function find_var(name: unicodestring; var V: TValue): boolean;
-        function set_var(name: unicodestring; V: TValue): boolean;
-        function bind_var(name, target: unicodestring): boolean;
-        function find_ref(name: unicodestring; var P: PVariable): boolean;
-        function find_ref_in_frame
-            (name: unicodestring; n: integer; var P: PVariable): boolean;
-        procedure new_ref(name: unicodestring; P: PVariable);
-        function find_unbound(var name: unicodestring): boolean;
-        procedure print_stack;
-        procedure clear_frame;
-        function count: integer;
-    end;
-
-
 
   { TVT }
 
@@ -1534,7 +1509,6 @@ var b1, b2, b3, b4: byte;
         result := read_byte(b1);
         ch := enc[b1];
     end;
-
 begin
     case (body.V as TVStreamBody).encoding of
         seUTF8: begin
@@ -1569,13 +1543,11 @@ begin
             result := read_byte(b1) and read_byte(b2) and read_byte(b3)
                         and read_byte(b4);
             ch := unicodechar(b1+b2*256+b3*256*256+b4*256*256*256);
-            //TODO: суррогатные пары не поддерживаются
         end;
         seUTF32BE: begin
             result := read_byte(b1) and read_byte(b2) and read_byte(b3)
                         and read_byte(b4);
             ch := unicodechar(256*256*256*b1+256*256*b2+256*b3+b4);
-            //TODO: суррогатные пары не поддерживаются
         end;
         seCP1251: result := read8bit(cp1251_cp);
         seCP1252: result := read8bit(cp1252_cp);
@@ -1822,196 +1794,6 @@ begin
 end;
 
 
-{ TSymbolStack }
-
-constructor TSymbolStack.Create(parent: TSymbolStack);
-var i: integer;
-begin
-    stack := nil;
-    if parent<> nil
-    then begin
-        SetLength(stack, Length(parent.stack));
-        for i := 0 to high(parent.stack) do
-        begin
-            stack[i].name := parent.stack[i].name;
-            stack[i].V := RefVariable(parent.stack[i].V);
-        end;
-    end;
-end;
-
-destructor TSymbolStack.Destroy;
-var i: integer;
-begin
-    for i := 0 to high(stack) do
-    begin
-        ReleaseVariable(stack[i].V);
-        stack[i].name := '';
-    end;
-    SetLength(stack,0);
-    inherited;
-end;
-
-procedure TSymbolStack.new_var(name: unicodestring; V: TValue; c: boolean = false);
-var this: integer;
-begin
-    this := Length(stack);
-    SetLength(stack, this+1);
-    stack[this].name := UpperCaseU(name);
-    stack[this].V := NewVariable;
-    stack[this].V.V := V;
-    stack[this].V.constant:=c;
-end;
-
-function TSymbolStack.find_var(name: unicodestring; var V: TValue): boolean;
-var i: integer; uname: unicodestring;
-begin
-    result := false;
-    uname := UpperCaseU(name);
-    for i:= Length(stack)-1 downto 0 do
-        if (uname=stack[i].name) and (stack[i].V<> nil)
-        then begin
-            V := stack[i].V.V.Copy();
-            result := true;
-            break;
-        end;
-end;
-
-function TSymbolStack.set_var(name: unicodestring; V: TValue): boolean;
-var i: integer; uname: unicodestring;
-label lend;
-begin
-    result := false;
-    uname := UpperCaseU(name);
-    for i:= Length(stack)-1 downto 0 do
-        if uname=stack[i].name
-        then begin
-            if stack[i].V<>nil
-            then stack[i].V.V.Free
-            else stack[i].V:=NewVariable;
-            if not stack[i].V.constant
-            then begin
-                stack[i].V.V := V;
-                result := true;
-            end;
-            break;
-        end;
-    if not result then V.Free;
-end;
-
-function TSymbolStack.bind_var(name, target: unicodestring): boolean;
-var this, i: integer; utarget: unicodestring;
-begin
-    result := false;
-    this := Length(stack);
-    SetLength(stack, this+1);
-    stack[this].name := name;
-    utarget := UpperCaseU(target);
-    for i:= this-1 downto 0 do
-        if utarget=stack[i].name
-        then begin
-            stack[this].V := RefVariable(stack[i].V);
-            result := true;
-            break;
-        end;
-end;
-
-function TSymbolStack.find_ref(name: unicodestring; var P: PVariable): boolean;
-var i: integer; uname: unicodestring;
-begin
-    P := nil;
-    result := false;
-    uname := UpperCaseU(name);
-    for i:= Length(stack)-1 downto 0 do
-        if uname=stack[i].name
-        then begin
-            P := RefVariable(stack[i].V);
-            result := true;
-            Exit;
-        end;
-    raise ESymbolNotBound.Create(name);
-end;
-
-function TSymbolStack.find_ref_in_frame(name: unicodestring;
-                                        n: integer;
-                                        var P: PVariable): boolean;
-    var i: integer; uname: unicodestring;
-begin
-    P := nil;
-    result := false;
-    uname := UpperCaseU(name);
-    for i:= n to high(stack) do begin
-        if stack[i].name[1]=' ' then break;
-        if uname=stack[i].name
-        then begin
-            P := RefVariable(stack[i].V);
-            result := true;
-            break;
-        end;
-    end;
-end;
-
-procedure TSymbolStack.new_ref(name: unicodestring; P: PVariable);
-var this: integer;
-begin
-    this := Length(stack);
-    SetLength(stack, this+1);
-    stack[this].name := UpperCaseU(name);
-    stack[this].V := P;
-end;
-
-function TSymbolStack.find_unbound(var name: unicodestring): boolean;
-var i: integer; uname: unicodestring;
-begin
-    result := false;
-    for i:= Length(stack)-1 downto 0 do
-        if stack[i].V=nil
-        then begin
-            name := stack[i].name;
-            break;
-        end;
-end;
-
-
-procedure TSymbolStack.print_stack;
-var i: integer;
-begin
-    WriteLn('-------------');
-    for i := 76 to Length(stack)-1 do begin
-        Write('  | ', stack[i].name);
-        if stack[i].V<> nil
-        then WriteLn('  >(', stack[i].V.ref_count,')>  ', stack[i].V.V.AsString)
-        else WriteLn(' nil');
-    end;
-    WriteLn('-------------');
-end;
-
-
-procedure TSymbolStack.clear_frame;
-var sp: integer;
-begin
-    //print_stack;
-    sp := High(stack);
-    repeat
-        //print_stack;
-        if (stack[sp].name[1]=' ')
-        then begin
-            releaseVariable(stack[sp].V);
-            SetLength(stack, sp);
-            break;
-        end;
-        releaseVariable(stack[sp].V);
-        SetLength(stack, sp);
-
-        Dec(sp);
-    until sp<0;
-end;
-
-function TSymbolStack.count: integer;
-begin
-    result := Length(stack);
-end;
-
-
 { TVProcedure }
 
 var pc: integer=0;
@@ -2254,7 +2036,9 @@ constructor TVInteger.Create(I: Int64); begin fI := I; end;
   { TVSymbol }
 
 function TVSymbol.Copy: TValue;
-begin result := TVSymbol.Create(self.fname); end;
+begin
+    result := TVSymbol.Create(self.fname);
+end;
 
 function TVSymbol.AsString: unicodestring;
 begin
@@ -2268,15 +2052,11 @@ end;
 
 constructor TVSymbol.Create(S: unicodestring);
 begin
-   // if s[1..5]='-----' then
-   // WriteLn('create ',s);
     fname := S;
 end;
 
 destructor TVSymbol.Destroy;
 begin
-   // if fname[1..5]='-----' then
-  //  WriteLn('destroy ', fname);
     fname := '';
     inherited;
 end;

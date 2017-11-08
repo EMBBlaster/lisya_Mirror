@@ -18,10 +18,6 @@ uses
     variants;
 
 
-
-
-var stack: TSymbolStack;
-
 type
 
     { TEvaluationFlow }
@@ -2848,17 +2844,20 @@ end;
 
 function if_sql_query           (const PL: TVList; ep: TEvalProc): TValue;
 var database: TVSQLPointer; rec: TVStructure; sl: TStringList; i,j: integer;
-    bool_val: boolean;
+    bool_val: boolean; ucommand: unicodestring;
 begin
     case params_is(PL, result, [
-        vpSQLPointerActive, tpString]) of
+        vpSQLPointerActive, tpList]) of
         1: with (PL.look[0] as TVSQLPointer).query do try
             rec := nil;
             sl := TStringList.Create;
 
             Active := false;
-            SQL.Text := PL.S[1];
-            if (Length(PL.S[1])>=6) and ('SELECT'=UpperCaseU(PL.S[1])[1..6])
+            SQL.Text := ifh_format(PL.L[1]);
+            ucommand := UpperCaseU(SQL.Text);
+            if (Pos('SELECT', ucommand)=1)
+                or (Pos('SHOW', ucommand)=1)
+                or (Pos('DESCRIBE', ucommand)=1)
             then Active := true
             else begin
                 result := TVT.Create;
@@ -3033,7 +3032,7 @@ const int_dyn: array[1..93] of TInternalFunctionRec = (
 (n:'XML:READ-FROM-STRING';  f:if_xml_read_from_string;  s:'(s)'),
 
 (n:'SQL:MYSQL-CONNECTION';  f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
-(n:'SQL:QUERY';             f:if_sql_query;             s:'(db q)'),
+(n:'SQL:QUERY';             f:if_sql_query;             s:'(db :rest q)'),
 (n:'SQL:FORMAT-DATETIME';   f:if_sql_format_datetime;   s:'(dt)')
 
 );

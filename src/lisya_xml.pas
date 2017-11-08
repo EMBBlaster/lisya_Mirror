@@ -5,7 +5,9 @@ unit lisya_xml;
 interface
 
 uses
+    {$IFDEF LINUX}
     cwstring,
+    {$ENDIF}
     Classes, SysUtils, dlisp_values, strutils, mar;
 
 function xml_read_from_string(s: unicodestring): TValue;
