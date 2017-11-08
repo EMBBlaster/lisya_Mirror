@@ -203,22 +203,17 @@ type
     procedure SetItem(index: integer; _V: TValue); virtual; abstract;
     function LookItem(index: integer): TValue; virtual; abstract;
   public
-    //property Items[index: integer]: TValue read GetItem write SetItem; default;
-    //property look[index: integer]: TValue read LookItem;
+    property items[index: integer]: TValue read GetItem write SetItem; default;
+    property look[index: integer]: TValue read LookItem;
     function Count: integer; virtual; abstract;
-
-    function set_n(n: integer; V: TValue): boolean; virtual; abstract;
-    function get_n(n: integer): TValue; virtual; abstract;
-    function look_n(n: integer): TValue; virtual; abstract;
   end;
 
   TVCompoundIndexed = class (TVCompound)
     function high: integer; virtual; abstract;
-    //function count: integer; virtual; abstract;
 
   end;
 
-  TVCompoundOfPrimitive = class (TVCompound)
+  TVCompoundOfPrimitive = class (TVCompoundIndexed)
 
   end;
 
@@ -256,6 +251,11 @@ type
   { TVString }
 
   TVString = class (TVCompoundOfPrimitive)
+  private
+    function GetItem(index: integer): TValue; override;
+    procedure SetItem(index: integer; _V: TValue); override;
+    function LookItem(index: integer): TValue; override;
+  public
     S: unicodestring;
     constructor Create(S: unicodestring);
     destructor Destroy; override;
@@ -263,16 +263,17 @@ type
     function AsString(): unicodestring; override;
 
     function Count: integer; override;
-    function set_n(n: integer; V: TValue): boolean; override;
-    function get_n(n: integer): TValue; override;
-    function look_n(n: integer): TValue; override;
   end;
 
   { TVList }
 
-  TVList = class (TVCompound)
+    TVList = class (TVCompoundIndexed)
     private
-      fL: TObjectList;
+        fL: TObjectList;
+        function GetItem(index: integer): TValue; override;
+        procedure SetItem(index: integer; _V: TValue); override;
+        function LookItem(index: integer): TValue; override;
+
       function GetItems(Index: Integer): TValue;
       procedure SetItems(Index: Integer; V: TValue);
       function flook(index: integer): TValue;
@@ -291,8 +292,7 @@ type
 
       procedure Add(V: TValue);
       procedure Append(VL: TVList);
-      property Items[Index: Integer]: TValue read GetItems write SetItems; default;
-      property look[index: integer]: TValue read flook;
+
       property name[index: integer]: unicodestring read GetElementName;
       property uname[index: integer]: unicodestring read GetElementUName;
       property I[index: integer]: Int64 read GetElementI;
@@ -310,9 +310,6 @@ type
       function CAR: TValue;
       function CDR: TVList;
 
-      function set_n(n: integer; V: TValue): boolean; override;
-      function get_n(n: integer): TValue; override;
-      function look_n(n: integer): TValue; override;
   end;
 
 
@@ -322,6 +319,11 @@ type
         private
             function GetByte(Index: Integer): Int64;
             procedure SetByte(Index: Integer; V: Int64);
+
+            function GetItem(index: integer): TValue; override;
+            procedure SetItem(index: integer; _V: TValue); override;
+            function LookItem(index: integer): TValue; override;
+
         public
             fBytes: array of byte;
 
@@ -338,22 +340,24 @@ type
             function High: integer;
             function equal_to(BV: TVByteVector): boolean;
 
-            function Count: integer; override;
-            function set_n(n: integer; V: TValue): boolean; override;
-            function get_n(n: integer): TValue; override;
-            function look_n(n: integer): TValue; override;
+            function count: integer; override;
     end;
 
 
-  { TVRecord }
+    { TVRecord }
 
-  TVRecord = class (TVCompound)
+    TVRecord = class (TVCompound)
     private
         unames: TStringList;
         slots: TObjectList;
         function fGetSlot(index: unicodestring): TValue;
         procedure fSetSlot(index: unicodestring; V: TValue);
         function flook(index: unicodestring): TValue;
+
+        function GetItem(index: integer): TValue; override;
+        procedure SetItem(index: integer; _V: TValue); override;
+        function LookItem(index: integer): TValue; override;
+
     public
         constructor Create(names: array of unicodestring); overload;
         constructor Create(names: TStringList); overload;
@@ -362,8 +366,8 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
 
-        property slot[index: unicodestring]:TValue read fGetSlot write fSetSlot; default;
-        property look[n: unicodestring]: TValue read flook;
+        property slot[index: unicodestring]:TValue read fGetSlot write fSetSlot;
+        property look_name[n: unicodestring]: TValue read flook;
         function is_class(cl: TVRecord): boolean;
         function SetSlot(index: unicodestring; V: TValue): boolean;
         function GetSlot(index: unicodestring; var V: TValue): boolean;
@@ -372,11 +376,8 @@ type
         function count: integer; override;
         function name_n(n: integer): unicodestring;
 
-        function set_n(n: integer; V: TValue): boolean; override;
-        function get_n(n: integer): TValue; override;
-        function look_n(n: integer): TValue; override;
         function get_n_of(index: unicodestring): integer;
-  end;
+    end;
 
     { TVSymbolStack }
 
@@ -765,8 +766,8 @@ begin
     then result := V.V.Copy
     else begin
         tmp := V.V as TVCompound;
-        for i := 0 to high(index)-1 do tmp := tmp.look_n(index[i]) as TVCompound;
-        result := tmp.get_n(index[high(index)]);
+        for i := 0 to high(index)-1 do tmp := tmp.look[index[i]] as TVCompound;
+        result := tmp[index[high(index)]];
     end;
 end;
 
@@ -778,11 +779,11 @@ begin
     else begin
         result := V.V;
         for i := 0 to high(index)-1 do
-            result := (result as TVCompound).look_n(index[i]);
+            result := (result as TVCompound).look[index[i]];
         //костыль
         if result is TVCompoundOfPrimitive
         then result := primitive
-        else result := (result as TVCompound).look_n(index[high(index)]);
+        else result := (result as TVCompound).look[index[high(index)]];
     end;
 end;
 
@@ -802,8 +803,8 @@ begin
     end
     else begin
         tmp := V.V as TVCompound;
-        for i := 0 to high(index)-1 do tmp := tmp.look_n(index[i]) as TVCompound;
-        tmp.set_n(index[high(index)], _V);
+        for i := 0 to high(index)-1 do tmp := tmp.look[index[i]] as TVCompound;
+        tmp[index[high(index)]] := _V;
     end;
 end;
 
@@ -903,6 +904,22 @@ begin
     fBytes[Index] := V;
 end;
 
+function TVByteVector.GetItem(index: integer): TValue;
+begin
+    result := TVInteger.Create(fBytes[index]);
+end;
+
+procedure TVByteVector.SetItem(index: integer; _V: TValue);
+begin
+    fBytes[index] := (_V as TVInteger).fI;
+    _V.Free;
+end;
+
+function TVByteVector.LookItem(index: integer): TValue;
+begin
+    raise ELE.Create('TVByteVector.LookItem');
+end;
+
 constructor TVByteVector.Create;
 begin
     SetLength(fBytes,0);
@@ -973,27 +990,6 @@ end;
 function TVByteVector.Count: integer;
 begin
     result := Length(fBytes);
-end;
-
-function TVByteVector.set_n(n: integer; V: TValue): boolean;
-begin
-    if (V is TVinteger) then begin
-        if ((V as TVInteger).fI<0) or ((V as TVInteger).fI>255)
-        then raise ELE.Create('byte', 'out of range');
-        fBytes[n] := (V as TVInteger).fI;
-        V.Free;
-    end
-    else raise ELE.InvalidParameters;
-end;
-
-function TVByteVector.get_n(n: integer): TValue;
-begin
-    result := TVInteger.Create(fBytes[n]);
-end;
-
-function TVByteVector.look_n(n: integer): TValue;
-begin
-    raise ELE.Create('не на что смотреть в векторе байт');
 end;
 
 { TVInternalSubprogram }
@@ -1291,6 +1287,21 @@ begin
     result := slots[unames.IndexOf(index)] as TValue;
 end;
 
+function TVRecord.GetItem(index: integer): TValue;
+begin
+    result := (slots[index] as TValue).Copy;
+end;
+
+procedure TVRecord.SetItem(index: integer; _V: TValue);
+begin
+    slots[index] := _V;
+end;
+
+function TVRecord.LookItem(index: integer): TValue;
+begin
+    result := slots[index] as TValue;
+end;
+
 constructor TVRecord.Create(names: array of unicodestring);
 var i: integer;
 begin
@@ -1396,24 +1407,6 @@ end;
 function TVRecord.name_n(n: integer): unicodestring;
 begin
     result := unames[n];
-end;
-
-function TVRecord.look_n(n: integer): TValue;
-begin
-    result := slots[n] as TValue;
-end;
-
-function TVRecord.set_n(n: integer; V: TValue): boolean;
-begin
-    Assert((n<slots.Count) and (n>=0),
-        'Запись поля структуры по номеру за пределы диапазона');
-    slots[n] := V;
-    result := true;
-end;
-
-function TVRecord.get_n(n: integer): TValue;
-begin
-    result := (slots[n] as TValue).Copy();
 end;
 
 function TVRecord.get_n_of(index: unicodestring): integer;
@@ -1978,6 +1971,22 @@ end;
 
 { TVString }
 
+function TVString.GetItem(index: integer): TValue;
+begin
+    result := TVString.Create(S[index+1]);
+end;
+
+procedure TVString.SetItem(index: integer; _V: TValue);
+begin
+    S[index+1] := (_V as TVString).S[1];
+    _V.Free;
+end;
+
+function TVString.LookItem(index: integer): TValue;
+begin
+    raise ELE.Create('TVString.LookItem');
+end;
+
 constructor TVString.Create(S: unicodestring);
 begin
     self.S := S;
@@ -2008,25 +2017,6 @@ end;
 function TVString.Count: integer;
 begin
     result := Length(S);
-end;
-
-function TVString.set_n(n: integer; V: TValue): boolean;
-begin
-    //TODO: нужно вставить проверки при замене буквы в TVString
-    S[n+1] := (V as TVString).S[1];
-    V.Free;
-    result := true;
-end;
-
-function TVString.get_n(n: integer): TValue;
-begin
-    //TODO: нужно вставить проверки при извлечении буквы в TVString
-    result := TVString.Create(S[n+1]);
-end;
-
-function TVString.look_n(n: integer): TValue;
-begin
-    assert(false, 'TVString.look_n');
 end;
 
 
@@ -2191,6 +2181,21 @@ begin
   inherited;
 end;
 
+function TVList.GetItem(index: integer): TValue;
+begin
+    result := (fL[Index] as TValue).Copy;
+end;
+
+procedure TVList.SetItem(index: integer; _V: TValue);
+begin
+    fL[Index] := _V;
+end;
+
+function TVList.LookItem(index: integer): TValue;
+begin
+    result := (fL[Index] as TValue);
+end;
+
 function TVList.GetItems(Index: Integer): TValue;
 begin
   result := (fL[Index] as TValue).Copy();
@@ -2248,21 +2253,6 @@ begin
     result := TVList.Create;
     result.fL.Capacity:= fL.Count - 1;
     for i:=1 to fL.Count-1 do result.Add((fL[i] as TValue).Copy());
-end;
-
-function TVList.set_n(n: integer; V: TValue): boolean;
-begin
-    SetItems(n, v);
-end;
-
-function TVList.get_n(n: integer): TValue;
-begin
-    result := GetItems(n);
-end;
-
-function TVList.look_n(n: integer): TValue;
-begin
-    result := flook(n);
 end;
 
 end.

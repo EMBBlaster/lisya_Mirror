@@ -70,9 +70,9 @@ begin
     result := TVRecord.Create(['N', 'A', 'C']);
     if (Length(S)>=7) and (S[1..5]='<?xml') and (S[length(s)-1..Length(s)]='?>')
     then begin
-        (result as TVRecord)['N'] := TVSymbol.Create(':PROLOGUE');
-        (result as TVRecord)['C'] := TVT.Create;
-        (result as TVRecord)['A'] := decode_attributes(s[6..Length(s)-2]);
+        (result as TVRecord).slot['N'] := TVSymbol.Create(':PROLOGUE');
+        (result as TVRecord).slot['C'] := TVT.Create;
+        (result as TVRecord).slot['A'] := decode_attributes(s[6..Length(s)-2]);
         Exit;
     end;
 
@@ -81,19 +81,19 @@ begin
         word_end := PosU(' ', S) - 1;
         if word_end<0 then word_end := PosU('/', S) - 1;
         if word_end<0 then word_end := Length(S) - 1;
-        (result as TVRecord)['N'] := TVString.Create(S[2..word_end]);
+        (result as TVRecord).slot['N'] := TVString.Create(S[2..word_end]);
         closed := PosU('/', S)>0;
         if closed then begin
-            (result as TVRecord)['C'] := TVT.Create;
-            (result as TVRecord)['A'] := decode_attributes(
+            (result as TVRecord).slot['C'] := TVT.Create;
+            (result as TVRecord).slot['A'] := decode_attributes(
                                             s[word_end+1..Length(s)-2]);
         end
-        else (result as TVRecord)['A'] := decode_attributes(
+        else (result as TVRecord).slot['A'] := decode_attributes(
                                             s[word_end+1..Length(s)-1]);
         exit;
     end;
-    (result as TVRecord)['N'] := TVSymbol.Create(':TEXT');
-    (result as TVRecord)['C'] := TVString.Create(S);
+    (result as TVRecord).slot['N'] := TVSymbol.Create(':TEXT');
+    (result as TVRecord).slot['C'] := TVString.Create(S);
 end;
 
 type
@@ -153,17 +153,17 @@ begin
         if (sr.os-sr.ce)>1 then elts.Add(decode_tag(S[sr.ce+1..(sr.os-1)]));
         //из найденного тега делаем элемент, который далее заполняется дочерними
         node := decode_tag(S[sr.os..sr.oe]);
-        if node.look['C'] is TVT
-        then node['C'] := TVList.Create
+        if node.look_name['C'] is TVT
+        then node.slot['C'] := TVList.Create
         else begin
             //  если тег не закрытый, то ищется закрывающий
-            tag_name := (node.look['N'] as TVString).S;
+            tag_name := (node.look_name['N'] as TVString).S;
             if not find_closing_tag(s, tag_name, sr)
             then begin
                 result := TVError.Create(ecXML, 'tag '+tag_name+' not closed');
                 exit;
             end;
-            node['C'] := xml_read_from_string(S[sr.oe+1..sr.cs-1]);
+            node.slot['C'] := xml_read_from_string(S[sr.oe+1..sr.cs-1]);
         end;
         elts.Add(node);
     end;

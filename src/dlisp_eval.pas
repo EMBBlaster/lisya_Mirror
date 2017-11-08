@@ -1399,8 +1399,8 @@ begin
                 for i := 0 to (A as TVRecord).count-1 do begin
                     result :=
                         ((A as TVRecord).name_n(i)=(B as TVRecord).name_n(i))
-                        and ifh_equal((A as TVRecord).look_n(i),
-                                        (B as TVRecord).look_n(i));
+                        and ifh_equal((A as TVRecord).look[i],
+                                        (B as TVRecord).look[i]);
                     if not result then Break;
                 end;
         end;
@@ -2768,7 +2768,7 @@ begin
                 names.Add(PL.L[0].uname[i*2]);
             result := TVRecord.Create(names);
             for i := 0 to PL.L[0].count div 2 - 1 do
-                (result as TVRecord)[PL.L[0].uname[i*2]] := PL.L[0][i*2+1];
+                (result as TVRecord).slot[PL.L[0].uname[i*2]] := PL.L[0][i*2+1];
         end;
     end;
 end;
@@ -2877,26 +2877,26 @@ begin
             for i := 0 to RecordCount-1 do begin
                 for j := 0 to FieldCount-1 do
                     if VarIsNull(fields[j].Value)
-                    then rec.set_n(j, TVList.Create)
+                    then rec[j] := TVList.Create
                     else
                     case Fields[j].DataType of
                         ftUnknown, ftString, ftWideString,
                         ftFmtMemo, ftMemo, ftFixedWideChar,
                         ftWideMemo,
-                        ftFixedChar: rec.set_n(j,
-                            TVString.Create(Fields[j].AsString));
+                        ftFixedChar: rec[j] :=
+                            TVString.Create(Fields[j].AsString);
                         ftSmallint, ftInteger,
-                        ftWord: rec.set_n(j,
-                            TVInteger.Create(Fields[j].AsInteger));
+                        ftWord: rec[j] :=
+                            TVInteger.Create(Fields[j].AsInteger);
                         ftBoolean: if Fields[j].AsBoolean
-                            then rec.set_n(j, TVT.Create)
-                            else rec.set_n(j, TVList.Create);
-                        ftFloat: rec.set_n(j,
-                            TVFloat.Create(Fields[j].AsFloat));
-                        ftDateTime, ftDate, ftTimeStamp: rec.set_n(j,
-                            TVDateTime.Create(Fields[j].AsDateTime));
-                        ftTime: rec.set_n(j,
-                            TVTimeInterval.Create(Fields[j].AsDateTime));
+                            then rec[j] := TVT.Create
+                            else rec[j] := TVList.Create;
+                        ftFloat: rec[j] :=
+                            TVFloat.Create(Fields[j].AsFloat);
+                        ftDateTime, ftDate, ftTimeStamp: rec[j] :=
+                            TVDateTime.Create(Fields[j].AsDateTime);
+                        ftTime: rec[j] :=
+                            TVTimeInterval.Create(Fields[j].AsDateTime);
 
 
                         //ftCurrency, ftBCD,

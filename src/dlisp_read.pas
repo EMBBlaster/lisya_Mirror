@@ -683,7 +683,7 @@ begin
             sn := (V as TVRecord).name_n(0)+' ';
             wr(sn);
             Inc(ind, Length(sn));
-            print((V as TVRecord).look_n(0), stream);
+            print((V as TVRecord).look[0], stream);
             Dec(ind, length(sn));
             for i := 1 to (V as TVRecord).count-1 do begin
                 wr(new_line);
@@ -691,7 +691,7 @@ begin
                 sn := (V as TVRecord).name_n(i)+' ';
                 wr(sn);
                 inc(ind, Length(sn));
-                print((V as TVRecord).look_n(i), stream);
+                print((V as TVRecord).look[i], stream);
                 dec(ind, Length(sn));
             end;
             wr(')');
