@@ -274,7 +274,7 @@ begin
 
     if (length(acc)>=4) and (UpperCaseU(acc[1..3])='#S(') and (acc[Length(acc)]=')')
     then begin
-        result := TVStructure.Create;
+        result := TVRecord.Create;
         ss := TStringStream.Create(acc[4..Length(acc)-1]);
         vi := read_s(ss);
         vi2 := read_s(ss);
@@ -282,7 +282,7 @@ begin
         while not (op_is_error_class(vi, ecEoS) or op_is_error_class(vi2, ecEoS))
         do begin
             if vi is TVSymbol
-            then (result as TVStructure).AddSlot((vi as TVSymbol).name, vi2)
+            then (result as TVRecord).AddSlot((vi as TVSymbol).name, vi2)
             else begin
                 result := TVError.Create(ecSyntax, '#S');
                 exit;
@@ -459,7 +459,7 @@ begin
 
     if (length(acc)>=4) and (UpperCaseU(acc[1..3])='#S(') and (acc[Length(acc)]=')')
     then begin
-        result := TVStructure.Create;
+        result := TVRecord.Create;
         set_ss(acc[4..Length(acc)-1]);
         vi := read_u(nil, @ss);
         vi2 := read_u(nil, @ss);
@@ -469,7 +469,7 @@ begin
         do begin
 
             if vi is TVSymbol
-            then (result as TVStructure).AddSlot((vi as TVSymbol).name, vi2)
+            then (result as TVRecord).AddSlot((vi as TVSymbol).name, vi2)
             else begin
                 result := TVError.Create(ecSyntax, ss.s);
                 exit;
@@ -673,25 +673,25 @@ begin
         exit;
     end;
 
-    if (V is TVStructure) then begin
+    if (V is TVRecord) then begin
         if ((Length(V.AsString)+ind*3)<=screen_width)
-            or ((V as TVStructure).count=0)
+            or ((V as TVRecord).count=0)
         then wr(V.AsString)
         else begin
             Inc(ind,3);
             wr('#S(');
-            sn := (V as TVStructure).name_n(0)+' ';
+            sn := (V as TVRecord).name_n(0)+' ';
             wr(sn);
             Inc(ind, Length(sn));
-            print((V as TVStructure).look_n(0), stream);
+            print((V as TVRecord).look_n(0), stream);
             Dec(ind, length(sn));
-            for i := 1 to (V as TVStructure).count-1 do begin
+            for i := 1 to (V as TVRecord).count-1 do begin
                 wr(new_line);
                 indent;
-                sn := (V as TVStructure).name_n(i)+' ';
+                sn := (V as TVRecord).name_n(i)+' ';
                 wr(sn);
                 inc(ind, Length(sn));
-                print((V as TVStructure).look_n(i), stream);
+                print((V as TVRecord).look_n(i), stream);
                 dec(ind, Length(sn));
             end;
             wr(')');

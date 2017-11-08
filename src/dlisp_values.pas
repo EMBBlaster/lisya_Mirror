@@ -198,10 +198,24 @@ type
 
 
   TVCompound = class (TValue)
+  private
+    function GetItem(index: integer): TValue; virtual; abstract;
+    procedure SetItem(index: integer; _V: TValue); virtual; abstract;
+    function LookItem(index: integer): TValue; virtual; abstract;
+  public
+    //property Items[index: integer]: TValue read GetItem write SetItem; default;
+    //property look[index: integer]: TValue read LookItem;
     function Count: integer; virtual; abstract;
+
     function set_n(n: integer; V: TValue): boolean; virtual; abstract;
     function get_n(n: integer): TValue; virtual; abstract;
     function look_n(n: integer): TValue; virtual; abstract;
+  end;
+
+  TVCompoundIndexed = class (TVCompound)
+    function high: integer; virtual; abstract;
+    //function count: integer; virtual; abstract;
+
   end;
 
   TVCompoundOfPrimitive = class (TVCompound)
@@ -331,9 +345,9 @@ type
     end;
 
 
-  { TVStructure }
+  { TVRecord }
 
-  TVStructure = class (TVCompound)
+  TVRecord = class (TVCompound)
     private
         unames: TStringList;
         slots: TObjectList;
@@ -350,7 +364,7 @@ type
 
         property slot[index: unicodestring]:TValue read fGetSlot write fSetSlot; default;
         property look[n: unicodestring]: TValue read flook;
-        function is_class(cl: TVStructure): boolean;
+        function is_class(cl: TVRecord): boolean;
         function SetSlot(index: unicodestring; V: TValue): boolean;
         function GetSlot(index: unicodestring; var V: TValue): boolean;
         function AddSlot(name: unicodestring; V: TValue): boolean;
@@ -366,7 +380,7 @@ type
 
     { TVSymbolStack }
 
-    TVSymbolStack = class (TVCompound)
+    TVSymbolStack = class (TValue)
     //TODO: требуется упорядочить и защитить от многопоточности работу со стеком
         parent: TVSymbolStack;
         stack: array of TStackRecord;
@@ -379,9 +393,9 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
 
-        function Count: integer; override;
-        function set_n(n: integer; V: TValue): boolean; override;
-        function get_n(n: integer): TValue; override;
+        function Count: integer; //override;
+        function set_n(n: integer; V: TValue): boolean; //override;
+        function get_n(n: integer): TValue; //override;
 
         procedure Print(n: integer); overload;
 
@@ -1259,25 +1273,25 @@ begin
 end;
 
 
-{ TVStructure }
+{ TVRecord }
 
-function TVStructure.fGetSlot(index: unicodestring): TValue;
+function TVRecord.fGetSlot(index: unicodestring): TValue;
 begin
     result := (slots[unames.IndexOf(index)] as TValue).copy;
 end;
 
-procedure TVStructure.fSetSlot(index: unicodestring; V: TValue);
+procedure TVRecord.fSetSlot(index: unicodestring; V: TValue);
 begin
     slots[unames.IndexOf(index)] := V;
 end;
 
-function TVStructure.flook(index: unicodestring): TValue;
+function TVRecord.flook(index: unicodestring): TValue;
 begin
     //TODO: обращение к несуществующему слоту структуры вызывает необрабатываемую ошибку
     result := slots[unames.IndexOf(index)] as TValue;
 end;
 
-constructor TVStructure.Create(names: array of unicodestring);
+constructor TVRecord.Create(names: array of unicodestring);
 var i: integer;
 begin
     unames := TStringList.Create;
@@ -1291,7 +1305,7 @@ begin
     //unames.Sort;
 end;
 
-constructor TVStructure.Create(names: TStringList);
+constructor TVRecord.Create(names: TStringList);
 var i: integer;
 begin
     unames := names;
@@ -1304,33 +1318,33 @@ begin
     //unames.Sort;
 end;
 
-constructor TVStructure.Create;
+constructor TVRecord.Create;
 begin
     unames := TStringList.Create;
     slots := TObjectList.Create(true);
 end;
 
-destructor TVStructure.Destroy;
+destructor TVRecord.Destroy;
 begin
     unames.Free;
     slots.Free;
     inherited Destroy;
 end;
 
-function TVStructure.Copy: TValue;
+function TVRecord.Copy: TValue;
 var i: integer;
 begin
     //WriteLn('>>', self.AsString);
-    result := TVStructure.Create;
-    (result as TVStructure).unames.capacity := unames.count;
-    (result as TVStructure).slots.capacity := unames.count;
+    result := TVRecord.Create;
+    (result as TVRecord).unames.capacity := unames.count;
+    (result as TVRecord).slots.capacity := unames.count;
     for i := 0 to unames.Count - 1 do begin
-        (result as TVStructure).unames.Add(unames[i]);
-        (result as TVStructure).slots.Add((slots[i] as TValue).copy);
+        (result as TVRecord).unames.Add(unames[i]);
+        (result as TVRecord).slots.Add((slots[i] as TValue).copy);
     end;
 end;
 
-function TVStructure.AsString: unicodestring;
+function TVRecord.AsString: unicodestring;
 var i: integer;
 begin
     result := '#S(';
@@ -1341,7 +1355,7 @@ begin
     result := result + ')';
 end;
 
-function TVStructure.is_class(cl: TVStructure): boolean;
+function TVRecord.is_class(cl: TVRecord): boolean;
 var i: integer;
 begin
     result := false;
@@ -1350,7 +1364,7 @@ begin
     result := true;
 end;
 
-function TVStructure.SetSlot(index: unicodestring; V: TValue): boolean;
+function TVRecord.SetSlot(index: unicodestring; V: TValue): boolean;
 var i: integer;
 begin
     i := unames.IndexOf(index);
@@ -1359,7 +1373,7 @@ begin
     result := true;
 end;
 
-function TVStructure.GetSlot(index: unicodestring; var V: TValue): boolean;
+function TVRecord.GetSlot(index: unicodestring; var V: TValue): boolean;
 var i: integer;
 begin
     i := unames.IndexOf(index);
@@ -1368,28 +1382,28 @@ begin
     result := true;
 end;
 
-function TVStructure.AddSlot(name: unicodestring; V: TValue): boolean;
+function TVRecord.AddSlot(name: unicodestring; V: TValue): boolean;
 begin
     unames.Add(UpperCaseU(name));
     slots.Add(V);
 end;
 
-function TVStructure.count: integer;
+function TVRecord.count: integer;
 begin
     result := unames.Count;
 end;
 
-function TVStructure.name_n(n: integer): unicodestring;
+function TVRecord.name_n(n: integer): unicodestring;
 begin
     result := unames[n];
 end;
 
-function TVStructure.look_n(n: integer): TValue;
+function TVRecord.look_n(n: integer): TValue;
 begin
     result := slots[n] as TValue;
 end;
 
-function TVStructure.set_n(n: integer; V: TValue): boolean;
+function TVRecord.set_n(n: integer; V: TValue): boolean;
 begin
     Assert((n<slots.Count) and (n>=0),
         'Запись поля структуры по номеру за пределы диапазона');
@@ -1397,12 +1411,12 @@ begin
     result := true;
 end;
 
-function TVStructure.get_n(n: integer): TValue;
+function TVRecord.get_n(n: integer): TValue;
 begin
     result := (slots[n] as TValue).Copy();
 end;
 
-function TVStructure.get_n_of(index: unicodestring): integer;
+function TVRecord.get_n_of(index: unicodestring): integer;
 begin
     result := unames.IndexOf(index);
 

@@ -60,19 +60,19 @@ begin
 
 end;
 
-function decode_tag(S: unicodestring): TVStructure;
+function decode_tag(S: unicodestring): TVRecord;
 var word_end: integer; closed: boolean;
 begin
     // Разбирает переданную строку вида <tag key="val"> и создаёт на её основе
     //структуру, представляющую элемент XML включая теги, но без дочерних
     //элементов.
     // Если тэг закрытый, то список элементов = T, если нет, то NIL
-    result := TVStructure.Create(['N', 'A', 'C']);
+    result := TVRecord.Create(['N', 'A', 'C']);
     if (Length(S)>=7) and (S[1..5]='<?xml') and (S[length(s)-1..Length(s)]='?>')
     then begin
-        (result as TVStructure)['N'] := TVSymbol.Create(':PROLOGUE');
-        (result as TVStructure)['C'] := TVT.Create;
-        (result as TVStructure)['A'] := decode_attributes(s[6..Length(s)-2]);
+        (result as TVRecord)['N'] := TVSymbol.Create(':PROLOGUE');
+        (result as TVRecord)['C'] := TVT.Create;
+        (result as TVRecord)['A'] := decode_attributes(s[6..Length(s)-2]);
         Exit;
     end;
 
@@ -81,19 +81,19 @@ begin
         word_end := PosU(' ', S) - 1;
         if word_end<0 then word_end := PosU('/', S) - 1;
         if word_end<0 then word_end := Length(S) - 1;
-        (result as TVStructure)['N'] := TVString.Create(S[2..word_end]);
+        (result as TVRecord)['N'] := TVString.Create(S[2..word_end]);
         closed := PosU('/', S)>0;
         if closed then begin
-            (result as TVStructure)['C'] := TVT.Create;
-            (result as TVStructure)['A'] := decode_attributes(
+            (result as TVRecord)['C'] := TVT.Create;
+            (result as TVRecord)['A'] := decode_attributes(
                                             s[word_end+1..Length(s)-2]);
         end
-        else (result as TVStructure)['A'] := decode_attributes(
+        else (result as TVRecord)['A'] := decode_attributes(
                                             s[word_end+1..Length(s)-1]);
         exit;
     end;
-    (result as TVStructure)['N'] := TVSymbol.Create(':TEXT');
-    (result as TVStructure)['C'] := TVString.Create(S);
+    (result as TVRecord)['N'] := TVSymbol.Create(':TEXT');
+    (result as TVRecord)['C'] := TVString.Create(S);
 end;
 
 type
@@ -140,7 +140,7 @@ end;
 
 function xml_read_from_string(S: unicodestring): TValue;
 var p_ths, p_the, p_tn, p_tcs, p_tcn, p, depth: integer;
-    node: TVStructure;
+    node: TVRecord;
     elts: TVList;
     sr: TSSrec;
     tag_name: unicodestring;

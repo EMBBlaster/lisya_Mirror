@@ -6,6 +6,7 @@
 
 {$DEFINE mysql55}
 
+
 interface
 
 uses
@@ -337,7 +338,7 @@ begin
         or (V is TVInternalFunction)
         or (V is TVOperator)
         or (V is TVError)
-        or (V is TVStructure)
+        or (V is TVRecord)
         or (V is TVRange)
         or (V is TVDateTime)
         or (V is TVTimeInterval);
@@ -374,9 +375,9 @@ begin
 end;
 
 
-function tpStructure(V: TValue): boolean;
+function tpRecord(V: TValue): boolean;
 begin
-    result := V is TVStructure;
+    result := V is TVRecord;
 end;
 
 function tpCompoundIndexed(V: TValue): boolean;
@@ -1369,7 +1370,7 @@ begin
                         if tpList(A) and tpList(B)
                         then type_v := lst
                         else
-                            if tpStructure(A) and tpStructure(B)
+                            if tpRecord(A) and tpRecord(B)
                             then type_v := struct
                             else
                                 if tpByteVector(A) and tpByteVector(B)
@@ -1393,13 +1394,13 @@ begin
                 end;
         end;
         struct: begin
-            result := (A as TVStructure).count = (B as TVStructure).count;
+            result := (A as TVRecord).count = (B as TVRecord).count;
             if result then
-                for i := 0 to (A as TVStructure).count-1 do begin
+                for i := 0 to (A as TVRecord).count-1 do begin
                     result :=
-                        ((A as TVStructure).name_n(i)=(B as TVStructure).name_n(i))
-                        and ifh_equal((A as TVStructure).look_n(i),
-                                        (B as TVStructure).look_n(i));
+                        ((A as TVRecord).name_n(i)=(B as TVRecord).name_n(i))
+                        and ifh_equal((A as TVRecord).look_n(i),
+                                        (B as TVRecord).look_n(i));
                     if not result then Break;
                 end;
         end;
@@ -2023,14 +2024,14 @@ begin
     case params_is(PL, result, [
         tpList,     tpInteger,
         tpString,   tpInteger,
-        tpStructure,tpKeyword]) of
+        tpRecord,tpKeyword]) of
         1: if (PL.I[1]<PL.L[0].Count) and (PL.I[1]>=0)
             then result := PL.L[0][PL.I[1]]
             else result := TVError.Create(ecOutOfBounds, PL.AsString());
         2: if (PL.I[1]<Length(PL.S[0])) and (PL.I[1]>=0)
             then result := TVString.Create(PL.S[0][PL.I[1]+1])
             else result := TVError.Create(ecOutOfBounds, PL.AsString());
-        3: if not (PL.look[0] as TVStructure).GetSlot(PL.uname[1],result)
+        3: if not (PL.look[0] as TVRecord).GetSlot(PL.uname[1],result)
             then result := invalid_parameters(PL, 'slot not found');
     end;
 end;
@@ -2765,9 +2766,9 @@ begin
             names.capacity := PL.L[0].count div 2;
             for i := 0 to PL.L[0].count div 2 - 1 do
                 names.Add(PL.L[0].uname[i*2]);
-            result := TVStructure.Create(names);
+            result := TVRecord.Create(names);
             for i := 0 to PL.L[0].count div 2 - 1 do
-                (result as TVStructure)[PL.L[0].uname[i*2]] := PL.L[0][i*2+1];
+                (result as TVRecord)[PL.L[0].uname[i*2]] := PL.L[0][i*2+1];
         end;
     end;
 end;
@@ -2776,12 +2777,12 @@ function if_structure_as        (const PL: TVList; ep: TEvalProc): TValue;
 var i: integer; names: TStringList;
 begin
     case params_is(PL, result, [
-        tpStructure, vpListSymbolValue]) of
+        tpRecord, vpListSymbolValue]) of
         1: begin
             result := PL[0];
 
             for i := 0 to PL.L[1].count div 2 - 1 do
-                if not (result as TVStructure).SetSlot(PL.L[1].uname[i*2],
+                if not (result as TVRecord).SetSlot(PL.L[1].uname[i*2],
                                                         PL.L[1][i*2+1])
                 then result := invalid_parameters(PL, 'slot not found');
         end;
@@ -2792,12 +2793,12 @@ function if_structure_p         (const PL: TVList; ep: TEvalProc): TValue;
 var s: unicodestring; w,i: integer; lr: boolean; names: TStringList;
 begin
     case params_is(PL, result, [
-        tpStructure, tpNIL,
-        tpStructure, tpStructure,
+        tpRecord, tpNIL,
+        tpRecord, tpRecord,
         tpAny,       tpNIL,
-        tpAny,       tpStructure]) of
+        tpAny,       tpRecord]) of
         1: result := TVT.Create;
-        2: if (PL.look[0] as TVStructure).is_class(PL.look[1] as TVStructure)
+        2: if (PL.look[0] as TVRecord).is_class(PL.look[1] as TVRecord)
             then result := TVT.Create
             else result := TVList.Create;
         3,4: result := TVList.Create;
@@ -2845,7 +2846,7 @@ end;
 
 
 function if_sql_query           (const PL: TVList; ep: TEvalProc): TValue;
-var database: TVSQLPointer; rec: TVStructure; sl: TStringList; i,j: integer;
+var database: TVSQLPointer; rec: TVRecord; sl: TStringList; i,j: integer;
     bool_val: boolean; ucommand: unicodestring;
 begin
     case params_is(PL, result, [
@@ -2870,7 +2871,7 @@ begin
             Last;
 
             for j := 0 to FieldCount-1 do sl.Add(Fields[j].DisplayName);
-            rec := TVStructure.Create(sl);
+            rec := TVRecord.Create(sl);
             result := TVList.Create;
             First;
             for i := 0 to RecordCount-1 do begin
@@ -3295,8 +3296,8 @@ begin
             if tpCompoundIndexed(tmp) and vpSymbol_LAST(PL.look[i])
             then CP.add_index((tmp as TVCompound).Count-1)
             else
-                if tpStructure(tmp) and tpSymbol(PL.look[i])
-                then CP.add_index((tmp as TVStructure).get_n_of(PL.uname[i]))
+                if tpRecord(tmp) and tpSymbol(PL.look[i])
+                then CP.add_index((tmp as TVRecord).get_n_of(PL.uname[i]))
                 else
                     if tpNIL(PL.look[i])
                     then begin
@@ -3553,7 +3554,7 @@ begin
         exit;
     end;
 
-    result := TVStructure.Create;
+    result := TVRecord.Create;
     for i := 0 to (PL.Count div 2)-1 do begin
         PL[2*i+2] := eval(PL[2*i+2]);
         if tpError(PL.look[2*i+2]) then begin
@@ -3562,7 +3563,7 @@ begin
             exit;
         end;
         if tpSymbol(PL.look[2*i+1])
-        then (result as TVStructure).AddSlot(PL.uname[2*i+1], PL[2*i+2])
+        then (result as TVRecord).AddSlot(PL.uname[2*i+1], PL[2*i+2])
         else begin
             result := invalid_parameters(PL,PL.look[2*i+1].AsString+' не символ');
         end;
@@ -3576,7 +3577,7 @@ begin
     if PL.Count<2 then raise EInvalidParameters.Create('malformed');
     PL[1] := eval(PL[1]);
     if tpError(PL.look[1]) then begin result := PL[1]; exit; end;
-    if not tpStructure(PL.look[1])
+    if not tpRecord(PL.look[1])
     then raise EInvalidParameters.Create(PL.look[1].AsString+' не структура');
     if (PL.Count mod 2)<>0
     then raise EInvalidParameters.Create('не чётное число параметров');
@@ -3591,7 +3592,7 @@ begin
         end;
         if tpSymbol(PL.look[2*i])
         then
-            (result as TVStructure).SetSlot(PL.uname[2*i], PL[2*i+1])
+            (result as TVRecord).SetSlot(PL.uname[2*i], PL[2*i+1])
         else
             raise ELE.Create(PL.look[2*i].AsString+' is not symbol');
     end;
