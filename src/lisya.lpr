@@ -7,14 +7,12 @@ uses
     {$ENDIF}
     lisya_repl,
     dlisp_eval,
-    lisya_mysql,
     dlisp_values, dlisp_read; //для отладки
 
 
 var
     i: integer;
 
-    mysql: Tmodule_mysql;
     v: TValue;
 
 begin
@@ -30,23 +28,7 @@ begin
     if ParamCount=0 then repl;
 
 
-    ////////////////////////////////////////
 
-    //mysql:= Tmodule_mysql.Create(nil);
-    //
-    //mysql.Query.Active:=false;
-    //mysql.Query.SQL.Text:='SELECT * FROM test';
-    //mysql.Query.Active:=true;
-    //mysql.Query.First;
-    //for i := 0 to mysql.Query.RecordCount-1 do begin
-    //    Write(mysql.Query.Fields[0].AsString);
-    //    WriteLn('  ',mysql.Query.Fields[1].AsString);
-    //    mysql.Query.Next;
-    //end;
-
-
-
-    //WriteLn(t1.ClassType = t1.ClassType);
 
 end.
 

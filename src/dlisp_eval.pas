@@ -4,7 +4,7 @@
 
 {$ASSERTIONS ON}
 
-{$DEFINE TVSS}
+{$DEFINE mysql55}
 
 interface
 
@@ -12,10 +12,15 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    process, Classes, SysUtils, dlisp_values, dlisp_read, math, lisya_xml, mar,
-    lisya_mysql,
-    db,
-    variants;
+    process, Classes, SysUtils, dlisp_values, dlisp_read, math, lisya_xml, mar
+    {$IFDEF mysql55}
+    ,mysql_55
+    {$ENDIF}
+    {$IFDEF mysql50}
+    ,mysql_50
+    {$ENDIF}
+    ,db
+    ,variants;
 
 
 type
@@ -23,12 +28,9 @@ type
     { TEvaluationFlow }
 
     TEvaluationFlow = class
-        {$IFDEF TVSS}
         stack: TVSymbolStack;
         main_stack: TVSymbolStack;
-        {$ELSE TVSS}
-        stack: dlisp_values.TSymbolStack;
-        {$ENDIF}
+
 //        ops: array[TOperatorEnum] of TOperatorRec;
         constructor Create(parent_stack: TVSymbolStack = nil);
         destructor Destroy; override;
