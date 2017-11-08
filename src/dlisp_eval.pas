@@ -2654,7 +2654,7 @@ end;
 
 function if_log                 (const PL: TVList; ep: TEvalProc): TValue;
 begin
-    case params_is(PL, result, [
+    case params_is(PL, result{%H-}, [
         tpList]) of
         1: begin
             System.WriteLn(ifh_format(PL.L[0]));
@@ -2665,7 +2665,7 @@ end;
 
 function if_hex                 (const PL: TVList; ep: TEvalProc): TValue;
 begin
-    case params_is(PL, result, [
+    case params_is(PL, result{%H-}, [
         vpIntegerNotNegative,  tpNIL,
         vpIntegerNotNegative,  vpIntegerNotNegative]) of
         1: result := TVString.Create(IntToHex(PL.I[0],
@@ -2676,7 +2676,7 @@ end;
 
 function if_fixed               (const PL: TVList; ep: TEvalProc): TValue;
 begin
-    case params_is(PL, result, [
+    case params_is(PL, result{%H-}, [
         tpNumber,  vpIntegerNotNegative]) of
         1: result := TVString.Create(FloatToStrF(PL.F[0], ffFixed, 0, PL.I[1]));
     end;
@@ -2846,14 +2846,13 @@ end;
 
 
 function if_sql_query           (const PL: TVList; ep: TEvalProc): TValue;
-var database: TVSQLPointer; rec: TVRecord; sl: TStringList; i,j: integer;
+var database: TVSQLPointer; rec: TVRecord; i,j: integer;
     bool_val: boolean; ucommand: unicodestring;
 begin
     case params_is(PL, result, [
         vpSQLPointerActive, tpList]) of
         1: with (PL.look[0] as TVSQLPointer).query do try
             rec := nil;
-            sl := TStringList.Create;
 
             Active := false;
             SQL.Text := ifh_format(PL.L[1]);
@@ -2870,8 +2869,10 @@ begin
             end;
             Last;
 
-            for j := 0 to FieldCount-1 do sl.Add(Fields[j].DisplayName);
-            rec := TVRecord.Create(sl);
+
+            rec := TVRecord.Create;
+            for j := 0 to FieldCount-1 do
+                rec.AddSlot(Fields[j].DisplayName, TVT.Create);
             result := TVList.Create;
             First;
             for i := 0 to RecordCount-1 do begin
@@ -2911,7 +2912,6 @@ begin
             end;
         finally
             rec.Free;
-            //sl.Free;
         end;
     end;
 end;
@@ -3962,7 +3962,7 @@ end;
 
 function TEvaluationFlow.op_append(PL: TVList): TValue;
     //TODO: оператор APPEND для списков
-var obj: TVCompound; P :PVariable; index, i: integer;
+var obj: TVCompound; P :PVariable;
     tmp: TValue; CP: TVChainPointer;
 begin try
     tmp := nil;
@@ -3996,7 +3996,7 @@ end end;
 
 
 function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
-var proc: TVProcedure; i, first_captured: integer; sl: TVList;
+var proc: TVProcedure; first_captured: integer; sl: TVList;
     sign_pos: integer;
 begin
     result := nil;

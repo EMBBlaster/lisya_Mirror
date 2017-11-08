@@ -12,7 +12,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    SysUtils, Classes, Contnrs, zlib, lisia_charset, zstream, mar;
+    SysUtils, Classes, Contnrs, lisia_charset, zstream, mar;
 
 
 const
@@ -248,24 +248,25 @@ type
     procedure set_target(_V: TValue);
   end;
 
-  { TVString }
+    { TVString }
 
-  TVString = class (TVCompoundOfPrimitive)
-  private
-    function GetItem(index: integer): TValue; override;
-    procedure SetItem(index: integer; _V: TValue); override;
-    function LookItem(index: integer): TValue; override;
-  public
-    S: unicodestring;
-    constructor Create(S: unicodestring);
-    destructor Destroy; override;
-    function Copy(): TValue; override;
-    function AsString(): unicodestring; override;
+    TVString = class (TVCompoundOfPrimitive)
+    private
+        function GetItem(index: integer): TValue; override;
+        procedure SetItem(index: integer; _V: TValue); override;
+        function LookItem(index: integer): TValue; override;
+      public
+        S: unicodestring;
+        constructor Create(S: unicodestring);
+        destructor Destroy; override;
+        function Copy(): TValue; override;
+        function AsString(): unicodestring; override;
 
-    function Count: integer; override;
-  end;
+        function Count: integer; override;
+    end;
 
-  { TVList }
+
+    { TVList }
 
     TVList = class (TVCompoundIndexed)
     private
@@ -274,43 +275,42 @@ type
         procedure SetItem(index: integer; _V: TValue); override;
         function LookItem(index: integer): TValue; override;
 
-      function GetItems(Index: Integer): TValue;
-      procedure SetItems(Index: Integer; V: TValue);
-      function flook(index: integer): TValue;
-      function GetElementName(index: integer): unicodestring;
-      function GetElementUName(index: integer): unicodestring;
-      function GetElementI(index: integer): Int64;
-      function GetElementF(index: integer): double;
-      function GetElementS(index: integer): unicodestring;
-      function GetElementL(index: integer): TVList;
+        //function GetItems(Index: Integer): TValue;
+        //procedure SetItems(Index: Integer; V: TValue);
+        //function flook(index: integer): TValue;
+        function GetElementName(index: integer): unicodestring;
+        function GetElementUName(index: integer): unicodestring;
+        function GetElementI(index: integer): Int64;
+        function GetElementF(index: integer): double;
+        function GetElementS(index: integer): unicodestring;
+        function GetElementL(index: integer): TVList;
     public
-      constructor Create; overload;
-      constructor Create(VL: array of TValue); overload;
-      destructor Destroy; override;
-      function Copy(): TValue; override;
-      function AsString(): unicodestring; override;
+        constructor Create; overload;
+        constructor Create(VL: array of TValue); overload;
+        destructor Destroy; override;
+        function Copy(): TValue; override;
+        function AsString(): unicodestring; override;
 
-      procedure Add(V: TValue);
-      procedure Append(VL: TVList);
+        procedure Add(V: TValue);
+        procedure Append(VL: TVList);
 
-      property name[index: integer]: unicodestring read GetElementName;
-      property uname[index: integer]: unicodestring read GetElementUName;
-      property I[index: integer]: Int64 read GetElementI;
-      property F[index: integer]: double read GetElementF;
-      property S[index: integer]: unicodestring read GetElementS;
-      property L[index: integer]: TVList read GetElementL;
-      function Count: integer; override;
-      function High: integer;
-      procedure SetCapacity(c: integer);
-      function Subseq(istart, iend: integer): TVList;
-      function POP: TValue;
-      procedure Clear;
-      function ValueList: TValueList;
-      function CdrValueList: TValueList;
-      function CAR: TValue;
-      function CDR: TVList;
-
-  end;
+        property name[index: integer]: unicodestring read GetElementName;
+        property uname[index: integer]: unicodestring read GetElementUName;
+        property I[index: integer]: Int64 read GetElementI;
+        property F[index: integer]: double read GetElementF;
+        property S[index: integer]: unicodestring read GetElementS;
+        property L[index: integer]: TVList read GetElementL;
+        function Count: integer; override;
+        function High: integer;
+        procedure SetCapacity(c: integer);
+        function Subseq(istart, iend: integer): TVList;
+        function POP: TValue;
+        procedure Clear;
+        function ValueList: TValueList;
+        function CdrValueList: TValueList;
+        function CAR: TValue;
+        function CDR: TVList;
+    end;
 
 
     { TVByteVector }
@@ -639,8 +639,6 @@ procedure ReleaseVariable(var P: PVariable);
 
 implementation
 
-uses
-    dlisp_read;
 
     { TVariable }
 
@@ -2083,11 +2081,6 @@ begin
   VL.Free;
 end;
 
-function TVList.flook(index: integer): TValue;
-begin
-    result := (fL[Index] as TValue);
-end;
-
 function TVList.GetElementName(index: integer): unicodestring;
 begin
     Assert(fL[index] is TVSymbol, 'Элемент '+IntToStr(index)+' не символ');
@@ -2196,23 +2189,13 @@ begin
     result := (fL[Index] as TValue);
 end;
 
-function TVList.GetItems(Index: Integer): TValue;
-begin
-  result := (fL[Index] as TValue).Copy();
-end;
-
-procedure TVList.SetItems(Index: Integer; V: TValue);
-begin
-  fL[Index] := V;
-end;
-
 function TVList.Subseq(istart, iend: integer): TVList;
 var i: integer;
 begin
-  result := TVList.Create;
-  (result as TVList).fL.Capacity := iend - istart;
-  for i := istart to iend - 1 do
-    (result as TVList).fL.Add((fL[i] as TValue).Copy);
+    result := TVList.Create;
+    (result as TVList).fL.Capacity := iend - istart;
+    for i := istart to iend - 1 do
+        (result as TVList).fL.Add((fL[i] as TValue).Copy);
 end;
 
 function TVList.POP: TValue;
@@ -2229,8 +2212,8 @@ end;
 function TVList.ValueList: TValueList;
 var i: integer;
 begin
-      setLength(result, fL.Count);
-      for i:=0 to fL.Count-1 do result[i] := (fL[i] as TValue)
+    setLength(result, fL.Count);
+    for i:=0 to fL.Count-1 do result[i] := (fL[i] as TValue)
 end;
 
 function TVList.CdrValueList: TValueList;
