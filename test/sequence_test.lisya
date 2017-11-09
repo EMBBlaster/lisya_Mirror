@@ -1,0 +1,26 @@
+﻿(block
+    (fmt nil "последовательности... ")
+
+    (var s "строка")
+    (var l (list 1 2 3))
+    (var b (byte-vector 1 2 3))
+
+    (assertion (= 6 (length s)) "length string")
+    (assertion (= 3 (length l)) "length list")
+    (assertion (= 3 (length b)) "length byte-vector")
+
+    (assertion (= "ока" (subseq s 3)) "subseq string tail")
+    (assertion (= "тро" (subseq s 1 4)) "subseq string")
+    (assertion (= \(2 3) (subseq l 1)) "subseq list tail")
+    (assertion (= \(2) (subseq l 1 2)) "subseq list")
+    (assertion (= (byte-vector 2 3) (subseq b 1)) "subseq byte-vector tail")
+    (assertion (= (byte-vector 2) (subseq b 1 2)) "subseq byte-vector")
+
+    (append s " " "удлиннённая")
+    (assertion (= "строка удлиннённая" s) "append string")
+    (append l (list 4 5) (list 6))
+    (assertion (= \(1 2 3 4 5 6) l) "append list")
+    (append b (byte-vector 4 5) (byte-vector 6))
+    (assertion (= (byte-vector 1 2 3 4 5 6) b) "append byte-vector")
+
+    (log "успешно"))

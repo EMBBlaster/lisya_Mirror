@@ -1901,37 +1901,10 @@ function if_subseq              (const PL: TVList; ep: TEvalProc): TValue;
 begin
     //print_stdout_ln(pl);
     case params_is(PL, result, [
-    {1} tpString,   vpIntegerNotNegative,   tpNIL,
-    {2} tpString,   vpIntegerNotNegative,   vpIntegerNotNegative,
-    {3} tpList,     vpIntegerNotNegative,   tpNIL,
-    {4} tpList,     vpIntegerNotNegative,   vpIntegerNotNegative,
-    {5} tpByteVector, vpIntegerNotNegative, tpNIL,
-    {6} tpByteVector, vpIntegerNotNegative, vpIntegerNotNegative]) of
-        1: if PL.I[1]<=Length(PL.S[0])
-            then result :=TVString.Create(PL.S[0][(PL.I[1]+1)..Length(PL.S[0])])
-            else result := out_of_bounds(PL, '');
-
-        2: if (PL.I[1]<=Length(PL.S[0])) and (PL.I[2]<=Length(PL.S[0]))
-                and (PL.I[2]>=PL.I[1])
-            then result := TVString.Create(PL.S[0][(PL.I[1]+1)..PL.I[2]])
-            else result := out_of_bounds(PL, '');
-
-        3: if PL.I[1]<=PL.L[0].Count
-            then result := PL.L[0].Subseq(PL.I[1], PL.L[0].Count)
-            else result := out_of_bounds(PL, '');
-        4: if (PL.I[1]<=PL.L[0].Count) and (PL.I[2]<=PL.L[0].Count)
-                and (PL.I[2]>=PL.I[1])
-            then result := PL.L[0].Subseq(PL.I[1], PL.I[2])
-            else result := out_of_bounds(PL, '');
-        5: if PL.I[1]<=(PL.look[0] as TVCompound).Count
-            then result := (PL.look[0] as TVByteVector).SubSeq(
-                PL.I[1], (PL.look[0] as TVCompound).Count)
-            else raise ELE.InvalidParameters;
-        6: if (PL.I[1]<=(PL.look[0] as TVCompound).Count)
-            and (PL.I[2]<=(PL.look[0] as TVCompound).Count)
-                and (PL.I[2]>=PL.I[1])
-            then result := (PL.look[0] as TVByteVector).SubSeq(PL.I[1],PL.I[2])
-            else raise ELE.InvalidParameters;
+        tpCompoundIndexed, vpIntegerNotNegative, tpNIL,
+        tpCompoundIndexed, vpIntegerNotNegative, vpIntegerNotNegative]) of
+        1: result := (PL.look[0] as TVCompoundIndexed).subseq(PL.I[1]);
+        2: result := (PL.look[0] as TVCompoundIndexed).subseq(PL.I[1], PL.I[2]);
     end;
 end;
 
@@ -2015,24 +1988,6 @@ begin
     case params_is(PL, result, [
         tpCompoundIndexed]) of
         1: result := TVInteger.Create((PL.look[0] as TVCompound).Count);
-    end;
-end;
-
-function if_elt                 (const PL: TVList; ep: TEvalProc): TValue;
-begin
-    //TODO: if_elt лишняя функция, заменена оператором op_elt
-    case params_is(PL, result, [
-        tpList,     tpInteger,
-        tpString,   tpInteger,
-        tpRecord,tpKeyword]) of
-        1: if (PL.I[1]<PL.L[0].Count) and (PL.I[1]>=0)
-            then result := PL.L[0][PL.I[1]]
-            else result := TVError.Create(ecOutOfBounds, PL.AsString());
-        2: if (PL.I[1]<Length(PL.S[0])) and (PL.I[1]>=0)
-            then result := TVString.Create(PL.S[0][PL.I[1]+1])
-            else result := TVError.Create(ecOutOfBounds, PL.AsString());
-        3: if not (PL.look[0] as TVRecord).GetSlot(PL.uname[1],result)
-            then result := invalid_parameters(PL, 'slot not found');
     end;
 end;
 
@@ -2773,22 +2728,6 @@ begin
     end;
 end;
 
-function if_structure_as        (const PL: TVList; ep: TEvalProc): TValue;
-var i: integer; names: TStringList;
-begin
-    case params_is(PL, result, [
-        tpRecord, vpListSymbolValue]) of
-        1: begin
-            result := PL[0];
-
-            for i := 0 to PL.L[1].count div 2 - 1 do
-                if not (result as TVRecord).SetSlot(PL.L[1].uname[i*2],
-                                                        PL.L[1][i*2+1])
-                then result := invalid_parameters(PL, 'slot not found');
-        end;
-    end;
-end;
-
 function if_structure_p         (const PL: TVList; ep: TEvalProc): TValue;
 var s: unicodestring; w,i: integer; lr: boolean; names: TStringList;
 begin
@@ -2868,7 +2807,6 @@ begin
                 Exit;
             end;
             Last;
-
 
             rec := TVRecord.Create;
             for j := 0 to FieldCount-1 do
@@ -3052,7 +2990,7 @@ var o: TOperatorEnum;
         if not tpError(V)
         then begin
             ops[o].n := V.uname[0];
-            ops[o].s := V.Subseq(1, v.Count);
+            ops[o].s := V.Subseq(1, v.Count) as TVList;
         end
         else raise ELE.Create('ошибка в сигнатуре оператора');
         FreeAndNil(V);
@@ -3592,7 +3530,7 @@ begin
         end;
         if tpSymbol(PL.look[2*i])
         then
-            (result as TVRecord).SetSlot(PL.uname[2*i], PL[2*i+1])
+            (result as TVRecord).slot[PL.uname[2*i]] := PL[2*i+1]
         else
             raise ELE.Create(PL.look[2*i].AsString+' is not symbol');
     end;
@@ -3961,37 +3899,38 @@ begin
 end;
 
 function TEvaluationFlow.op_append(PL: TVList): TValue;
-    //TODO: оператор APPEND для списков
-var obj: TVCompound; P :PVariable;
-    tmp: TValue; CP: TVChainPointer;
+var CP: TVChainPointer; i: integer;
 begin try
-    tmp := nil;
-    //WriteLn(PL.asstring);
-    if PL.Count<3 then raise ELE.InvalidParameters;
-    PL[2] := eval(PL[2]);
-    if not tpString(PL.look[2]) then raise ELE.InvalidParameters;
 
-    //TODO: tmp не нужен, нужно вычислять ссылку внуть списка параметров
-    tmp := eval_link(PL.look[1]);
-    //if tmp is TVPointer
-    //then begin
-    //    if (tmp as TVPointer).look is TVString
-    //    then ((tmp as TVPointer).look as TVString).S:=
-    //                    ((tmp as TVPointer).look as TVString).S + PL.S[2]
-    //    else raise ELE.InvalidParameters;
-    //end
-    //else
-        if tmp is TVChainPointer then begin
-            CP := tmp as TVChainPointer;
-            if CP.constant then raise ELE.Create('target is not variable');
-            if CP.look is TVString
-            then (CP.look as TVString).S := (CP.look as TVString).S + PL.S[2]
+    //TODO: слишком много копирований
+    //TODO: нет предварительной проверки корректности параметров
+    // в случае несоответствия параметров программа упадёт при
+    // попытке приведения типов
+    if PL.Count<3 then raise ELE.InvalidParameters;
+    for i := 2 to PL.high do PL[i] := eval(PL[i]);
+
+    CP := eval_link(PL.look[1]) as TVChainPointer;
+    if CP.constant then raise ELE.Create('target is not variable');
+    if CP.look is TVString
+    then
+        for i := 2 to PL.high do
+            (CP.look as TVString).S := (CP.look as TVString).S + PL.S[i]
+    else
+        if CP.look is TVList
+        then
+            for i := 2 to PL.high do
+                (CP.look as TVList).Append(PL[i] as TVList)
+        else
+            if CP.look is TVByteVector
+            then
+                for i := 2 to PL.high do
+                    (CP.look as TVByteVector).append(PL[i] as TVByteVector)
             else raise ELE.InvalidParameters;
-        end
-    else raise ELE.Create('target is not variable');
+
+
     result := TVT.Create;
 finally
-    FreeAndNil(tmp);
+    FreeAndNil(CP);
 end end;
 
 
@@ -4019,7 +3958,7 @@ begin
 
     result := proc;
     proc.stack_pointer := stack.count;
-    proc.body.Append(PL.Subseq(sign_pos+1, PL.Count));
+    proc.body.Append(PL.Subseq(sign_pos+1, PL.Count) as TVList);
     proc.fsignature := parse_subprogram_signature(PL.look[sign_pos] as TVList);
     proc.evaluated:=false;
 
@@ -4169,7 +4108,7 @@ begin
                 then stack.new_var(sign[i].n, eval(PL[i+1]))
                 else stack.new_var(sign[i].n, TVList.Create);
             spmRest: begin
-                rest := (PL as TVList).subseq(i+1, PL.Count);
+                rest := (PL as TVList).subseq(i+1, PL.Count) as TVList;
                 for j := 0 to Rest.Count-1 do rest[j] := eval(rest[j]);
                 stack.new_var(sign[i].n, rest);
             end;
@@ -4248,7 +4187,7 @@ begin
                 else ts.new_var(sign[i].n, TVList.Create);
             spmRest: begin
                 //TODO: излишнее копирование
-                rest := (PL as TVList).subseq(i+1, PL.Count);
+                rest := (PL as TVList).subseq(i+1, PL.Count) as TVList;
                 for j := 0 to Rest.Count-1 do rest[j] := eval(rest[j]);
                 ts.new_var(sign[i].n, rest);
             end;
@@ -4303,7 +4242,7 @@ begin
                 else ts.new_var(sign[i].n, TVList.Create, true);
             spmRest: begin
                 //TODO: излишнее копирование
-                rest := (PL as TVList).subseq(i+1, PL.Count);
+                rest := (PL as TVList).subseq(i+1, PL.Count) as TVList;
                 ts.new_var(sign[i].n, rest, true);
             end;
             spmKey: begin
