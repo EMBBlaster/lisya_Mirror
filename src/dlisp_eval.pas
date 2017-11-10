@@ -56,6 +56,7 @@ type
         function op_goto(PL: TVList): TValue;
         function op_if(PL: TVList): TValue;
         function op_if_nil(PL: TVList): TValue;
+        function op_in_sequence(PL: TVList): TValue;
         function op_last(PL: TVList): TValue;
         function op_let(PL: TVList): TValue;
         function op_map(PL: TVList): TValue;
@@ -3013,6 +3014,7 @@ begin
             oeGOTO      : op('(GOTO a)');
             oeIF        : op('(IF c t e)');
             oeIF_NIL    : op('(IF-NIL c d)');
+            oeIN_SEQUENCE: op('(IN-SEQUENCE l e :rest b)');
             oeLAST      : op('(LAST l)');
             oeLET       : op('(LET ((s v)))');
             oeMACRO     : op('(MACRO m :rest b)');
@@ -3563,163 +3565,82 @@ begin
 end;
 
 function TEvaluationFlow.op_for                     (PL: TVList): TValue;
-var pc, i, j, sp_i, sp_L: integer;
-    L: TVList; link: boolean; P: PVariable;
+var i, frame_start, high_i, low_i: integer;
     V: TValue;
-    s: unicodestring;
-    bv: TVBytevector;
-    op_var : (null, var_list, val_list, range, times, str, bytes);
-label br, next, return;
-begin try
+    CP: TVChainPointer;
+    index: TVInteger;
+    op_var : (sequence, range, times);
+begin
     //оператор цикла возвращает NIL в случае завершения и последнее значение
     //итерируемой переменной в случае досрочного прерывания оператором (BREAK)
     //это упрощает написание функций поиска
 
-    //TODO: FOR-LIST вообще ужасен и на экран не влезает, и в TSymbolStack лезет
-    //TODO: FOR var list нужно переделать на использование eval_link
+    if (PL.count<3) or not tpOrdinarySymbol(PL.look[1])
+    then raise ELE.Create('malformed FOR');
 
-    //WriteLn('op_for>>',PL.AsString());
+    CP := eval_link(PL.look[2]) as TVChainPointer;
 
-    if PL.count<3 then begin result := malformed(PL, ''); exit; end;
-
-    V := nil;
-    V := eval(PL[2]);
-
-    if tpError(V) then begin result := V; exit; end;
-    if tpOrdinarySymbol(PL.look[2]) and tpList(V) then op_var := var_list
+    if tpCompoundIndexed(CP.look) then op_var := sequence
     else
-        if tpList(V) then op_var := val_list
+        if tpRange(CP.look) then op_var := range
         else
-            if tpRange(V) then op_var := range
+            if vpIntegerNotNegative(CP.look) then op_var := times
             else
-                if vpIntegerNotNegative(V) then op_var := times
-                else
-                    if tpString(V) then op_var := str
-                    else
-                        if tpByteVector(V) then op_var := bytes
-                        else
-                            raise ELE.InvalidParameters;
+                raise ELE.InvalidParameters;
 
-
-    result := TVList.Create;
+try
+    V := nil;
+    result := nil;
+    frame_start := stack.Count;
     stack.new_var(' <for-list2>', TVT.Create);
-    sp_i := stack.count;
 
     case op_var of
-        var_list: begin
-            P := stack.find_ref(PL.uname[2]);
-            //TODO: второй раз производится поиск переменной, содержащей список
-            L := P.V as TVList;
-            stack.new_var(PL.uname[1], nil);
-            for i := 0 to L.High do begin
-                stack.stack[sp_i].V.V := L[i];
-                result.Free;
-                result := oph_block(PL, 3, true);
-                L[i] := stack.stack[sp_i].V.V;
-                if tpError(result) then exit;
-                if tpBreak(result) then begin
-                    result.Free;
-                    result := L[i];
-                    break;
-                end;
-            end;
-            //  это нужно чтобы избежать освобождения элемента итерируемого
-            // списка при очистке стека
-            stack.stack[sp_i].V.V := TVT.Create;
-            ReleaseVariable(P);
-        end;
-
-        val_list: begin
-            L := V as TVList;
-            stack.new_var(PL.uname[1], TVT.Create);
-            for i := 0 to L.High do begin
-                stack.stack[sp_i].V.V.Free;
-                stack.stack[sp_i].V.V := L[i];
-                result.Free;
-                result := oph_block(PL, 3, true);
-                if tpError(result) then exit;
-                if tpBreak(result) then begin
-                    result.Free;
-                    result := L[i];
+        sequence: begin
+            high_i := (CP.look as TVCompoundIndexed).high;
+            CP.add_index(0);
+            stack.new_var(PL.uname[1], CP, true);
+            for i := 0 to high_i do begin
+                CP.set_last_index(i);
+                FreeAndNil(V);
+                V := oph_block(PL, 3, true);
+                if tpBreak(V) then begin
+                    result := CP.value;
                     break;
                 end;
             end;
         end;
 
-        range: begin
-            stack.new_var(PL.uname[1], TVInteger.Create(0));
-            for i := (V as TVRange).low to (V as TVRange).high-1 do begin
-                (stack.stack[sp_i].V.V as TVInteger).fI := i;
-                result.Free;
-                result := oph_block(PL, 3, true);
-                if tpError(result) then exit;
-                if tpBreak(result) then begin
-                    result.Free;
+        range, times: begin
+            case op_var of
+                range: begin
+                    high_i := (CP.look as TVRange).high-1;
+                    low_i := (CP.look as TVRange).low;
+                end;
+                times: begin
+                    high_i := (CP.look as TVInteger).fI-1;
+                    low_i := 0;
+                end;
+            end;
+            index := TVInteger.Create(0);
+            stack.new_var(PL.uname[1], index);
+            for i := low_i to high_i do begin
+                index.fI := i;
+                FreeAndNil(V);
+                V := oph_block(PL, 3, true);
+                if tpBreak(V) then begin
                     result := TVInteger.Create(i);
                     break;
                 end;
             end;
         end;
-
-        times: begin
-            stack.new_var(PL.uname[1], TVInteger.Create(0));
-            for i := 0 to (V as TVInteger).fI-1 do begin
-                (stack.stack[sp_i].V.V as TVInteger).fI := i;
-                result.Free;
-                result := oph_block(PL, 3, true);
-                if tpError(result) then exit;
-                if tpBreak(result) then begin
-                    result.Free;
-                    result := TVInteger.Create(i);
-                    break;
-                end;
-            end;
-        end;
-
-        str: begin
-            S := (V as TVString).S;
-            stack.new_var(PL.uname[1], TVString.Create(''), true);
-            for i := 1 to Length(S) do begin
-                (stack.stack[sp_i].V.V as TVString).S := S[i];
-                result.Free;
-                result := oph_block(PL, 3, true);
-                if tpError(result) then exit;
-                if tpBreak(result) then begin
-                    FreeAndNil(result);
-                    result := stack.stack[sp_i].V.V.Copy;
-                    break;
-                end;
-            end;
-        end;
-
-        bytes: begin
-            bv := V as TVBytevector;
-            stack.new_var(PL.uname[1], TVInteger.Create(0), true);
-            for i := 0 to high(bv.fBytes) do begin
-                (stack.stack[sp_i].V.V as TVInteger).fI := bv.fBytes[i];
-                result.Free;
-                result := oph_block(PL, 3, true);
-                if tpError(result) then exit;
-                if tpBreak(result) then begin
-                    FreeAndNil(result);
-                    result := stack.stack[sp_i].V.V.Copy;
-                    break;
-                end;
-            end;
-        end;
-
     end;
 
-    stack.clear_frame;
-
-    if tpBreak(result) or tpContinue(result) then begin
-        result.Free;
-        result:= TVList.create;
-    end;
-
+    if result=nil then result:= TVList.create;
 finally
+    stack.clear_frame(frame_start);
     V.Free;
-end; end;
+end;
+end;
 
 function TEvaluationFlow.op_goto                    (PL: TVList): TValue;
 begin
@@ -3770,6 +3691,41 @@ begin
             else result := PL[1];
         end;
         0: raise ELE.InvalidParameters;
+    end;
+end;
+
+function TEvaluationFlow.op_in_sequence(PL: TVList): TValue;
+var i, frame_start, high_i: integer; CP: TVChainPointer; V: TValue;
+begin
+    //оператор цикла возвращает NIL в случае завершения и последнее значение
+    //итерируемой переменной в случае досрочного прерывания оператором (BREAK)
+    //это упрощает написание функций поиска
+
+    if (PL.count<3) or not tpOrdinarySymbol(PL.look[2]) then raise ELE.InvalidParameters;
+
+    CP := eval_link(PL.look[1]) as TVChainPointer;
+    if not tpCompoundIndexed(CP.look) then raise ELE.InvalidParameters;
+    high_i := (CP.look as TVCompoundIndexed).high;
+    CP.add_index(0);
+    frame_start := stack.Count;
+
+    V := nil;
+    result := nil;
+    try
+        stack.new_var(PL.uname[2], CP);
+        for i := 0 to high_i do begin
+            CP.set_last_index(i);
+            FreeAndNil(V);
+            V := oph_block(PL, 3, true);
+            if tpBreak(V) then begin
+                result := CP.value;
+                break;
+            end;
+        end;
+        if result = nil then result := TVList.Create;
+    finally
+        FreeAndNil(V);
+        stack.clear_frame(frame_start);
     end;
 end;
 
@@ -4488,6 +4444,7 @@ begin try
                     oeGOTO      : result := op_goto(V as TVList);
                     oeIF        : result := op_if(V as TVList);
                     oeIF_NIL    : result := op_if_nil(V as TVList);
+                    oeIN_SEQUENCE: result := op_in_sequence(V as TVList);
                     oeLAST      : result := op_last(V as TVList);
                     oeLET       : result := op_let(V as TVList);
                     oeMACRO     : result := op_procedure(V as TVList);

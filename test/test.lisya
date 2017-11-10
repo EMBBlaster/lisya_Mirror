@@ -175,42 +175,7 @@
 (a n)
 (assertion (= n 0) "взаимная рекурсия")
 
-(log \FOR)
-(block
-    (var a 0)
-    (for i 5 (set a (+ a 1)))
-    (assertion (= a 5) "for times"))
 
-(block
-    (var l \(1 2 3))
-    (var sum 0)
-    (for e l
-        (set sum (+ sum e))
-        (set e (+ 1 e)))
-    (assertion (= l \(2 3 4)) "for-list modification")
-    (assertion (= sum 6) "for var list"))
-
-(log \WHILE)
-(block
-    (var a 5)
-    (while (> a 0) (set a (- a 1)))
-    (assertion (= a 0) "while"))
-
-(block
-    (var a 5)
-    (var b 5)
-    (while (> a 0)
-        (set a (- a 1))
-        (if (< b 3) (continue))
-        (set b (- b 1)))
-    (assertion (= b 2) "while continue"))
-
-(block
-    (var a 5)
-    (while (> a 0)
-        (set a (- a 1))
-        (if (< a 3) (break)))
-    (assertion (= a 2) "while break"))
 
 (block
     (log \ELT)
@@ -279,6 +244,7 @@
 (execute-file "../test/mod_ops_test.lisya")
 (execute-file "../test/macro_test.lisya")
 (execute-file "../test/sequence_test.lisya")
+(execute-file "../test/loop_test.lisya")
 
 (log \ЗАВЕРШЕНО)
 exit

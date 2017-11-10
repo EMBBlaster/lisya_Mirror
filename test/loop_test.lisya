@@ -1,0 +1,54 @@
+﻿(fmt nil "циклические операторы... ")
+
+(block "FOR times"
+    (var a 0)
+    (assertion (= nil (for i 5 (set a (+ a 1)))) "for times full")
+    (assertion (= 5 a) "for times")
+    (assertion (= 3 (for i 8 (if (= i 3) (break)))) "for times break"))
+
+(block "FOR range"
+    (var a 0)
+    (assertion (= nil (for i 2..4 (set a (+ 1 a)))) "for range full")
+    (assertion (= 2 a) "for range")
+    (assertion (= 3 (for i 2..4 (if (= 3 i) (break)))) "for range break"))
+
+(block "FOR list"
+    (var a 0)
+    (assertion (= nil (for e (list 1 2 3) (set a (+ a e)))) "for list full")
+    (assertion (= 6 a) "for list")
+    (assertion (= 2 (for e (list 1 2 3) (if (= e 2) (break)))) "for list break"))
+
+(block "FOR string"
+    (var a 0)
+    (for c "строка" (set a (+ 1 a)))
+    (assertion (= 6 a) "for string"))
+
+(block "FOR byte-vector"
+    (var a 0)
+    (for b (byte-vector 1 2 3) (set a (+ a b)))
+    (assertion (= 6 a) "for byte-vector"))
+
+
+(block "WHILE"
+    (var a 5)
+    (while (> a 0) (set a (- a 1)))
+    (assertion (= a 0) "while"))
+
+(block "WHILE continue"
+    (var a 5)
+    (var b 5)
+    (while (> a 0)
+        (set a (- a 1))
+        (if (< b 3) (continue))
+        (set b (- b 1)))
+    (assertion (= b 2) "while continue"))
+
+(block "WHILE break"
+    (var a 5)
+    (while (> a 0)
+        (set a (- a 1))
+        (if (< a 3) (break)))
+    (assertion (= a 2) "while break"))
+
+(log "успешно")
+

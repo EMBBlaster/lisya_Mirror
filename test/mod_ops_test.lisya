@@ -1,8 +1,6 @@
 ﻿
+(fmt nil "модифицирующие операторы... ")
 (block
-
-    (fmt nil "модифицирующие операторы... ")
-
     (var l (list 1 2 3))
     (var su (structure slot1 1 slot2 2))
     (var si "abcd")
@@ -55,9 +53,10 @@
     (assertion (= (structure slot1 9 slot2 "abcd") su) "append elt")
 
     (var LL (list 0 (structure slot "text")))
-    (assertion (= "x" (elt (last LL) \slot 2)) "elt/last nested")
+    (assertion (= "x" (elt (last LL) \slot 2)) "elt/last nested"))
 
 
+(block
     (var a 1)
     (procedure p (x) (set x (+ 1 x)))
     (p a)
@@ -69,11 +68,24 @@
     (procedure pp (x) (procedure () (set x 8)))
     (const setx8 (pp b/2))
     (setx8)
-    (assertion (= (list 1 3 8) b) "capture elt")
+    (assertion (= (list 1 3 8) b) "capture elt"))
 
 
-    (log " успешно")
-    )
+(block
+    (var l (list 1 2 3))
+    (var s "string")
+    (var b (byte-vector 1 2 3))
 
+    (assertion (= nil (in-sequence l e (set e (+ 1 e)))) "in-sequence full")
+    (assertion (= (list 2 3 4) l) "in-sequence list modification")
+    (assertion (= 3 (in-sequence l e (if (= 3 e) (break)))) "in-sequence break")
+
+    (in-sequence b b (set b (+ 1 b)))
+    (assertion (= (byte-vector 2 3 4) b) "in-sequence byte-vector modification")
+
+    (in-sequence s c (set c "-"))
+    (assertion (= "------" s) "in-sequence string modification"))
+
+(log " успешно")
 
 

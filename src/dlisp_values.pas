@@ -73,29 +73,32 @@ type
     end;
 
 
-  { TVT }
+    { TVT }
 
-  TVT = class (TValue)
-    function Copy(): TValue; override;
-    function AsString(): unicodestring; override;
-  end;
+    TVT = class (TValue)
+        function Copy(): TValue; override;
+        function AsString(): unicodestring; override;
+    end;
 
-  { TVNumber }
 
-  TVNumber = class (TValue)
-    function F: double; virtual; abstract;
-  end;
+    { TVNumber }
 
-  { TVInteger }
+    TVNumber = class (TValue)
+        function F: double; virtual; abstract;
+    end;
 
-  TVInteger = class (TVNumber)
-    fI: Int64;
-    constructor Create(I: Int64);
-    function Copy(): TValue; override;
-    function AsString(): unicodestring; override;
 
-    function F: double; override;
-  end;
+    { TVInteger }
+
+    TVInteger = class (TVNumber)
+        fI: Int64;
+        constructor Create(I: Int64);
+        function Copy(): TValue; override;
+        function AsString(): unicodestring; override;
+
+        function F: double; override;
+    end;
+
 
   { TVRange }
 
@@ -228,6 +231,7 @@ type
         function look: TValue;
         procedure add_index(i: integer);
         procedure set_target(_V: TValue);
+        procedure set_last_index(i: integer);
     end;
 
 
@@ -382,8 +386,6 @@ type
         property slot[index: unicodestring]:TValue read fGetSlot write fSetSlot;
         property look_name[n: unicodestring]: TValue read flook;
         function is_class(cl: TVRecord): boolean;
-        //function SetSlot(index: unicodestring; V: TValue): boolean;
-        //function GetSlot(index: unicodestring; var V: TValue): boolean;
         function AddSlot(name: unicodestring; V: TValue): boolean;
 
         function count: integer; override;
@@ -391,6 +393,7 @@ type
 
         function get_n_of(index: unicodestring): integer;
     end;
+
 
     { TVSymbolStack }
 
@@ -555,6 +558,7 @@ type
             oeGOTO,
             oeIF,
             oeIF_NIL,
+            oeIN_SEQUENCE,
             oeLAST,
             oeLET,
             oeMACRO,
@@ -824,6 +828,11 @@ begin
         for i := 0 to high(index)-1 do tmp := tmp.look[index[i]] as TVCompound;
         tmp[index[high(index)]] := _V;
     end;
+end;
+
+procedure TVChainPointer.set_last_index(i: integer);
+begin
+    index[high(index)] := i;
 end;
 
 
@@ -1404,24 +1413,6 @@ begin
         if unames.IndexOf(cl.unames[i])<0 then exit;
     result := true;
 end;
-
-//function TVRecord.SetSlot(index: unicodestring; V: TValue): boolean;
-//var i: integer;
-//begin
-//    i := unames.IndexOf(index);
-//    if i<0 then raise EInvalidParameters.Create('слот '+index+' отсутствует');
-//    slots[i] := V;
-//    result := true;
-//end;
-
-//function TVRecord.GetSlot(index: unicodestring; var V: TValue): boolean;
-//var i: integer;
-//begin
-//    i := unames.IndexOf(index);
-//    if i<0 then begin result := false; exit; end;
-//    V := (slots[i] as TValue).Copy();
-//    result := true;
-//end;
 
 function TVRecord.AddSlot(name: unicodestring; V: TValue): boolean;
 begin
