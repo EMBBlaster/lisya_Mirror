@@ -71,20 +71,20 @@
     (assertion (= (list 1 3 8) b) "capture elt"))
 
 
-(block
+(block "FOR sequence modifucation"
     (var l (list 1 2 3))
     (var s "string")
     (var b (byte-vector 1 2 3))
 
-    (assertion (= nil (in-sequence l e (set e (+ 1 e)))) "in-sequence full")
-    (assertion (= (list 2 3 4) l) "in-sequence list modification")
-    (assertion (= 3 (in-sequence l e (if (= 3 e) (break)))) "in-sequence break")
+    (assertion (= nil (for e l (set e (+ 1 e)))) "for full")
+    (assertion (= (list 2 3 4) l) "for list modification")
+    (assertion (= 3 (for e l (if (= 3 e) (break)))) "for break")
 
-    (in-sequence b b (set b (+ 1 b)))
-    (assertion (= (byte-vector 2 3 4) b) "in-sequence byte-vector modification")
+    (for b b (set b (+ 1 b)))
+    (assertion (= (byte-vector 2 3 4) b) "for byte-vector modification")
 
-    (in-sequence s c (set c "-"))
-    (assertion (= "------" s) "in-sequence string modification"))
+    (for c s (set c "-"))
+    (assertion (= "------" s) "for string modification"))
 
 (log " успешно")
 

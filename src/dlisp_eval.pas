@@ -1819,6 +1819,13 @@ begin
     end;
 end;
 
+function if_command_line        (const PL: TVList; ep: TEvalProc): TValue;
+var i: integer;
+begin
+    result := TVList.Create;
+    for i := 2 to paramCount do
+        (result as TVList).Add(TVString.Create(paramStr(i)));
+end;
 
 function if_every               (const PL: TVList; ep: TEvalProc): TValue;
 var i, j, count: integer;
@@ -2863,7 +2870,7 @@ begin
     end;
 end;
 
-const int_dyn: array[1..93] of TInternalFunctionRec = (
+const int_dyn: array[1..94] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
 (n:'NUMBER?';               f:if_number_p;              s:'(a)'),
@@ -2905,6 +2912,7 @@ const int_dyn: array[1..93] of TInternalFunctionRec = (
 (n:'EXTRACT-FILE-NAME';     f:if_extract_file_name;     s:'(s)'),
 (n:'EXTRACT-FILE-PATH';     f:if_extract_file_path;     s:'(s)'),
 (n:'FILE-EXISTS';           f:if_file_exists;           s:'(n)'),
+(n:'COMMAND-LINE';          f:if_command_line;          s:'()'),
 
 (n:'EVERY';                 f:if_every;                 s:'(p :rest l)'),
 (n:'SOME';                  f:if_some;                  s:'(p :rest l)'),
@@ -3089,34 +3097,6 @@ begin
     end;
     inherited Destroy;
 end;
-
-
-
-//function TEvaluationFlow.oph_frameless_block(PL: TVList; start: integer): TValue;
-//var pc, i: integer; V: TValue;
-//    procedure val(_v: TValue); begin V.Free; V := _v; end;
-//begin
-//    pc := start;
-//    V := TVList.Create;
-//
-//    while pc<PL.Count do begin
-//        val(eval(PL[pc]));
-//        Inc(pc);
-//        if tpGoto(V)
-//        then begin
-//            pc := -1;
-//            for i := 1 to PL.Count-1 do
-//                if tpKeyword(PL.look[i])
-//                    and (PL.uname[i]=(V as TVGoto).uname)
-//                then pc := i;
-//            if pc<0 then break;
-//        end
-//        else
-//            if tpError(V) or tpBreak(V) or tpContinue(V) then break;
-//    end;
-//
-//    result := V;
-//end;
 
 function TEvaluationFlow.oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
 var frame_start, exception_frame_start: integer; pc, i: integer; V: TValue;
@@ -3345,17 +3325,15 @@ end;
 function TEvaluationFlow.op_push                    (PL: TVList): TValue;
 var i: integer; CP: TVChainPointer;
 begin
-    PL[1] := eval_link(PL.look[1]);
-
-    if PL.look[1] is TVChainPointer then begin
-        CP := PL.look[1] as TVChainPointer;
-        if CP.constant then raise ELE.Create('target is not variable');
-        if not tpList(CP.look) then raise ELE.Create('target is not list');
-        for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
-    end
-    else
-        raise ELE.Create('target is not variable');
+    CP := eval_link(PL.look[1]) as TVChainPointer;
+try
+    if CP.constant then raise ELE.Create('target is not variable');
+    if not tpList(CP.look) then raise ELE.Create('target is not list');
+    for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
     result := TVT.Create;
+finally
+    CP.Free;
+end;
 end;
 
 function TEvaluationFlow.op_pop                     (PL: TVList): TValue;
@@ -3622,7 +3600,7 @@ try
                 end;
             end;
             index := TVInteger.Create(0);
-            stack.new_var(PL.uname[1], index);
+            stack.new_var(PL.uname[1], index, true);
             for i := low_i to high_i do begin
                 index.fI := i;
                 FreeAndNil(V);
