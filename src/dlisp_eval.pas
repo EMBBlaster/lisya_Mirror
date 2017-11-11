@@ -32,16 +32,13 @@ type
         stack: TVSymbolStack;
         main_stack: TVSymbolStack;
 
-//        ops: array[TOperatorEnum] of TOperatorRec;
         constructor Create(parent_stack: TVSymbolStack = nil);
         destructor Destroy; override;
 
-
-        //function oph_frameless_block(PL: TVList; start: integer): TValue;
         function oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
 
-        function opl_elt(PL: TVList): TValue;
-        function opl_last(PL: TVList): TValue;
+        function opl_elt(PL: TVList): TVChainPointer;
+        function opl_last(PL: TVList): TVChainPointer;
 
         function op_and(PL: TVList): TValue;
         function op_append(PL: TVList): TValue;
@@ -75,8 +72,6 @@ type
         function extract_body_symbols(body: TVList): TVList;
         procedure fill_subprogram_stack(sp: TVProcedure; symbols: TVList);
 
-        function bind_procedure_parameters(
-                            PL: TVList; sign: TSubprogramSignature): boolean;
         function bind_procedure_parameters_to_stack(
                             PL: TVList; sign: TSubprogramSignature;
                             ts: TVSymbolStack): boolean;
@@ -88,7 +83,7 @@ type
         function internal_function_call(PL: TVList): TValue;
         procedure expand_ins(PL: TVList);
 
-        function eval_link(P: TValue): TValue;
+        function eval_link(P: TValue): TVChainPointer;
 
         function eval(V: TValue): TValue;
     end;
@@ -3189,13 +3184,11 @@ return:
     if with_frame then stack.clear_frame(frame_start);
 end;
 
-function TEvaluationFlow.opl_elt(PL: TVList): TValue;
+function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
 var i: integer; tmp: TValue;
-    CP: TVChainPointer;
 begin
     //  Эта процедура должна вернуть указатель на компонент составного типа
     //для дальнейшего извлечения или перезаписи значения.
-    //При невозможности вычислить указатель возвращает значение
 
     result := nil;
     tmp := nil;
@@ -3203,24 +3196,24 @@ begin
     if PL.Count<2 then raise ELE.Create('недостаточно параметров');
 
     result := eval_link(PL.look[1]);
-    CP := result as TVChainPointer;
 
     for i := 2 to PL.High do begin
         PL[i] := eval(PL[i]);
-        tmp := CP.look;
+        tmp := result.look;
         if tpCompoundIndexed(tmp) and vpIntegerNotNegative(PL.look[i])
-        then CP.add_index(PL.I[i])
+        then result.add_index(PL.I[i])
         else
             if tpCompoundIndexed(tmp) and vpSymbol_LAST(PL.look[i])
-            then CP.add_index((tmp as TVCompound).Count-1)
+            then result.add_index((tmp as TVCompound).Count-1)
             else
                 if tpRecord(tmp) and tpSymbol(PL.look[i])
-                then CP.add_index((tmp as TVRecord).get_n_of(PL.uname[i]))
+                then result.add_index((tmp as TVRecord).get_n_of(PL.uname[i]))
                 else
                     if tpNIL(PL.look[i])
                     then begin
                         result.Free;
-                        result := TVList.Create;
+                        result := TVChainPointer.Create(
+                            NewVariable(TVList.Create, true));
                         exit;
                     end
                     else
@@ -3229,21 +3222,19 @@ begin
 end;
 
 
-function TEvaluationFlow.opl_last(PL: TVList): TValue;
-var i: integer; CP: TVChainPointer;
+function TEvaluationFlow.opl_last(PL: TVList): TVChainPointer;
 begin
     result := nil;
     result := eval_link(PL[1]);
-    CP := result as TVChainPointer;
 
-    if not tpCompoundIndexed(CP.look)
-    then raise ELE.Create(CP.look.AsString + ' is not indexed compound');
+    if not tpCompoundIndexed(result.look)
+    then raise ELE.Create(result.look.AsString + ' is not indexed compound');
 
-    CP.add_index((CP.look as TVCompound).Count-1);
+    result.add_index((result.look as TVCompoundIndexed).Count-1);
 end;
 
 
-function TEvaluationFlow.eval_link(P: TValue): TValue;
+function TEvaluationFlow.eval_link(P: TValue): TVChainPointer;
 var i: integer;
 begin try
     //эта функция должна попытаться вычислить указатель на место
@@ -3251,18 +3242,16 @@ begin try
     //то создать новую константу, содержащую значение выражения, и вернуть
     //указатель на неё
 
-    //WriteLn('eval_link>> ', P.AsString);
     if tpOrdinarySymbol(P) then begin
         i := stack.index_of((P as TVSymbol).uname);
         //TODO: константы не защищены от изменения элементов
         if stack.stack[i].V.V is TVChainPointer
-        then result := stack.stack[i].V.V.Copy
+        then result := stack.stack[i].V.V.Copy as TVChainPointer
         else result := TVChainPointer.Create(RefVariable(stack.stack[i].V));
         exit;
     end;
 
     if tpSelfEvaluating(P) then begin
-        //result := P.Copy;
         result := TVChainPointer.Create(NewVariable(P.Copy, true));
         exit;
     end;
@@ -3278,7 +3267,6 @@ begin try
             end;
             exit;
         end;
-        //result := eval(P.copy);
         result := TVChainPointer.Create(NewVariable(eval(P.Copy), true));
         exit;
     end;
@@ -3323,7 +3311,7 @@ end;
 function TEvaluationFlow.op_push                    (PL: TVList): TValue;
 var i: integer; CP: TVChainPointer;
 begin
-    CP := eval_link(PL.look[1]) as TVChainPointer;
+    CP := eval_link(PL.look[1]);
 try
     if CP.constant then raise ELE.Create('target is not variable');
     if not tpList(CP.look) then raise ELE.Create('target is not list');
@@ -3337,15 +3325,14 @@ end;
 function TEvaluationFlow.op_pop                     (PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
-    PL[1] := eval_link(PL.look[1]);
-
-    if PL.look[1] is TVChainPointer then begin
-        CP := PL.look[1] as TVChainPointer;
-        if CP.constant then raise ELE.Create('target is not variable');
-        if not tpList(CP.look) then raise ELE.Create('target is not list');
-        result := (cp.look as TVList).POP;
-    end
-        else raise ELE.Create('target is not variable');
+    CP := eval_link(PL.look[1]);
+try
+    if CP.constant then raise ELE.Create('target is not variable');
+    if not tpList(CP.look) then raise ELE.Create('target is not list');
+    result := (cp.look as TVList).POP;
+finally
+    CP.Free;
+end;
 end;
 
 function TEvaluationFlow.op_const                   (PL: TVList): TValue;
@@ -3391,8 +3378,7 @@ begin
     try
         tmp := nil;
         tmp := opl_elt(PL);
-        //TODO: операторы, использующие eval_link не должны больше проверять возвращаемое значение на принадлежность к TVChainPointer
-        //теперь eval_link всегда возвращает указатель
+
         if tmp is TVChainPointer
         then result := (tmp as TVChainPointer).value
         else result := tmp.Copy;
@@ -3439,27 +3425,17 @@ begin
 end;
 
 function TEvaluationFlow.op_set                     (PL: TVList): TValue;
-var obj: TVCompound; P :PVariable; index, i: integer;
-    tmp: TValue;
+var CP :TVChainPointer;
 begin try
     //TODO: set не падает если устанавливает параметр функции переданный по значению
-    tmp := nil;
-    //WriteLn(PL.asstring);
-    if PL.Count<3 then
-        raise ELE.InvalidParameters;
+    if (PL.Count<3) or (PL.Count>3) then raise ELE.InvalidParameters;
 
-    tmp := eval_link(PL.look[1]);
-
-    if tmp is TVChainPointer then begin
-        if (tmp as TVChainPointer).constant then raise ELE.Create('target is not variable');
-        (tmp as TVChainPointer).set_target(eval(PL[2]));
-        result := TVT.Create;
-    end
-    else
-        raise ELE.Create('target is not variable');
-
+    CP := eval_link(PL.look[1]);
+    if CP.constant then raise ELE.Create('target is not variable');
+    CP.set_target(eval(PL[2]));
+    result := TVT.Create;
 finally
-    FreeAndNil(tmp);
+    FreeAndNil(CP);
 end end;
 
 function TEvaluationFlow.op_structure               (PL: TVList): TValue;
@@ -3554,7 +3530,7 @@ begin
     if (PL.count<3) or not tpOrdinarySymbol(PL.look[1])
     then raise ELE.Create('malformed FOR');
 
-    CP := eval_link(PL.look[2]) as TVChainPointer;
+    CP := eval_link(PL.look[2]);
 
     if tpCompoundIndexed(CP.look) then op_var := sequence
     else
@@ -3806,7 +3782,7 @@ begin try
     if PL.Count<3 then raise ELE.InvalidParameters;
     for i := 2 to PL.high do PL[i] := eval(PL[i]);
 
-    CP := eval_link(PL.look[1]) as TVChainPointer;
+    CP := eval_link(PL.look[1]);
     if CP.constant then raise ELE.Create('target is not variable');
     if CP.look is TVString
     then
@@ -3974,93 +3950,25 @@ begin
     end;
 end;
 
-{$DEFINE BIND_LINKS}
-function TEvaluationFlow.bind_procedure_parameters(
-                            PL: TVList; sign: TSubprogramSignature): boolean;
-var i, j, key_start:integer;
-    rest: TVList;
-    tmp: TValue;
-    key_found: boolean;
-
-begin
-    //Write('bind >>'); print_stdout_ln(PL);
-
-    key_start := -1;
-    for i:=0 to Length(sign)-1 do begin
-        case sign[i].m of
-            spmNec:
-                if PL.Count>= i+1
-                then begin
-                    {$IFDEF BIND_LINKS}
-                    stack.new_var(sign[i].n, eval_link(PL.look[i+1]));
-                    {$ELSE BIND_LINKS}
-                    if tpOrdinarySymbol(PL.look[i+1])
-                    then stack.bind_var(sign[i].n, PL.name[i+1])
-                    else stack.new_var(sign[i].n, eval(PL[i+1]))
-                    {$ENDIF}
-                end
-                else Assert(false, 'Нехватает обязательных параметров');
-            spmOpt:
-                if PL.Count>= i+1+1
-                then stack.new_var(sign[i].n, eval(PL[i+1]))
-                else stack.new_var(sign[i].n, TVList.Create);
-            spmRest: begin
-                rest := (PL as TVList).subseq(i+1, PL.Count) as TVList;
-                for j := 0 to Rest.Count-1 do rest[j] := eval(rest[j]);
-                stack.new_var(sign[i].n, rest);
-            end;
-            spmKey: begin
-                if key_start<0 then key_start := i+1;
-                key_found := false;
-                for j := 0 to ((PL.Count-key_start) div 2) -1 do
-                    if (PL.look[key_start+j*2] is TVSymbol)
-                        and (UpperCaseU(PL.name[key_start+j*2])=
-                            ':'+UpperCaseU(sign[i].n))
-                    then begin
-                        stack.new_var(sign[i].n, PL[key_start+j*2+1]);
-                        key_found := true;
-                    end;
-                if not key_found then stack.new_var(sign[i].n, TVList.Create);
-            end;
-        end;
-    end;
-   // stack.Print(78);
-    result := true;
-end;
-
 function TEvaluationFlow.bind_procedure_parameters_to_stack(PL: TVList;
     sign: TSubprogramSignature; ts: TVSymbolStack): boolean;
 var i, j, key_start:integer;
     rest: TVList;
     key_found: boolean;
     procedure bind(n: unicodestring; FP: TValue);
-    var tmp: TValue;
+    var CP: TVChainPointer;
     begin
-        tmp := eval_link(FP);
-        //if tmp is TVPointer
-        //then begin
-        //    if (tmp as TVPointer).look is TVProcedure and
-        //        not ((tmp as TVPointer).look as TVProcedure).evaluated
-        //    then procedure_complement((tmp as TVPointer).look);
-        //    ts.new_var(n, tmp, false);
-        //end
-        //else
-            if tmp is TVChainPointer then begin
-                if (tmp as TVChainPointer).look is TVProcedure and
-                not ((tmp as TVChainPointer).look as TVProcedure).evaluated
-                then procedure_complement((tmp as TVChainPointer).look);
-                ts.new_var(n, tmp, false);
-            end
-            else begin
-                if tmp is TVProcedure and not (tmp as TVProcedure).evaluated
-                then procedure_complement(tmp);
-                ts.new_var(n, tmp, true)
-            end;
+        CP := eval_link(FP);
+
+        if CP.look is TVProcedure and not (CP.look as TVProcedure).evaluated
+        then procedure_complement(CP.look);
+
+        ts.new_var(n, CP, false);
     end;
 
 begin
-    assert((PL.look[0] as TVProcedure).evaluated, 'выполнение недовычисленной процедуры '+
-        PL.look[0].AsString);
+    assert((PL.look[0] as TVProcedure).evaluated,
+                'выполнение недовычисленной процедуры ' + PL.look[0].AsString);
 
     //Write('bind >>'); print_stdout_ln(PL);
     key_start := -1;
@@ -4069,13 +3977,7 @@ begin
             spmNec:
                 if PL.Count>= i+1
                 then begin
-                    {$IFDEF BIND_LINKS}
                     bind(sign[i].n, PL.look[i+1]);
-                    {$ELSE BIND_LINKS}
-                    if tpOrdinarySymbol(PL.look[i+1])
-                    then ts.new_ref(sign[i].n, stack.find_ref(PL.uname[i+1]))
-                    else ts.new_var(sign[i].n, eval(PL[i+1]))
-                    {$ENDIF}
                 end
                 else raise ELE.InvalidParameters;
             spmOpt:
@@ -4345,13 +4247,9 @@ begin try
                 if tpProcedure(PV.V) and not (PV.V as TVProcedure).evaluated
                 then procedure_complement(PV.V);
 
-                //if PV.V is TVPointer
-                //then result := (PV.V as TVPointer).value
-                //else
-                    if PV.V is TVChainPointer
-                    then result := (PV.V as TVChainPointer).value
-                    else
-                        result := PV.V.Copy;
+                if PV.V is TVChainPointer
+                then result := (PV.V as TVChainPointer).value
+                else result := PV.V.Copy;
             finally
                 ReleaseVariable(PV);
             end;
