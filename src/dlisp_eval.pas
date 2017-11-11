@@ -56,7 +56,6 @@ type
         function op_goto(PL: TVList): TValue;
         function op_if(PL: TVList): TValue;
         function op_if_nil(PL: TVList): TValue;
-        function op_in_sequence(PL: TVList): TValue;
         function op_last(PL: TVList): TValue;
         function op_let(PL: TVList): TValue;
         function op_map(PL: TVList): TValue;
@@ -3022,7 +3021,6 @@ begin
             oeGOTO      : op('(GOTO a)');
             oeIF        : op('(IF c t e)');
             oeIF_NIL    : op('(IF-NIL c d)');
-            oeIN_SEQUENCE: op('(IN-SEQUENCE l e :rest b)');
             oeLAST      : op('(LAST l)');
             oeLET       : op('(LET ((s v)))');
             oeMACRO     : op('(MACRO m :rest b)');
@@ -3669,41 +3667,6 @@ begin
             else result := PL[1];
         end;
         0: raise ELE.InvalidParameters;
-    end;
-end;
-
-function TEvaluationFlow.op_in_sequence(PL: TVList): TValue;
-var i, frame_start, high_i: integer; CP: TVChainPointer; V: TValue;
-begin
-    //оператор цикла возвращает NIL в случае завершения и последнее значение
-    //итерируемой переменной в случае досрочного прерывания оператором (BREAK)
-    //это упрощает написание функций поиска
-
-    if (PL.count<3) or not tpOrdinarySymbol(PL.look[2]) then raise ELE.InvalidParameters;
-
-    CP := eval_link(PL.look[1]) as TVChainPointer;
-    if not tpCompoundIndexed(CP.look) then raise ELE.InvalidParameters;
-    high_i := (CP.look as TVCompoundIndexed).high;
-    CP.add_index(0);
-    frame_start := stack.Count;
-
-    V := nil;
-    result := nil;
-    try
-        stack.new_var(PL.uname[2], CP);
-        for i := 0 to high_i do begin
-            CP.set_last_index(i);
-            FreeAndNil(V);
-            V := oph_block(PL, 3, true);
-            if tpBreak(V) then begin
-                result := CP.value;
-                break;
-            end;
-        end;
-        if result = nil then result := TVList.Create;
-    finally
-        FreeAndNil(V);
-        stack.clear_frame(frame_start);
     end;
 end;
 
@@ -4422,7 +4385,6 @@ begin try
                     oeGOTO      : result := op_goto(V as TVList);
                     oeIF        : result := op_if(V as TVList);
                     oeIF_NIL    : result := op_if_nil(V as TVList);
-                    oeIN_SEQUENCE: result := op_in_sequence(V as TVList);
                     oeLAST      : result := op_last(V as TVList);
                     oeLET       : result := op_let(V as TVList);
                     oeMACRO     : result := op_procedure(V as TVList);

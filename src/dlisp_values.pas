@@ -558,7 +558,6 @@ type
             oeGOTO,
             oeIF,
             oeIF_NIL,
-            oeIN_SEQUENCE,
             oeLAST,
             oeLET,
             oeMACRO,
