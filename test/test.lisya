@@ -224,6 +224,21 @@
     (assertion (= (elt s1 :name) "s1") "elt name")
     (assertion (= (elt s1 :value) (elt s2 :value)) "= elt s1 s2"))
 
+(log \DEFAULT)
+(block "DEFAULT"
+    (var a 5)
+    (default a 6)
+    (assertion (= 5 a) "default not nil var")
+    (var b)
+    (default b 3)
+    (assertion (= b 3) "default nil var")
+    (const c 1)
+    (default c 2)
+    (assertion (= 1 c) "default not nil const")
+    (const d nil)
+    (default d 7)
+    (assertion (= 7 d) "default nil const"))
+
 
 (log \STREAM)
 (block 

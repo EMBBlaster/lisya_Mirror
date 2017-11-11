@@ -124,7 +124,6 @@ begin
     result := V is TVInteger;
 end;
 
-
 function tpRange(V: TValue): boolean;
 begin
     result := V is TVRange;
@@ -369,7 +368,6 @@ begin
     result := V is TVStreamPointer;
 end;
 
-
 function tpRecord(V: TValue): boolean;
 begin
     result := V is TVRecord;
@@ -377,10 +375,7 @@ end;
 
 function tpCompoundIndexed(V: TValue): boolean;
 begin
-    result := (V is TVList)
-        or (V is TVString)
-        or (V is TVSymbolStack)
-        or (V is TVByteVector);
+    result := (V is TVCompoundIndexed);
 end;
 
 function tpByteVector(V: TValue): boolean;
@@ -769,81 +764,6 @@ begin
     else result := TVError.Create(ec, msg+'  '+PL.AsString());
 end;
 
-//type TVarNameList = array of unicodestring;
-//function find_external_symbols(VL: TVList;
-//    var vars:): TVarnameList;
-//var
-//    vars: TVarNameList;
-//    refs: TVarNameList;
-//    eref: TVarNameList;
-//    procedure add_var(n: unicodestring);
-//    begin
-//        SetLength(vars, Length(vars)+1);
-//        vars[high(vars)] := UpperCaseU(n);
-//    end;
-//    function is_var(n: unicodestring): boolean;
-//    var i :integer; un: unicodestring;
-//    begin
-//        result := false;
-//        un := UpperCaseU(n);
-//        for i := 0 to high(vars) do
-//            if un=vars[i] then begin result := true; break; end;
-//    end;
-//    procedure add_ref(n: unicodestring);
-//    begin
-//        SetLength(refs, Length(refs)+1);
-//        refs[high(refs)] := n;
-//    end;
-//    procedure reg_ref(n: unicodestring);
-//    begin
-//        if not is_var(n) then add_ref(n);
-//    end;
-//    i, j: integer;
-//label
-//    return;
-//begin
-//    result := nil;
-//    vars := nil;
-//    refs := nil;
-//    if tpNIL(VL)
-//    then goto return;
-//    else
-//        if VL.look[0] is TVSymbol
-//        then
-//            if (UpperCaseU(VL.name[0])='EVAL') or (UpperCaseU(VL.name[0])='QUOTE')
-//            then goto return;
-//            else
-//                if UpperCaseU(VL.name[0])='VAR'
-//                then begin
-//                    add_var(VL.name[1])
-//                    goto return;
-//                end
-//                else
-//                    if (UpperCaseU(VL.name[0])='PROCEDURE')
-//                        or (UpperCaseU(VL.name[0])='FUNCTION')
-//                        or (UpperCaseU(VL.name[0])='LAMBDA')
-//                    then begin
-//                        for i := 0 to (VL.look[1] as TVList).count-1 do
-//                            if tpOrdynarySymbol((VL.look[1] as TVList).look[i])
-//                            then add_var((VL.look[1] as TVList).name[i]);
-//                        goto return;
-//                    end
-//                    else
-//                        for i := 0 to VL.count -1 do
-//                            if tpOrdynarySymbol(VL.look[i])
-//                            then reg_ref(VL.name[i])
-//                            else
-//                                if tpList(VL.look[i])
-//                                then begin
-//                                    eref := find_external_symbols(VL[i]);
-//                                    for j := 0 to TP
-//
-//
-//
-//return:
-//    if refs<> nil then result := refs;
-//    VL.Free;
-//end;
 
 function invalid_parameters(VL: TVList; msg: unicodestring): TVError;
 begin
@@ -882,19 +802,6 @@ begin
        Dec(i, 2);
     end;
 
-//    for i := L.High-1 downto 0 do
-//        if tpSymbol(L.look[i]) and (key=(L.uname[i]))
-//        then
-//            //if (i+1)<=(L.Count-1)
-//            //then
-//            begin
-//                result := L[i+1];
-//                exit;
-//            end;
-//            //else begin
-////                result :=  out_of_bounds(L, key);
-//  //              exit;
-//    //        end;
     result := TVList.Create;
 end;
 
@@ -925,7 +832,7 @@ function bind_parameters_list(PL: TVList; sign: TVList): TVList;
 var i: integer;
     mode: TSubprogramParmeterMode;
 const offset = 1;  //передаваемый список параметров первым пунктом будет
-                    //содержать имя функции и его надо проигнорироватm
+                    //содержать имя функции и его надо проигнорировать
 begin
     //TODO: bind_parameters_list не проверяет переданный список на наличие лишнего
     //print_stdout_ln(PL);
@@ -975,119 +882,6 @@ begin
         end;
 end;
 
-function types_valid(VL: TValueList; count_min, count_max: integer; types: array of TTypeName): boolean;
-var i,l: integer;
-label return;
-    function check_type(V: TValue; t: TTypeName): boolean;
-    begin
-        result :=
-            ((t=tnNumber) and ((V is TVInteger) or (V is TVFloat)))
-            or
-            ((t=tnInteger) and (V is TVInteger))
-            or
-            ((t=tnFloat) and (V is TVFloat))
-            or
-            ((t=tnString) and (V is TVString))
-            or
-            ((t=tnList) and (V is TVList))
-            or
-            ((t=tnAtom) and not ((V is TVList) and ((V as TVList).Count>0)))
-            or
-            ((t=tnSymbol) and (V is TVSymbol))
-    end;
-begin
-    result := false;
-    if (count_max>=0) and (Length(VL)>count_max) then goto return;
-    if Length(VL)<count_min then goto return;
-
-    if Length(VL)<length(types) then l := Length(VL) else l := length(types);
-
-    for i:=0 to l-1 do if not check_type(VL[i], types[i]) then goto return;
-
-    if Length(VL)>length(types) then
-        for i := Length(types) to length(VL)-1 do
-            if not check_type(VL[i], types[length(types)-1]) then goto return;
-
-    result := true;
-return:
-end;
-
-function types_valid2(VL: TVList; count_min, count_max: integer; types: array of TTypePredicate): boolean;
-var i,l: integer;
-label return;
-begin
-    result := false;
-    if (count_max>=0) and (VL.count>count_max) then goto return;
-    if VL.Count<count_min then goto return;
-
-    if VL.Count<length(types) then l := VL.Count else l := length(types);
-
-    for i:=0 to l-1 do if not types[i](VL[i]) then goto return;
-
-    if VL.Count>length(types) then
-        for i := Length(types) to VL.Count-1 do
-            if not types[high(types)](VL[i])
-                then goto return;
-
-    result := true;
-return:
-end;
-
-function types_valid3(var VL: TVList; var E: TValue; tp: array of const): integer;
-var i,l, p: integer;
-    case_n, cmax, cmin, tpc: integer;
-label return, next;
-begin
-    //  Эта функция проверяет переданный список параметров на предмет
-    // наличия ошибок (значений типа TVError) и соответствия параметров шаблону.
-    //  Если среди параметров есть ошибки первая из них возвращается через
-    // вариантный параметр E в вызвавшую функция где должна использоваться в
-    // качестве результата. Наличие ошибки сигнализируется возвратом значения -1
-    // через результат функции. Таким образом если каждая функция будет проверять
-    // свои параметры посредством этой, то ошибки будут распространяться
-    // назад по стеку вызовов.
-    //  Если ошибок в параметрах нет, то производится поиск подходящего шаблона
-    // номер первого подошедшего возвращается как результат. Если ни один не
-    // подошёл - возвращается 0.
-    //  Здесь применена новая для меня фича языка - параметр типа
-    //  "array of const". Со стороны вызывающей функции выглядит как открытый
-    // массив значений произвольного типа, но изнутри как массив TVarRec. Этот
-    // механизм не позволяет передавать массивы и записи.
-
-    //print_stdout(VL); write('  ');
-    if without_errors_in_parameters(VL, E)
-    then begin
-        case_n := 1;
-        p := 0;
-        while p<length(tp) do begin
-            assert((tp[p].VType=vtinteger) and (tp[p+1].VType=vtinteger),
-                'Нарушение структуры шаблона проверки типов');
-            cmin := tp[p].VInteger;
-            cmax := tp[p+1].VInteger;
-            if cmax>=cmin then tpc := cmax else tpc := cmin + 1;
-            assert(length(tp)>=(p+tpc+2),
-                'Нарушение структуры шаблона проверки типов');
-            if VL.Count<cmin then goto next;
-            if (cmax>=0) and (VL.count>cmax) then goto next;
-            if VL.Count<tpc then l := VL.Count else l := tpc;
-            for i:=0 to l-1 do
-                if not TTypePredicate(tp[p+2+i].VPointer)(VL[i])
-                then goto next;
-            if VL.Count>tpc then
-            for i := tpc to VL.Count-1 do
-                if not TTypePredicate(tp[p+2+tpc-1].VPointer)(VL[i])
-                    then goto next;
-            goto return;
-        next:
-            Inc(case_n);
-            p := p+2+tpc;
-        end;
-        case_n := 0;
-    end
-    else case_n := -1;
-return:
-    result := case_n;
-end;
 
 function valid_sign(const PL: TVList; var E: TValue; tp: array of const): integer;
 var i,l, p: integer;
@@ -1151,92 +945,6 @@ begin
 
 return:
     result := case_n;
-end;
-
-function sign_if(PL: TVList;
-                    const sign: array of TSubprogramParameterDescription;
-                    var E: TValue;
-                    const tp: array of TTypePredicate): integer;
-var i, j, key_start :integer;
-    key_found: boolean;
-    out_PL: TVList;
-    function pr_confirm(case_n: integer): boolean;
-    var i: integer;
-    begin
-        result := false;
-        for i := (case_n-1)*length(sign) to (case_n)*length(sign)-1 do
-        if not tp[i](out_PL[i mod Length(sign) + 1])
-        then exit;
-        result := true;
-    end;
-var case_count, case_n: integer;
-begin
-    //TODO: sign_if слишком длинная и нагруженаая функция
-    // При передаче сигнатуры имена требуются только для ключевых параметров,
-    //остальные сопоставляютя позиционно.
-    // Функция проверяет переданные параметры на соответствие переданной
-    //сигнатуре и предикатам. Частично дублируеn bind_procedure_parameters.
-    //Она тоже вначале проверяет на соответствие сигнатуре, эту чать нужно
-    //унифицировать.
-
-    //TODO: унифицировать и вынести привязку параметров по сигнатуре между sign_if и bind_procedure_parameters
-
-    Assert(((Length(tp) mod Length(sign))=0) and (Length(tp)>=Length(sign)),
-                            'Несоответствие длин сигнатур ' + PL.name[0]);
-    out_PL := TVList.Create((PL[0]));
-    E := nil;
-    key_start := -1;
-    for i:=0 to Length(sign)-1 do begin
-        case sign[i].m of
-            spmNec:
-                //TODO: не отлавливаются лишние обязательные параметры при вызове встроенных функций
-                if PL.Count> i+1
-                then out_PL.Add(PL[i+1])
-                else begin
-                    E := malformed(PL, 'нехватает обязательных параметров');
-                    break;
-                end;
-            spmOpt:
-                //TODO: не отлавливаются лишние опциональные параметры при вызове встроенных функций
-                if PL.Count> i+1
-                then out_PL.Add(PL[i+1])
-                else out_PL.Add(TVList.Create);
-            spmRest:
-                out_PL.Add(PL.Subseq(i+1, PL.Count));
-            spmKey: begin
-                //TODO: не отлавливаются лишние ключевые параметры при вызове встроенных функций
-                if key_start<0 then key_start := i+1;
-                key_found := false;
-                for j := 0 to ((PL.Count-key_start) div 2) -1 do
-                    if (PL.look[key_start+j*2] is TVSymbol)
-                        and (PL.uname[key_start+j*2]=':'+sign[i].n)
-                    then begin
-                        out_PL.Add(PL[key_start+j*2+1]);
-                        key_found := true;
-                    end;
-                if not key_found then out_PL.Add(TVList.Create);
-            end;
-        end;
-    end;
-
-    if without_errors_in_parameters(out_PL, E)
-    then begin
-        case_count := Length(tp) div Length(sign);
-        for case_n := 1 to case_count+1 do begin
-            if case_n>case_count then begin
-                E := invalid_parameters(PL, '');
-                break;
-            end;
-            if pr_confirm(case_n) then break;
-        end;
-    end;
-
-    if tpError(E)
-    then result := -1
-    else result := case_n;
-
-    PL.Clear;
-    PL.Append(out_PL);
 end;
 //------------------------------------------------------------------------------
 function params_is(PL: TVList;
@@ -1437,11 +1145,6 @@ begin
         if not result then break
     end;
 end;
-
-//function ifh_file_exists(filename: unicodestring): boolean;
-//begin
-//    result := fileExists(L.S[0]);
-//end;
 
 function ifh_predicate_template(PL: TVList; p: TTypePredicate): TValue;
 begin
@@ -3337,54 +3040,40 @@ end;
 
 function TEvaluationFlow.op_const                   (PL: TVList): TValue;
 begin
-    case valid_sign(PL, result{%H-}, [@tpOperator,
-        2,2,    @tpOrdinarySymbol, @tpAny,
-        1,1,    @tpOrdinarySymbol]) of
-        1: stack.new_var(PL.name[1], eval(PL[2]), true);
-        2: stack.new_var(PL.name[1], TVList.Create, true);
-        0: result := invalid_parameters(PL, '');
-    end;
-    if not tpError(result) then result := TVT.Create;
+    if (PL.Count<>3) or not tpOrdinarySymbol(PL.look[1])
+    then raise ELE.Create('malformed CONST');
+    stack.new_var(PL.name[1], eval(PL[2]), true);
+    result := TVT.Create;
 end;
 
 function TEvaluationFlow.op_default                 (PL: TVList): TValue;
+var CP: TVChainPointer;
 begin
-    //TODO: op_default не поддерживает работу с указателями
-    //вместо задания нового значения по указателю он перезаписывает
-    //значение переменной по указателю (возможно так и правильнее)
-    //непонятно должен ли default переопределять параметры переданные по ссылке
-    //кроме того может упасть если параметр функции к которому он применяется
-    // -- константа
-    case valid_sign(PL, result{%H-}, [@tpOperator,
-        2,2, @tpOrdinarySymbol, @tpAny]) of
-        1: begin
-            result := eval(PL[1]);
-            if tpNIL(result)
-            then begin
-                result.Free;
-                result := eval(PL[2]);
-                stack.set_var(PL.name[1], result.copy);
-            end;
-        end;
-        0: raise ELE.Create('invalid parameters');
-    end;
+    if (PL.Count<>3) or not tpOrdinarySymbol(PL.look[1])
+    then raise ELE.Create('malformed DEFAULT');
+
+    CP := eval_link(PL.look[1]);
+try
+    if tpNIL(CP.look)
+    then
+        if CP.constant
+        then stack.new_var(PL.uname[1], eval(PL[2]), true)
+        else CP.set_target(eval(PL[2]));
+
+    result := TVT.Create;
+finally
+    CP.Free;
+end;
 end;
 
 function TEvaluationFlow.op_elt                     (PL: TVList): TValue;
-var tmp: TValue;
+var CP: TVChainPointer;
 begin
-    if PL.Count<2 then raise ELE.Create('invalid parameters');
+    if PL.Count<2 then raise ELE.Create('malformed ELT');
 
-    try
-        tmp := nil;
-        tmp := opl_elt(PL);
-
-        if tmp is TVChainPointer
-        then result := (tmp as TVChainPointer).value
-        else result := tmp.Copy;
-    finally
-        tmp.Free;
-    end;
+    CP := opl_elt(PL);
+    result := CP.value;
+    CP.Free;
 end;
 
 function TEvaluationFlow.op_filter                  (PL: TVList): TValue;
@@ -3418,10 +3107,9 @@ end;
 
 function TEvaluationFlow.op_val                     (PL: TVList): TValue;
 begin
-    case params_is(PL, result{%H-}, [
-        tpOperator, tpOrdinarySymbol]) of
-        1: result := eval(PL[1]);
-    end;
+    if PL.Count<>2 then raise ELE.Create('malformed VAL');
+
+    result := eval(PL[1]);
 end;
 
 function TEvaluationFlow.op_set                     (PL: TVList): TValue;
@@ -3596,78 +3284,59 @@ end;
 
 function TEvaluationFlow.op_goto                    (PL: TVList): TValue;
 begin
-    case valid_sign(PL, result, [@tpOperator,
-            1, 1,  @tpSymbol]) of
-            1: result := TVGoto.Create(PL[1] as TVSymbol);
-            0: result := Invalid_Parameters(PL, 'GOTO');
-        end;
+    if (PL.Count<>2) or not tpSymbol(PL.look[1])
+    then raise ELE.Create('malformed GOTO');
+
+    result := TVGoto.Create(PL[1] as TVSymbol);
 end;
 
 function TEvaluationFlow.op_if                      (PL: TVList): TValue;
 begin
-   // write('>>>>> ');print_stdout_ln(PL);
+    if (PL.Count<3) or (PL.Count>4)
+        //TODO: эти проверки синтаксиса IF нужны только для более ясного сообщения об ошибке
+        //их отсутствие приведёт к падению с сообщением symbol not bound THEN/ELSE
+        //при условии, что переменные с такими именами не существуют
+        //or vpListHeaded_ELSE(PL.look[2])
+        //or ((PL.Count=4) and vpListHeaded_THEN(PL.look[3]))
+    then raise ELE.Create('malformed IF');
 
-    case valid_sign(PL, result, [@tpOperator,
-        2,3, @tpAny, @tpAny, @tpAny]) of
-        1: begin
-            PL[1] := eval(PL[1]);
+    PL[1] := eval(PL[1]);
 
-            if not tpNIL(PL.look[1])
-            then begin
-                if vpListHeaded_THEN(PL.look[2])
-                then result := oph_block(PL.L[2], 1, false)
-                else result := eval(PL[2]);
-            end
-            else
-                if PL.Count=4
-                then begin
-                    if vpListHeaded_ELSE(PL.look[3])
-                    then result := oph_block(PL.L[3], 1, false)
-                    else result := eval(PL[3]);
-                end
-                else result := TVList.Create;
-
-        end;
-        0: raise ELE.Create('malformed IF', 'syntax');
-    end;
+    if not tpNIL(PL.look[1])
+    then begin
+        if vpListHeaded_THEN(PL.look[2])
+        then result := oph_block(PL.L[2], 1, false)
+        else result := eval(PL[2]);
+    end
+    else
+        if PL.Count=4
+        then begin
+            if vpListHeaded_ELSE(PL.look[3])
+            then result := oph_block(PL.L[3], 1, false)
+            else result := eval(PL[3]);
+        end
+        else result := TVList.Create;
 end;
 
 function TEvaluationFlow.op_if_nil                  (PL: TVList): TValue;
 begin
-    case valid_sign(PL, result, [@tpOperator,
-        2,2,    @tpAny, @tpAny]) of
-        1: begin
-            PL[1] := eval(PL[1]);
-            if tpNIL(PL.look[1])
-            then result := eval(PL[2])
-            else result := PL[1];
-        end;
-        0: raise ELE.InvalidParameters;
-    end;
+    if PL.Count<>3 then raise ELE.Create('malformed IF-NIL');
+
+    PL[1] := eval(PL[1]);
+    if tpNIL(PL.look[1])
+    then result := eval(PL[2])
+    else result := PL[1];
 end;
 
 function TEvaluationFlow.op_last                    (PL: TVList): TValue;
-var tmp: TValue;
-begin try
-    if PL.Count<2 then raise ELE.InvalidParameters;
+var CP: TVChainPointer;
+begin
+    if PL.Count<>2 then raise ELE.Create('malformed LAST');
 
-    tmp := nil;
-    tmp := opl_last(PL);
-    //if tmp is TVPointer
-    //then begin
-    //    result := (tmp as TVPointer).value;
-    //    FreeAndNil(tmp);
-    //end
-    //else
-        if tmp is TVChainPointer then begin
-            result := (tmp as TVChainPointer).value;
-            FreeAndNil(tmp);
-        end
-        else result := tmp;
-except
-    tmp.Free;
-    raise;
-end; end;
+    CP := opl_last(PL);
+    result := CP.value;
+    CP.Free;
+end;
 
 function TEvaluationFlow.op_let(PL: TVList): TValue;
 var old_v, VPL: TVList; i, j: integer; names: TStringList;
@@ -3738,36 +3407,22 @@ end;
 function TEvaluationFlow.op_or                      (PL: TVList): TValue;
 var pc: integer;
 begin
-    case valid_sign(PL, result, [@tpOperator,
-        0,-1, @tpAny]) of
-        1: begin
-            result := TVT.Create;
-            for pc := 1 to PL.count-1 do begin
-                result.Free;
-                result := eval(PL[pc]);
-                if tpError(result) then exit;
-                if not tpNIL(result) then exit;
-            end;
-        end;
-        0: result := malformed(PL, '');
+    result := TVT.Create;
+    for pc := 1 to PL.count-1 do begin
+        FreeAndNil(result);
+        result := eval(PL[pc]);
+        if not tpNIL(result) then exit;
     end;
 end;
 
 function TEvaluationFlow.op_and                     (PL: TVList): TValue;
 var pc: integer;
 begin
-    case valid_sign(PL, result, [@tpOperator,
-        0,-1, @tpAny]) of
-        1: begin
-            result := TVList.Create;
-            for pc := 1 to PL.count-1 do begin
-                result.Free;
-                result := eval(PL[pc]);
-                if tpError(result) then exit;
-                if tpNIL(result) then exit;
-            end;
-        end;
-        0: result := malformed(PL, '');
+    result := TVList.Create;
+    for pc := 1 to PL.count-1 do begin
+        FreeAndNil(result);
+        result := eval(PL[pc]);
+        if tpNIL(result) then exit;
     end;
 end;
 
@@ -3850,15 +3505,15 @@ end;
 
 function TEvaluationFlow.op_var                     (PL: TVList): TValue;
 begin
-    // print_stdout_ln(PL);
-    case valid_sign(PL, result{%H-}, [@tpOperator,
-        2,2,    @tpOrdinarySymbol, @tpAny,
-        1,1,    @tpOrdinarySymbol]) of
-        1: stack.new_var(PL.name[1], eval(PL[2]));
+    if (PL.Count<2) or (PL.Count>3)
+        or not tpOrdinarySymbol(PL.look[1])
+    then raise ELE.Create('malformed VAR');
+
+    case PL.Count of
         2: stack.new_var(PL.name[1], TVList.Create);
-        0: result := invalid_parameters(PL, '');
+        3: stack.new_var(PL.name[1], eval(PL[2]));
     end;
-    if not tpError(result) then result := TVT.Create;
+    result := TVT.Create;
 end;
 
 function TEvaluationFlow.op_when(PL: TVList): TValue;
