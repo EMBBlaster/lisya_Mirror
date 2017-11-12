@@ -1511,6 +1511,16 @@ begin
     case params_is (PL, result, [
         tpString]) of
         1: if FileExists(PL.S[0])
+            then result := TVString.Create(ExpandFileName(PL.S[0]))
+            else result := TVList.create;
+    end;
+end;
+
+function if_directory_exists    (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is (PL, result, [
+        tpString]) of
+        1: if DirectoryExists(PL.S[0])
             then result := PL[0]
             else result := TVList.create;
     end;
@@ -1523,6 +1533,65 @@ begin
     for i := 2 to paramCount do
         (result as TVList).Add(TVString.Create(paramStr(i)));
 end;
+
+function if_change_directory    (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is (PL, result, [
+        tpString]) of
+        1: if SetCurrentDir(PL.S[0])
+            then result := TVT.Create
+            else raise ELE.Create('change-directory error: '+PL.S[0]);
+    end;
+end;
+
+function if_delete_file         (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is (PL, result, [
+        tpString]) of
+        1: if DeleteFile(PL.S[0])
+            then result := TVT.Create
+            else raise ELE.Create('delete-file error: '+PL.S[0]);
+    end;
+end;
+
+function if_rename_file         (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is (PL, result, [
+        tpString, tpString]) of
+        1: if RenameFile(PL.S[0], PL.S[1])
+            then result := TVT.Create
+            else raise ELE.Create('rename-file error: '+PL.S[0]);
+    end;
+end;
+
+function if_create_directory    (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is (PL, result, [
+        tpString]) of
+        1: if CreateDir(PL.S[0])
+            then result := TVT.Create
+            else raise ELE.Create('create-directory error: '+PL.S[0]);
+    end;
+end;
+
+function if_remove_directory    (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is (PL, result, [
+        tpString]) of
+        1: if RemoveDir(PL.S[0])
+            then result := TVT.Create
+            else raise ELE.Create('remove-directory error: '+PL.S[0]);
+    end;
+end;
+
+function if_guid                (const PL: TVList; ep: TEvalProc): TValue;
+var g: TGUID;
+begin
+    if CreateGUID(g)=0
+    then result := TVSymbol.Create(GUIDToString(g))
+    else raise ELE.Create('GUID error');
+end;
+
 
 function if_every               (const PL: TVList; ep: TEvalProc): TValue;
 var i, j, count: integer;
@@ -2567,7 +2636,7 @@ begin
     end;
 end;
 
-const int_dyn: array[1..94] of TInternalFunctionRec = (
+const int_dyn: array[1..101] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
 (n:'NUMBER?';               f:if_number_p;              s:'(a)'),
@@ -2609,7 +2678,14 @@ const int_dyn: array[1..94] of TInternalFunctionRec = (
 (n:'EXTRACT-FILE-NAME';     f:if_extract_file_name;     s:'(s)'),
 (n:'EXTRACT-FILE-PATH';     f:if_extract_file_path;     s:'(s)'),
 (n:'FILE-EXISTS';           f:if_file_exists;           s:'(n)'),
+(n:'DIRECTORY-EXISTS';      f:if_directory_exists;      s:'(d)'),
 (n:'COMMAND-LINE';          f:if_command_line;          s:'()'),
+(n:'CHANGE-DIRECTORY';      f:if_change_directory;      s:'(d)'),
+(n:'DELETE-FILE';           f:if_delete_file;           s:'(f)'),
+(n:'RENAME-FILE';           f:if_rename_file;           s:'(o n)'),
+(n:'CREATE-DIRECTORY';      f:if_create_directory;      s:'(d)'),
+(n:'REMOVE-DIRECTORY';      f:if_remove_directory;      s:'(d)'),
+(n:'GUID';                  f:if_guid;                  s:'()'),
 
 (n:'EVERY';                 f:if_every;                 s:'(p :rest l)'),
 (n:'SOME';                  f:if_some;                  s:'(p :rest l)'),
@@ -3339,7 +3415,7 @@ begin
 end;
 
 function TEvaluationFlow.op_let(PL: TVList): TValue;
-var old_v, VPL: TVList; i, j: integer; names: TStringList;
+var old_v, VPL: TVList; i, j: integer;
 begin
     //временно изменяет значение переменной, по завершении возвращает исходное
     //значение
@@ -3347,16 +3423,9 @@ begin
     then raise ELE.Create('malformed LET');
 
     VPL := PL.L[1];
-    //WriteLn('op_let>>',VPL.asString);
     try
         old_v := TVList.Create;
-        //names := TStringList.Create;
-
-        for i := 0 to VPL.High do begin
-           // names.Add(VPL.L[i].uname[0]);
-//            names.AddObject();
-            old_v.Add(eval(VPL.L[i][0]));
-        end;
+        for i := 0 to VPL.High do old_v.Add(eval(VPL.L[i][0]));
 
         try
             for i := 0 to VPL.High do
@@ -3365,12 +3434,10 @@ begin
 
             result := oph_block(PL,2, false);
         finally
-            //WriteLn('op_let>>',VPL.asString);
             for j := 0 to i-1 do stack.set_var(VPL.L[j].uname[0], old_v[j]);
         end;
     finally
         FreeAndNil(old_v);
-        //FreeAndNil(names);
     end;
 end;
 
@@ -3476,13 +3543,8 @@ begin
         else
             raise ELE.InvalidParameters;
 
-
-
     proc := TVProcedure.Create;
-    //if (PL.look[0] as TVOperator).op_enum=oeMACRO
-    //then WriteLn('macro')
-    //else WriteLn('proc');
-    proc.is_macro:= (PL.look[0] as TVOperator).op_enum=oeMACRO;
+    proc.is_macro := (PL.look[0] as TVOperator).op_enum=oeMACRO;
 
     result := proc;
     proc.stack_pointer := stack.count;
