@@ -161,10 +161,12 @@ type
     TVSymbol = class (TValue)
     private
         fname: unicodestring;
+        funame: unicodestring;
     public
         property name: unicodestring read fname;
-        function uname: unicodestring;
+        property uname: unicodestring read funame;
         constructor Create(S: unicodestring);
+        constructor CreateEmpty;
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
@@ -2067,7 +2069,9 @@ constructor TVInteger.Create(I: Int64); begin fI := I; end;
 
 function TVSymbol.Copy: TValue;
 begin
-    result := TVSymbol.Create(self.fname);
+    result := TVSymbol.CreateEmpty;
+    (result as TVSymbol).fname := self.fname;
+    (result as TVSymbol).funame := self.funame;
 end;
 
 function TVSymbol.AsString: unicodestring;
@@ -2075,19 +2079,19 @@ begin
     result := fname;
 end;
 
-function TVSymbol.uname: unicodestring;
+constructor TVSymbol.CreateEmpty;
 begin
-    result := UpperCaseU(fname);
+
 end;
 
 constructor TVSymbol.Create(S: unicodestring);
 begin
     fname := S;
+    funame := UpperCaseU(S);
 end;
 
 destructor TVSymbol.Destroy;
 begin
-    fname := '';
     inherited;
 end;
 

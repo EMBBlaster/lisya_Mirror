@@ -2557,7 +2557,6 @@ begin
     end;
 end;
 
-
 function if_sql_query           (const PL: TVList; ep: TEvalProc): TValue;
 var database: TVSQLPointer; rec: TVRecord; i,j: integer;
     bool_val: boolean; ucommand: unicodestring;
