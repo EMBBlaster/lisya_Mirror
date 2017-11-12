@@ -1220,6 +1220,22 @@ begin
     else result := TVList.Create;
 end;
 
+function if_structure_p         (const PL: TVList; ep: TEvalProc): TValue;
+var s: unicodestring; w,i: integer; lr: boolean; names: TStringList;
+begin
+    case params_is(PL, result, [
+        tpRecord, tpNIL,
+        tpRecord, tpRecord,
+        tpAny,       tpNIL,
+        tpAny,       tpRecord]) of
+        1: result := TVT.Create;
+        2: if (PL.look[0] as TVRecord).is_class(PL.look[1] as TVRecord)
+            then result := TVT.Create
+            else result := TVList.Create;
+        3,4: result := TVList.Create;
+    end;
+end;
+
 function if_add                 (const PL: TVList; ep: TEvalProc): TValue;
 var i: integer; fres: double; ires: Int64;
 begin
@@ -1507,11 +1523,17 @@ begin
 end;
 
 function if_file_exists         (const PL: TVList; ep: TEvalProc): TValue;
+var attr: DWORD;
 begin
     case params_is (PL, result, [
         tpString]) of
         1: if FileExists(PL.S[0])
-            then result := TVString.Create(ExpandFileName(PL.S[0]))
+            then begin
+                if (FileGetAttr(PL.S[0]) and faDirectory)<>0
+                then result := TVString.Create(
+                    IncludeTrailingPathDelimiter(ExpandFileName(PL.S[0])))
+                else result := TVString.Create(ExpandFileName(PL.S[0]));
+            end
             else result := TVList.create;
     end;
 end;
@@ -1922,25 +1944,40 @@ begin
 end;
 
 function if_directory           (const PL: TVList; ep: TEvalProc): TValue;
-var sr: TSearchRec; found: boolean; dir, fn: unicodestring;
+var sr: TSearchRec; found: boolean; dir, fn, wc: unicodestring;
+    exclude_files: boolean;
+    attr: DWORD;
 label next;
 begin
     case params_is(PL, result, [
         tpString]) of
         1: begin
-            dir := ExpandFileName(ExtractFileDir(PL.S[0]));
+            wc := PL.S[0];
+            if wc[Length(wc)]=dir_separator
+            then begin
+                SetLength(wc, Length(wc)-1);
+                exclude_files := true;
+            end
+            else exclude_files := false;
+
+            dir := ExpandFileName(ExtractFileDir(wc));
             result := TVList.Create;
-            found := findfirst(PL.S[0], faAnyFile, sr)=0;
+
+            found := findfirst(wc, faAnyFile, sr)=0;
             while found do begin
-                fn := dir+dir_separator+sr.name;
+                fn := IncludeTrailingPathDelimiter(dir)+sr.name;
                 if (sr.name='..') or (sr.name='.') then goto next;
+                if exclude_files and ((sr.Attr and faDirectory)=0)
+                    then goto next;
                 //TODO: не кросплатформенный способ обнаружения скрытых файлов
                 //if (((PL.Count>=3) and tpNIL(PL.look[2])) or (PL.Count=2))
                 //    and (sr.name[1]='.')
                 //then goto next;
-                if (sr.Attr and faDirectory)>0
-                then (result as TVList).Add(TVString.Create(fn+dir_separator))
-                else (result as TVList).Add(TVString.Create(fn));
+                if (sr.Attr and faDirectory)<>0
+                then (result as TVList).Add(
+                            TVString.Create(IncludeTrailingPathDelimiter(fn)))
+                else (result as TVList).Add(
+                            TVString.Create(fn));
                 next:
                 found := findNext(sr)=0;
             end;
@@ -2485,38 +2522,7 @@ begin
 end;
 
 
-function if_structure           (const PL: TVList; ep: TEvalProc): TValue;
-var i: integer; names: TStringList;
-begin
-    case params_is(PL, result, [
-        vpListSymbolValue]) of
-        1: begin
-            names := TStringList.Create;
-            names.capacity := PL.L[0].count div 2;
-            for i := 0 to PL.L[0].count div 2 - 1 do
-                names.Add(PL.L[0].uname[i*2]);
-            result := TVRecord.Create(names);
-            for i := 0 to PL.L[0].count div 2 - 1 do
-                (result as TVRecord).slot[PL.L[0].uname[i*2]] := PL.L[0][i*2+1];
-        end;
-    end;
-end;
 
-function if_structure_p         (const PL: TVList; ep: TEvalProc): TValue;
-var s: unicodestring; w,i: integer; lr: boolean; names: TStringList;
-begin
-    case params_is(PL, result, [
-        tpRecord, tpNIL,
-        tpRecord, tpRecord,
-        tpAny,       tpNIL,
-        tpAny,       tpRecord]) of
-        1: result := TVT.Create;
-        2: if (PL.look[0] as TVRecord).is_class(PL.look[1] as TVRecord)
-            then result := TVT.Create
-            else result := TVList.Create;
-        3,4: result := TVList.Create;
-    end;
-end;
 
 
 function if_xml_read_from_string(const PL: TVList; ep: TEvalProc): TValue;
@@ -2648,6 +2654,7 @@ const int_dyn: array[1..101] of TInternalFunctionRec = (
 (n:'KEYWORD?';              f:if_keyword_p;             s:'(a)'),
 (n:'STRING?';               f:if_string_p;              s:'(a)'),
 (n:'ERROR?';                f:if_error_p;               s:'(e)'),
+(n:'STRUCTURE?';            f:if_structure_p;           s:'(s :optional t)'),
 
 (n:'+';                     f:if_add;                   s:'(:rest n)'),
 (n:'-';                     f:if_sub;                   s:'(a :optional b)'),
@@ -2688,7 +2695,6 @@ const int_dyn: array[1..101] of TInternalFunctionRec = (
 
 (n:'EVERY';                 f:if_every;                 s:'(p :rest l)'),
 (n:'SOME';                  f:if_some;                  s:'(p :rest l)'),
-//(n:'LAST';                  f:if_last;                  s:'(a)'),
 (n:'CAR';                   f:if_car;                   s:'(l)'),
 (n:'SUBSEQ';                f:if_subseq;                s:'(s b :optional e)'),
 
@@ -2698,7 +2704,6 @@ const int_dyn: array[1..101] of TInternalFunctionRec = (
 (n:'MEMBER';                f:if_member;                s:'(l e)'),
 (n:'POSITION';              f:if_position;              s:'(l e)'),
 (n:'LENGTH';                f:if_length;                s:'(l)'),
-//(n:'ELT';                   f:if_elt;                   s:'(l n)'),
 (n:'LIST';                  f:if_list;                  s:'(:rest e)'),
 (n:'CONCATENATE';           f:if_concatenate;           s:'(:rest a)'),
 (n:'KEY';                   f:if_key;                   s:'(l k)'),
@@ -2746,10 +2751,6 @@ const int_dyn: array[1..101] of TInternalFunctionRec = (
 (n:'LST';                   f:if_fmt_list;              s:'(l :optional s b e)'),
 (n:'UPPER-CASE';            f:if_upper_case;            s:'(s)'),
 (n:'LOWER-CASE';            f:if_lower_case;            s:'(s)'),
-
-//(n:'STRUCTURE';             f:if_structure;             s:'(:rest a)'),
-//(n:'STRUCTURE-AS';          f:if_structure_as;          s:'(t :rest a)'),
-(n:'STRUCTURE?';            f:if_structure_p;           s:'(s :optional t)'),
 
 (n:'XML:READ-FROM-STRING';  f:if_xml_read_from_string;  s:'(s)'),
 
