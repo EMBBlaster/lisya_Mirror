@@ -831,20 +831,6 @@ begin
             end;
 end;
 
-//function without_errors_in_parameters(PL: TValue; var E: TValue): boolean;
-//var i: integer;
-//begin
-//    if tpError(E) then raise ELE.InvalidParameters; //begin result := false; Exit; end;
-//    result := true;
-//    for i:= 0 to (PL as TVList).Count-1 do
-//        if tpError((PL as TVList).look[i]) then begin
-//            result := false;
-//            raise ELE.InvalidParameters;
-//            //E := (PL as TVList)[i] as TValue;
-//            break;
-//        end;
-//end;
-//
 
 function valid_sign(const PL: TVList; var E: TValue; tp: array of const): integer;
 var i,l, p: integer;
@@ -1324,6 +1310,27 @@ begin
         1: result := TVRange.Create(PL.I[0], PL.I[1]);
         2: result := TVRange.Create(0, (PL.Look[0] as TVCompound).Count);
         3: result := TVRange.Create(0, PL.I[0]);
+    end;
+end;
+
+function if_symbol              (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpString]) of
+        1: if (Pos(' ',PL.S[0])>0)
+                or (Pos(#9,PL.S[0])>0)
+                or (Pos(#10,PL.S[0])>0)
+                or (Pos(#13,PL.S[0])>0)
+                or (Pos('\',PL.S[0])>0)
+                or (Pos('/',PL.S[0])>0)
+                or (Pos('(',PL.S[0])>0)
+                or (Pos(')',PL.S[0])>0)
+                or (Pos('#',PL.S[0])>0)
+                or (Pos(';',PL.S[0])>0)
+                or (Pos('"',PL.S[0])>0)
+                or (Pos('''',PL.S[0])>0)
+            then raise ELE.Create('invalid symbol name', 'syntax')
+            else result := TVSymbol.Create(PL.S[0]);
     end;
 end;
 
@@ -2578,7 +2585,7 @@ begin
     end;
 end;
 
-const int_dyn: array[1..100] of TInternalFunctionRec = (
+const int_dyn: array[1..101] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
 (n:'NUMBER?';               f:if_number_p;              s:'(a)'),
@@ -2604,6 +2611,7 @@ const int_dyn: array[1..100] of TInternalFunctionRec = (
 (n:'SQRT';                  f:if_sqrt;                  s:'(a)'),
 (n:'ROUND';                 f:if_round;                 s:'(a)'),
 (n:'RANGE';                 f:if_range;                 s:'(l :optional h)'),
+(n:'SYMBOL';                f:if_symbol;                s:'(n)'),
 
 (n:'=';                     f:if_equal;                 s:'(a b)'),
 (n:'>';                     f:if_more;                  s:'(a b)'),
@@ -2616,6 +2624,7 @@ const int_dyn: array[1..100] of TInternalFunctionRec = (
 
 (n:'TEST-DYN';              f:if_test_dyn;              s:'(a :rest r)'),
 (n:'ERROR';                 f:if_error;                 s:'(:optional m c)'),
+
 
 (n:'EXTRACT-FILE-EXT';      f:if_extract_file_ext;      s:'(s)'),
 (n:'EXTRACT-FILE-NAME';     f:if_extract_file_name;     s:'(s)'),

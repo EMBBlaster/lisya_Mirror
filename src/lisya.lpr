@@ -7,7 +7,7 @@ uses
     {$ENDIF}
     lisya_repl,
     dlisp_eval,
-    dlisp_values, dlisp_read; //для отладки
+    dlisp_values, dlisp_read, lisya_packages; //для отладки
 
 
 begin
