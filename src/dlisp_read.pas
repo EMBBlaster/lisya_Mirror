@@ -159,6 +159,17 @@ begin
     result := true;
 end;
 
+function str_is_float(s: unicodestring; var f: double): boolean;
+var fs: TFormatSettings;
+begin
+    fs.DecimalSeparator:='.';
+    result := TryStrToFloat(s, f, fs);
+    if result then exit;
+
+    fs.DecimalSeparator:=',';
+    result :=  TryStrToFloat(s, f, fs);
+end;
+
 function is_nil(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).Count=0);
@@ -169,6 +180,7 @@ function read_u(sp: TVStreamPointer; ss_in: PSS = nil): TValue;
 var
     q, e, r, sq: boolean;
     p: integer;
+    f: double;
     i,l, h: Int64;
     ch: unicodechar;
     acc, trans: unicodestring;
@@ -264,19 +276,6 @@ begin
     end
     else
 
-    //if (Length(acc)>=3) and (acc[1]='/') and (acc[2]='(') and (acc[Length(acc)]=')')
-    //then begin
-    //    result := TVList.Create([TVSymbol.Create('LIST')]);
-    //    set_ss(acc[3..Length(acc)-1]);
-    //    vi := read_u(nil, @ss);
-    //    //vi.Print;
-    //    while not (vi is TVEndOfStream) do begin
-    //        (result as TVList).Add(vi);
-    //        vi := read_u(nil, @ss);
-    //    end;
-    //    vi.Free;
-    //end
-    //else
 
     if (length(acc)>=4) and (UpperCaseU(acc[1..3])='#S(') and (acc[Length(acc)]=')')
     then begin
@@ -337,8 +336,8 @@ begin
     then result := TVInteger.Create(StrToInt64(acc))
     else
 
-    if StrToFloatDef(acc,0)=StrToFloatDef(acc,1)
-    then result := TVFloat.Create(StrToFloat(acc))
+    if str_is_float(acc, f)
+    then result := TVFloat.Create(f)
     else
 
     if str_is_range(acc, l, h)
@@ -352,15 +351,6 @@ begin
     result := TVSymbol.Create(acc);
 end;
 
-
-//function read_from_string(s: unicodestring): TValue;
-//var
-//    ss: TStringStream;
-//begin
-//    ss := TStringStream.Create(s);
-//    result := read_s(ss);
-//    ss.free;
-//end;
 
 function read(str: TVStreamPointer): TValue;
 begin
