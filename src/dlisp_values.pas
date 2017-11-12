@@ -33,6 +33,8 @@ type
         EClass: unicodestring;
         constructor InvalidParameters;
         constructor Create(msg: unicodestring; ec: unicodestring='');
+        constructor Malformed(msg: unicodestring);
+        constructor Stream(msg: unicodestring);
         destructor Destroy; override;
     end;
     ELE                      = ELisyaError;
@@ -433,37 +435,7 @@ type
     end;
 
 
-type
-    TErrorClass = (ecOk, ecError, ecEoS, ecSyntax, ecConversion,
-        ecSymbolNotBound, ecInvalidParameters, ecMalformed,
-        ecOutOfBounds, ecAssertion, ecFileNotFound, ecStreamError,
-        ecXML, ecObjectNotCompound);
-    const ErrorClassName: array[TErrorClass] of unicodestring = (
-        'Ok',
-        'Error',
-        'end of stream',
-        'Syntax',
-        'Conversion',
-        'symbol not bound',
-        'invalid parameters',
-        'malformed',
-        'out of bounds',
-        'assertion',
-        'file not found',
-        'stream error',
-        'malformed XML',
-        'object not compound');
-
-type
-
-    TVError = class (TValue)
-        e: TErrorClass;
-        msg: unicodestring;
-        constructor Create(e: TErrorClass; msg: unicodestring);
-        destructor Destroy; override;
-        function Copy(): TValue; override;
-        function AsString(): unicodestring; override;
-    end;
+    { TVSubprogram }
 
     TSubprogramParmeterMode = (spmNec, spmOpt, spmKey, spmRest, spmFlag,
         spmCaptured);
@@ -474,7 +446,6 @@ type
     end;
     TSubprogramSignature = array of TSubprogramParameterDescription;
 
-    { TVSubprogram }
 
     TVSubprogram = class (TValue)
         //TODO: нужно пересмотреть дерево классов подпрограмм
@@ -649,8 +620,6 @@ procedure Assign(var v1, v2: TValue);
 
 function op_null(V: TValue): boolean;
 
-function op_is_error_class(V: TValue; e: TErrorClass): boolean;
-
 function NewVariable(_V: TValue = nil; _constant: boolean = false): PVariable;
 function RefVariable(P: PVariable): PVariable;
 procedure ReleaseVariable(var P: PVariable);
@@ -710,10 +679,6 @@ begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
 
-function op_is_error_class(V: TValue; e: TErrorClass): boolean;
-begin
-    result := (V is TVError) and ((V as TVError).e=e);
-end;
 
 { TVCompoundIndexed }
 
@@ -1070,6 +1035,18 @@ constructor ELisyaError.Create(msg: unicodestring; ec: unicodestring);
 begin
     inherited Create(msg);
     EClass := ec;
+end;
+
+constructor ELisyaError.Malformed(msg: unicodestring);
+begin
+    inherited Create('malformed '+msg);
+    EClass := 'syntax';
+end;
+
+constructor ELisyaError.Stream(msg: unicodestring);
+begin
+    inherited Create(msg);
+    EClass := 'stream';
 end;
 
 destructor ELisyaError.Destroy;
@@ -1968,26 +1945,6 @@ end;
 function TVFloat.F: double;
 begin
     result := fF;
-end;
-
-
-{ TVError }
-
-constructor TVError.Create(e: TErrorClass; msg: unicodestring);
-begin self.e:=e; self.msg:=msg; end;
-
-destructor TVError.Destroy;
-begin
-    msg := '';
-    inherited Destroy;
-end;
-
-function TVError.Copy: TValue;
-begin result := TVError.Create(e, msg); end;
-
-function TVError.AsString: unicodestring;
-begin
-    result := '#<ERROR ' + ErrorClassName[e] + ': ' + msg + ' >';
 end;
 
 

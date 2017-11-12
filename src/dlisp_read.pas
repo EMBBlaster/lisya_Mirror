@@ -12,7 +12,6 @@ uses
 
 
 
-//function read_s(str: TStream): TValue; overload;
 function read(str: TVStreamPointer): TValue; overload;
 function read_from_string(s: unicodestring): TValue;
 procedure print_stdout(V:TValue);
@@ -165,185 +164,7 @@ begin
     result := (V is TVList) and ((V as TVList).Count=0);
 end;
 
-function read_s(str: TStream): TValue;
-var
-    q, e, r: boolean;
-    p: integer;
-    l, h: Int64;
-    ch: unicodechar;
-    acc, trans: unicodestring;
-    ss: TStringStream;
-    vi, vi2: TValue;
 
-    function read_char: boolean;
-    var b1, b2: byte;
-    begin
-       // 110xxxxx 10xxxxxx
-       //TODO: считыватель обрабатывает только, двухбайтные символы
-        try
-            result := true;
-            b1:=str.ReadByte;
-            if b1>127
-            then b2 := str.ReadByte
-            else b2 := 0;
-            if b1>127
-            then ch := unicodechar(64*(b1 and 31) + (b2 and 63))
-            else ch := unicodechar(b1);
-        except
-            result := false;
-        end;
-    end;
-
-    procedure accum; begin if (not r) then acc := acc + ch; end;
-    function trim(s: unicodestring): unicodestring; begin trim:=Copy(s,2,length(s)-2); end;
-
-begin
-    q := false;
-    e := false;
-    p := 0;
-    r := false;
-    acc := '';
-    while read_char do begin
-        case ch of
-            ' ', #13, #10, #$FEFF, #8: begin
-                    if (not q) and (p<=0) and (acc<>'') then break;
-                    if q or (p>0) then accum;
-                    if (ch=#13) or (ch=#10) then r := false;
-                end;
-            '"': begin
-                    if (not r) then q := not q;
-                    accum;
-                end;
-            '(': begin
-                    if (not q) and (not r) then Inc(p);
-                    accum;
-                end;
-            ')': begin
-                    accum;
-                    if (not q) and (not r) then
-                    begin Dec(p); if p<=0 then break end;
-                end;
-            '\': begin
-                    if q and (not r) and (p<=0) then read_char;
-                    accum;
-                end;
-            ';': r := true;
-            else accum;
-        end;
-    end;
-
-    result := nil;
-    //writeln('>>', acc);
-    if acc=''
-    then result := TVError.Create(ecEoS, '')
-    else
-
-    if (Length(acc)>=2) and (acc[1]='"') and (acc[Length(acc)]='"')
-    then result := TVString.Create(trim(acc))
-    else
-
-    if (acc[1]='(') and (acc[Length(acc)]=')')
-    then begin
-        result := TVList.Create;
-        ss := TStringStream.Create(trim(acc));
-        vi := read_s(ss);
-        //vi.Print;
-        while not op_is_error_class(vi, ecEoS) do begin
-            (result as TVList).Add(vi);
-            vi := read_s(ss);
-        end;
-        vi.Free;
-        ss.Free;
-    end
-    else
-
-    if (acc[1]='/') and (acc[2]='(') and (acc[Length(acc)]=')')
-    then begin
-        result := TVList.Create([TVSymbol.Create('LIST')]);
-        ss := TStringStream.Create(acc[3..Length(acc)-1]);
-        vi := read_s(ss);
-        //vi.Print;
-        while not op_is_error_class(vi, ecEoS) do begin
-            (result as TVList).Add(vi);
-            vi := read_s(ss);
-        end;
-        vi.Free;
-        ss.Free;
-    end
-    else
-
-    if (length(acc)>=4) and (UpperCaseU(acc[1..3])='#S(') and (acc[Length(acc)]=')')
-    then begin
-        result := TVRecord.Create;
-        ss := TStringStream.Create(acc[4..Length(acc)-1]);
-        vi := read_s(ss);
-        vi2 := read_s(ss);
-        //TODO: при считывании структур игнорируется нечётный аргумент
-        while not (op_is_error_class(vi, ecEoS) or op_is_error_class(vi2, ecEoS))
-        do begin
-            if vi is TVSymbol
-            then (result as TVRecord).AddSlot((vi as TVSymbol).name, vi2)
-            else begin
-                result := TVError.Create(ecSyntax, '#S');
-                exit;
-            end;
-            FreeAndNil(vi);
-            vi := read_s(ss);
-            vi2 := read_s(ss);
-        end;
-        vi.Free;
-        vi2.Free;
-    end
-    else
-
-    if (Length(acc)>=2) and (acc[1]='\')
-    then begin
-        ss := TStringStream.Create(Copy(acc,2,length(acc)-1));
-        result := TVList.Create([TVSymbol.Create('QUOTE'), read_s(ss)]);
-        ss.Free;
-    end
-    else
-
-    if (acc[Length(acc)]=')') or (Pos(' ',acc)>0)
-    then result := TVError.Create(ecSyntax, acc)
-    else
-
-    if UpperCaseU(acc)='NIL'
-    then result := TVList.Create
-    else
-
-    if UpperCaseU(acc)='T'
-    then result := TVT.Create
-    else
-
-    if StrToInt64Def(acc,0)=StrToInt64Def(acc,1)
-    then result := TVInteger.Create(StrToInt64(acc))
-    else
-
-    if StrToFloatDef(acc,0)=StrToFloatDef(acc,1)
-    then result := TVFloat.Create(StrToFloat(acc))
-    else
-
-    if str_is_range(acc, l, h)
-    then result := TVRange.Create(l,h)
-    else
-
-    if str_is_elt_call(acc, trans)
-    then result := read_from_string(trans)
-    else
-
-    result := TVSymbol.Create(acc);
-
-    if result=nil then result := TVError.Create(ecSyntax,acc);
-end;
-
-
-//function read(str: TVStreamPointer): TValue;
-//begin
-//    result := read_s((str.body.V as TVStreamBody).fstream);
-//end;
-
-//TODO: вся функциональность считывателя реализована в read_u нужно удалить read_s
 function read_u(sp: TVStreamPointer; ss_in: PSS = nil): TValue;
 var
     q, e, r, sq: boolean;
@@ -422,7 +243,7 @@ begin
     result := nil;
     //writeln('>>', acc);
     if acc=''
-    then result := TVEndOfStream.Create //TVError.Create(ecEoS, '')
+    then result := TVEndOfStream.Create
     else
 
     if (Length(acc)>=2) and (acc[1]='"') and (acc[Length(acc)]='"')
@@ -470,10 +291,7 @@ begin
 
             if vi is TVSymbol
             then (result as TVRecord).AddSlot((vi as TVSymbol).name, vi2)
-            else begin
-                result := TVError.Create(ecSyntax, ss.s);
-                exit;
-            end;
+            else raise ELE.Create(vi.AsString+' is not symbol', 'syntax');
             FreeAndNil(vi);
             //vi2 здесь не освобождается потому что сохранено в слоте результата
             vi := read_u(nil, @ss);
@@ -504,7 +322,7 @@ begin
     else
 
     if (acc[Length(acc)]=')') or (Pos(' ',acc)>0)
-    then result := TVError.Create(ecSyntax, acc)
+    then raise ELE.Create(acc, 'syntax')
     else
 
     if UpperCaseU(acc)='NIL'
@@ -532,8 +350,6 @@ begin
     else
 
     result := TVSymbol.Create(acc);
-
-    if result=nil then result := TVError.Create(ecSyntax,acc);
 end;
 
 

@@ -159,10 +159,8 @@ begin
             //  если тег не закрытый, то ищется закрывающий
             tag_name := (node.look_name['N'] as TVString).S;
             if not find_closing_tag(s, tag_name, sr)
-            then begin
-                result := TVError.Create(ecXML, 'tag '+tag_name+' not closed');
-                exit;
-            end;
+            then raise ELE.Create('tag '+tag_name+' not closed', 'xml');
+
             node.slot['C'] := xml_read_from_string(S[sr.oe+1..sr.cs-1]);
         end;
         elts.Add(node);
