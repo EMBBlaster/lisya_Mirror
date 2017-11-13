@@ -537,6 +537,7 @@ type
             oeMACRO,
             oeMAP,
             oeOR,
+            oePACKAGE,
             oePOP,
             oePROCEDURE,
             oePUSH,

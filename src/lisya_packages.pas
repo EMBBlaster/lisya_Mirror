@@ -10,6 +10,13 @@ uses
     {$ENDIF}
     Classes, SysUtils, dlisp_values;
 
+//type
+//    TPackage = class
+//        name: unicodestring;
+//        uname: unicodestring;
+//        stack: TVSymbolStack;
+//    end;
+
 implementation
 
 type

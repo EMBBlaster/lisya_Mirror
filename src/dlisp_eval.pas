@@ -58,6 +58,7 @@ type
         function op_let(PL: TVList): TValue;
         function op_map(PL: TVList): TValue;
         function op_or(PL: TVList): TValue;
+        function op_package(PL: TVList): TValue;
         function op_pop(PL: TVList): TValue;
         function op_procedure(PL: TVList): TValue;
         function op_push(PL: TVList): TValue;
@@ -2698,7 +2699,6 @@ const int_dyn: array[1..104] of TInternalFunctionRec = (
 (n:'SYMBOL?';               f:if_symbol_p;              s:'(a)'),
 (n:'KEYWORD?';              f:if_keyword_p;             s:'(a)'),
 (n:'STRING?';               f:if_string_p;              s:'(a)'),
-//(n:'ERROR?';                f:if_error_p;               s:'(e)'),
 (n:'STRUCTURE?';            f:if_structure_p;           s:'(s :optional t)'),
 
 (n:'+';                     f:if_add;                   s:'(:rest n)'),
@@ -2845,6 +2845,7 @@ begin
             oeMACRO     : op('(MACRO m :rest b)');
             oeMAP       : op('(MAP f :rest l)');
             oeOR        : op('(OR :rest a)');
+            oePACKAGE   : op('(PACKAGE name export :rest body)');
             oePOP       : op('(POP l)');
             oePROCEDURE : op('(PROCEDURE p :rest b)');
             oePUSH      : op('(PUSH l e)');
@@ -2896,7 +2897,6 @@ begin
     main_stack := parent_stack;
     stack := main_stack;
 end;
-
 
 destructor TEvaluationFlow.Destroy;
 begin
@@ -3531,6 +3531,38 @@ begin
     end;
 end;
 
+function TEvaluationFlow.op_package(PL: TVList): TValue;
+var external_stack, package_stack: TVSymbolStack;
+    P: PVariable;
+    i: integer;
+begin
+    if (PL.Count<4)
+        or (not tpOrdinarySymbol(PL.look[1]))
+        or (not tpListOfOrdinarySymbols(PL.look[2]))
+    then raise ELE.Malformed('PACKAGE');
+
+    package_stack := base_stack.Copy as TVSymbolStack;
+    external_stack := stack;
+    stack := package_stack;
+    result := nil;
+try
+    result := oph_block(PL, 3, false);
+
+    for i := 0 to PL.L[2].high do begin
+        P := package_stack.find_ref_or_nil(PL.L[2].uname[i]);
+        if P=nil then raise ELE.Create(PL.L[2].uname[i]+
+            ' not bound in package '+PL.uname[1], 'symbol not bound');
+        external_stack.new_ref(PL.uname[1]+':'+PL.L[2].uname[i], P);
+    end;
+
+    Result.Free;
+    result := TVT.Create;
+finally
+    stack := external_stack;
+    package_stack.Free;
+end;
+end;
+
 
 
 function TEvaluationFlow.op_append(PL: TVList): TValue;
@@ -4039,6 +4071,7 @@ begin try
                     oeMACRO     : result := op_procedure(V as TVList);
                     oeMAP       : result := op_map(V as TVList);
                     oeOR        : result := op_OR(V as TVList);
+                    oePACKAGE   : result := op_package(V as TVList);
                     oePOP       : result := op_pop(V as TVList);
                     oePROCEDURE : result := op_procedure(V as TVList);
                     oePUSH      : result := op_push(V as TVList);
