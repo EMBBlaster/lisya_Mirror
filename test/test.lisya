@@ -260,6 +260,7 @@
 (execute-file "../test/macro_test.lisya")
 (execute-file "../test/sequence_test.lisya")
 (execute-file "../test/loop_test.lisya")
+(execute-file "../test/predicate_test.lisya")
 
 (log \ЗАВЕРШЕНО)
 exit

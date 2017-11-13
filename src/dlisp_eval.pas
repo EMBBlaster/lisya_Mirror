@@ -95,6 +95,7 @@ function execute_file(filename: unicodestring): boolean;
 implementation
 
 var root_evaluation_flow: TEvaluationFlow;
+    base_stack: TVSymbolStack;
 
 
 type TTypePredicate = function (V: TValue): boolean;
@@ -1082,7 +1083,7 @@ begin
     end;
 end;
 
-function ifh_predicate_template(PL: TVList; p: TTypePredicate): TValue;
+function ifh_predicate_template(PL: TVList; p: TTypePredicate): TValue; inline;
 begin
     if PL.count<>1 then raise ELE.Malformed('predicate');
 
@@ -1093,6 +1094,11 @@ end;
 function if_t_p                 (const PL: TVList; ep: TEvalProc): TValue;
 begin
     result := ifh_predicate_template(PL,    tpT        );
+end;
+
+function if_true_p              (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    result := ifh_predicate_template(PL,    tpTrue     );
 end;
 
 function if_nil_p               (const PL: TVList; ep: TEvalProc): TValue;
@@ -2585,8 +2591,9 @@ begin
     end;
 end;
 
-const int_dyn: array[1..101] of TInternalFunctionRec = (
+const int_dyn: array[1..102] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
+(n:'TRUE?';                 f:if_true_p;                s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
 (n:'NUMBER?';               f:if_number_p;              s:'(a)'),
 (n:'INTEGER?';              f:if_integer_p;             s:'(a)'),
@@ -2763,6 +2770,27 @@ begin
     for o := low(ops) to high(ops) do ops[o].s.Free;
 end;
 
+procedure fill_base_stack;
+var i: integer;
+begin
+    base_stack := TVSymbolStack.Create(nil);
+    for i := low(int_dyn) to high(int_dyn) do
+        base_stack.new_var(
+            int_dyn[i].n,
+            TVInternalFunction.Create(
+                    read_from_string(int_dyn[i].s) as TVList,
+                    int_dyn[i].f,
+                    int_dyn[i].n),
+            true);
+    //загрузка констант
+    base_stack.new_var('NL', TVString.Create(new_line), true);
+    base_stack.new_var('CR', TVString.Create(#10), true);
+    base_stack.new_var('LF', TVString.Create(#13), true);
+    base_stack.new_var('TAB', TVString.Create(#09), true);
+    base_stack.new_var('SPACE', TVString.Create(' '), true);
+end;
+
+
 {$DEFINE CHAINPOINTER}
 
 { TEvaluationFlow }
@@ -2777,6 +2805,7 @@ begin
     end;
 
    // V := read_from_string(int_dyn[86].s);
+
 
     main_stack := TVSymbolStack.Create(nil);
     stack := main_stack;
@@ -3990,12 +4019,13 @@ end;
 
 
 initialization
-    root_evaluation_flow := TEvaluationFlow.Create;
+    fill_base_stack;
+    root_evaluation_flow := TEvaluationFlow.Create(base_stack.Copy as TVSymbolStack);
     fill_ops_array;
 
 finalization
     clear_ops_array;
     root_evaluation_flow.Free;
-
+    base_stack.Free;
 end.
 

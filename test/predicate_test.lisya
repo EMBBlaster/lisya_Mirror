@@ -1,0 +1,17 @@
+﻿(fmt nil "предикаты... ")
+
+(block
+    (assertion (t? t) "t? t")
+    (assertion (not (t? 1)) "not t? 1")
+
+    (assertion (true? t) "true? t")
+    (assertion (true? 1) "true? 1")
+    (assertion (true? (list 1)) "true? list")
+    (assertion (not (true? ())) "true? nil")
+
+    (assertion (nil? ()) "nil? nil")
+    (assertion (not (nil? 1)) "not nil? 1")
+
+    )
+
+(log \успешно)
