@@ -32,7 +32,7 @@ type
         stack: TVSymbolStack;
         main_stack: TVSymbolStack;
 
-        constructor Create(parent_stack: TVSymbolStack = nil);
+        constructor Create(parent_stack: TVSymbolStack);
         destructor Destroy; override;
 
         function oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
@@ -1000,6 +1000,14 @@ begin
     if b then E := TVT.Create else E := TVList.Create;
 end;
 
+function DirSep(s: unicodestring): unicodestring;
+var buf: string;
+begin
+    buf := s;
+    DoDirSeparators(buf);
+    result := buf;
+end;
+
 function ifh_equal(const A,B: TValue): boolean;
 var type_v: (int, num, str, sym, t, lst, struct, any, bytevec); i: integer;
 begin
@@ -1161,13 +1169,6 @@ function if_string_p            (const PL: TVList; ep: TEvalProc): TValue;
 begin
     result := ifh_predicate_template(PL, tpString     );
 end;
-
-//function if_error_p             (const PL: TVList; ep: TEvalProc): TValue;
-//begin
-//    if tpError(PL.look[0])
-//    then result := TVT.Create
-//    else result := TVList.Create;
-//end;
 
 function if_structure_p         (const PL: TVList; ep: TEvalProc): TValue;
 var s: unicodestring; w,i: integer; lr: boolean; names: TStringList;
@@ -1488,23 +1489,26 @@ function if_extract_file_path   (const PL: TVList; ep: TEvalProc): TValue;
 begin
     case params_is(PL, result, [
         tpString]) of
-        1: result := TVString.Create(ExtractFilePath(PL.S[0]));
+        1: result := TVString.Create(DirSep(ExtractFilePath(PL.S[0])));
     end;
 end;
 
 function if_file_exists         (const PL: TVList; ep: TEvalProc): TValue;
-var attr: DWORD;
+var attr: DWORD; fn: unicodestring;
 begin
     case params_is (PL, result, [
         tpString]) of
-        1: if FileExists(PL.S[0])
+        1: begin
+            fn := DirSep(PL.S[0]);
+            if FileExists(fn)
             then begin
-                if (FileGetAttr(PL.S[0]) and faDirectory)<>0
+                if (FileGetAttr(fn) and faDirectory)<>0
                 then result := TVString.Create(
-                    IncludeTrailingPathDelimiter(ExpandFileName(PL.S[0])))
-                else result := TVString.Create(ExpandFileName(PL.S[0]));
+                    IncludeTrailingPathDelimiter(ExpandFileName(fn)))
+                else result := TVString.Create(ExpandFileName(fn));
             end
             else result := TVList.create;
+        end;
     end;
 end;
 
@@ -1512,8 +1516,8 @@ function if_directory_exists    (const PL: TVList; ep: TEvalProc): TValue;
 begin
     case params_is (PL, result, [
         tpString]) of
-        1: if DirectoryExists(PL.S[0])
-            then result := PL[0]
+        1: if DirectoryExists(DirSep(PL.S[0]))
+            then result := TVString.Create(DirSep(PL.S[0]))
             else result := TVList.create;
     end;
 end;
@@ -1530,7 +1534,7 @@ function if_change_directory    (const PL: TVList; ep: TEvalProc): TValue;
 begin
     case params_is (PL, result, [
         tpString]) of
-        1: if SetCurrentDir(PL.S[0])
+        1: if SetCurrentDir(DirSep(PL.S[0]))
             then result := TVT.Create
             else raise ELE.Create('change-directory error: '+PL.S[0]);
     end;
@@ -1540,7 +1544,7 @@ function if_delete_file         (const PL: TVList; ep: TEvalProc): TValue;
 begin
     case params_is (PL, result, [
         tpString]) of
-        1: if DeleteFile(PL.S[0])
+        1: if DeleteFile(DirSep(PL.S[0]))
             then result := TVT.Create
             else raise ELE.Create('delete-file error: '+PL.S[0]);
     end;
@@ -1550,7 +1554,7 @@ function if_rename_file         (const PL: TVList; ep: TEvalProc): TValue;
 begin
     case params_is (PL, result, [
         tpString, tpString]) of
-        1: if RenameFile(PL.S[0], PL.S[1])
+        1: if RenameFile(DirSep(PL.S[0]), DirSep(PL.S[1]))
             then result := TVT.Create
             else raise ELE.Create('rename-file error: '+PL.S[0]);
     end;
@@ -1560,7 +1564,7 @@ function if_create_directory    (const PL: TVList; ep: TEvalProc): TValue;
 begin
     case params_is (PL, result, [
         tpString]) of
-        1: if CreateDir(PL.S[0])
+        1: if CreateDir(DirSep(PL.S[0]))
             then result := TVT.Create
             else raise ELE.Create('create-directory error: '+PL.S[0]);
     end;
@@ -1570,7 +1574,7 @@ function if_remove_directory    (const PL: TVList; ep: TEvalProc): TValue;
 begin
     case params_is (PL, result, [
         tpString]) of
-        1: if RemoveDir(PL.S[0])
+        1: if RemoveDir(DirSep(PL.S[0]))
             then result := TVT.Create
             else raise ELE.Create('remove-directory error: '+PL.S[0]);
     end;
@@ -1920,7 +1924,7 @@ begin
     case params_is(PL, result, [
         tpString]) of
         1: begin
-            wc := PL.S[0];
+            wc := DirSep(PL.S[0]);
             if wc[Length(wc)]=dir_separator
             then begin
                 SetLength(wc, Length(wc)-1);
@@ -1974,7 +1978,7 @@ begin
         1: try
             prog_file := nil;
             res := nil;
-            prog_file := TVStreamPointer.Create(PL.S[0], fmRead, seBOM);
+            prog_file := TVStreamPointer.Create(DirSep(PL.S[0]), fmRead, seBOM);
             while true do begin
                 expr := nil;
                 expr := dlisp_read.read(prog_file);
@@ -2050,8 +2054,8 @@ begin
             if vpKeyword_BOM(PL.look[2]) then enc := seBOM else
                 enc:= seBOM;
 
-            if fileExists(PL.S[0]) or (mode <> fmRead)
-            then result := TVStreamPointer.Create(PL.S[0], mode, enc)
+            if fileExists(DirSep(PL.S[0])) or (mode <> fmRead)
+            then result := TVStreamPointer.Create(DirSep(PL.S[0]), mode, enc)
             else raise ELE.Create(PL.S[0], 'file not found');
         end;
     end;
@@ -2887,48 +2891,16 @@ end;
 
 { TEvaluationFlow }
 
-constructor TEvaluationFlow.Create(parent_stack: TVSymbolStack = nil);
-var i, n: integer; o: TOperatorEnum;  V: TValue;
+constructor TEvaluationFlow.Create(parent_stack: TVSymbolStack);
 begin
-    if parent_stack<> nil then begin
-        main_stack := parent_stack;
-        stack := main_stack;
-        Exit;
-    end;
-
-   // V := read_from_string(int_dyn[86].s);
-
-
-    main_stack := TVSymbolStack.Create(nil);
+    main_stack := parent_stack;
     stack := main_stack;
-    //exit;
-    //загрузка в стэк внутренних функций
-    for i := low(int_dyn) to high(int_dyn) do
-        stack.new_var(
-            int_dyn[i].n,
-            TVInternalFunction.Create(
-                    read_from_string(int_dyn[i].s) as TVList,
-                    int_dyn[i].f,
-                    int_dyn[i].n),
-            true);
-
-    //загрузка констант
-    stack.new_var('NL', TVString.Create(new_line), true);
-    stack.new_var('CR', TVString.Create(#10), true);
-    stack.new_var('LF', TVString.Create(#13), true);
-    stack.new_var('TAB', TVString.Create(#09), true);
-    stack.new_var('SPACE', TVString.Create(' '), true);
 end;
 
 
 destructor TEvaluationFlow.Destroy;
-var i: TOperatorEnum;
 begin
     main_stack.Free;
-    for i := low(ops) to high(ops) do begin
-        ops[i].n:='';
-        FreeAndNil(ops[i].s);
-    end;
     inherited Destroy;
 end;
 
@@ -3062,7 +3034,6 @@ begin
     end;
 end;
 
-
 function TEvaluationFlow.opl_last(PL: TVList): TVChainPointer;
 begin
     result := nil;
@@ -3119,6 +3090,16 @@ except
 end; end;
 
 
+function TEvaluationFlow.op_and                     (PL: TVList): TValue;
+var pc: integer;
+begin
+    result := TVList.Create;
+    for pc := 1 to PL.count-1 do begin
+        FreeAndNil(result);
+        result := eval(PL[pc]);
+        if tpNIL(result) then exit;
+    end;
+end;
 
 function TEvaluationFlow.op_block                   (PL: TVList): TValue;
 begin
@@ -3198,6 +3179,7 @@ begin
         if (PL.Count=3) and vpIntegerNotNegative(PL.look[2])
         then stack.Print(PL.I[2])
         else stack.Print;
+        exit;
     end;
 end;
 
@@ -3549,16 +3531,7 @@ begin
     end;
 end;
 
-function TEvaluationFlow.op_and                     (PL: TVList): TValue;
-var pc: integer;
-begin
-    result := TVList.Create;
-    for pc := 1 to PL.count-1 do begin
-        FreeAndNil(result);
-        result := eval(PL[pc]);
-        if tpNIL(result) then exit;
-    end;
-end;
+
 
 function TEvaluationFlow.op_append(PL: TVList): TValue;
 var CP: TVChainPointer; i: integer;
@@ -3594,7 +3567,6 @@ begin try
 finally
     FreeAndNil(CP);
 end end;
-
 
 function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
 var proc: TVProcedure; first_captured: integer; sl: TVList;
