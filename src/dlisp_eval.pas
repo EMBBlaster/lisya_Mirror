@@ -46,6 +46,7 @@ type
         function op_case(PL: TVList): TValue;
         function op_cond(PL: TVList): TValue;
         function op_const(PL: TVList): TValue;
+        function op_debug(PL: TVList): TValue;
         function op_default(PL: TVList): TValue;
         function op_elt(PL: TVList): TValue;
         function op_filter(PL: TVList): TValue;
@@ -493,6 +494,16 @@ end;
 function vpKeyword_ALL                              (V: TValue): boolean;
 begin
     result := vphKeywordName(V, ':ALL');
+end;
+
+function vpKeyword_RESET_STACK                      (V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':RESET-STACK');
+end;
+
+function vpKeyword_PRINT_STACK                      (V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':PRINT-STACK');
 end;
 
 function vpKeyword_READ                             (V: TValue): boolean;
@@ -2817,6 +2828,7 @@ begin
             oeCOND      : op('(COND :rest a)');
             oeCONST     : op('(CONST n v)');
             oeCONTINUE  : op('(CONTINUE)');
+            oeDEBUG     : op('(DEBUG key)');
             oeDEFAULT   : op('(DEFAULT n v)');
             oeELT       : op('(ELT o :rest s)');
             oeFILTER    : op('(FILTER)');
@@ -2834,7 +2846,6 @@ begin
             oePUSH      : op('(PUSH l e)');
             oeQUOTE     : op('(QUOTE a)');
             oeSET       : op('(SET n v)');
-            oeSTACK     : op('(STACK)');
             oeSTRUCTURE : op('(STRUCTURE :rest s)');
             oeSTRUCTURE_AS: op('(STRUCTURE-AS t :rest s)');
             oeVAL       : op('(VAL a)');
@@ -3170,6 +3181,24 @@ begin
     then raise ELE.malformed('CONST');
     stack.new_var(PL.name[1], eval(PL[2]), true);
     result := TVT.Create;
+end;
+
+function TEvaluationFlow.op_debug(PL: TVList): TValue;
+begin
+    result := TVT.Create;
+
+    if (PL.Count=2) and vpKeyword_RESET_STACK(PL.look[1]) then begin
+        main_stack.Free;
+        main_stack := base_stack.Copy as TVSymbolStack;
+        stack := main_stack;
+        exit;
+    end;
+
+    if (PL.Count>=2) and vpKeyword_PRINT_STACK(PL.look[1]) then begin
+        if (PL.Count=3) and vpIntegerNotNegative(PL.look[2])
+        then stack.Print(PL.I[2])
+        else stack.Print;
+    end;
 end;
 
 function TEvaluationFlow.op_default                 (PL: TVList): TValue;
@@ -4025,6 +4054,7 @@ begin try
                     oeCOND      : result := op_cond(V as TVList);
                     oeCONST     : result := op_const(V as TVList);
                     oeCONTINUE  : result := TVContinue.Create;
+                    oeDEBUG     : result := op_debug(V as TVList);
                     oeDEFAULT   : result := op_default(V as TVList);
                     oeELT       : result := op_elt(V as TVList);
                     oeFILTER    : result := op_filter(V as TVList);
@@ -4043,7 +4073,6 @@ begin try
                     oeQUOTE     : result := (V as TVList)[1];
                     //TODO: QUOTE не проверяет количество аргументов
                     oeSET       : result := op_set(V as TVList);
-                    oeSTACK     : begin stack.print; result := TVT.Create; end;
                     oeSTRUCTURE : result := op_structure(V as TVList);
                     oeSTRUCTURE_AS : result := op_structure_as(V as TVList);
                     oeVAL       : result := op_val(V as TVList);
