@@ -61,6 +61,7 @@ type
         function AsString: unicodestring; override;
 
         procedure Commit;
+        procedure Rollback;
     end;
 
 
@@ -113,6 +114,12 @@ end;
 procedure TVSQLPointer.Commit;
 begin
     (body.V as TVSQL).module.SQLTransaction55.Commit;
+
+end;
+
+procedure TVSQLPointer.Rollback;
+begin
+    (body.V as TVSQL).module.SQLTransaction55.Rollback;
 end;
 
 { TVSQL }
@@ -152,6 +159,7 @@ end;
 function TVSQL.Copy: TValue;
 begin
     Assert(true,'копирование TVSQL');
+    result := nil;
 end;
 
 function TVSQL.AsString: unicodestring;

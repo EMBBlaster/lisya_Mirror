@@ -2532,7 +2532,7 @@ begin
             else begin
                 result := TVT.Create;
                 ExecSQL;
-                (PL.look[0] as TVSQLPointer).Commit;
+                //(PL.look[0] as TVSQLPointer).Commit;
                 Exit;
             end;
             Last;
@@ -2583,15 +2583,94 @@ begin
     end;
 end;
 
-function if_sql_format_datetime (const PL: TVList; ep: TEvalProc): TValue;
+function if_sql_query_list      (const PL: TVList; ep: TEvalProc): TValue;
+var database: TVSQLPointer; i: integer;
+    bool_val: boolean; ucommand: unicodestring;
 begin
     case params_is(PL, result, [
-        tpDatetime]) of
-        1: result := TVString.Create((PL.look[0] as TVDateTime).AsSQLDateTime);
+        vpSQLPointerActive, tpList]) of
+        1: with (PL.look[0] as TVSQLPointer).query do try
+
+            Active := false;
+            SQL.Text := ifh_format(PL.L[1]);
+            ucommand := UpperCaseU(SQL.Text);
+            if (Pos('SELECT', ucommand)=1)
+                or (Pos('SHOW', ucommand)=1)
+            then Active := true
+            else begin
+                raise ELE.Create('invalid query for list', 'sql');
+            end;
+            Last;
+
+            if FieldCount<>1 then raise ELE.Create('запрос вернул не одну колонку', 'sql');
+
+            result := TVList.Create;
+            First;
+            for i := 0 to RecordCount-1 do begin
+                if VarIsNull(fields[0].Value)
+                then (result as TVList).Add(TVList.Create)
+                else
+                case Fields[0].DataType of
+                    ftUnknown, ftString, ftWideString, ftFmtMemo, ftMemo,
+                    ftFixedWideChar, ftWideMemo,ftFixedChar:
+                        (result as TVList).Add(
+                            TVString.Create(Fields[0].AsString));
+                    ftSmallint, ftInteger,ftWord:
+                        (result as TVList).Add(
+                            TVInteger.Create(Fields[0].AsInteger));
+                    ftBoolean: if Fields[0].AsBoolean
+                            then (result as TVList).Add(TVT.Create)
+                            else (result as TVList).Add(TVList.Create);
+                    ftFloat:
+                        (result as TVList).Add(
+                            TVFloat.Create(Fields[0].AsFloat));
+                    ftDateTime, ftDate, ftTimeStamp:
+                        (result as TVList).Add(
+                            TVDateTime.Create(Fields[0].AsDateTime));
+                    ftTime:
+                        (result as TVList).Add(
+                            TVTimeInterval.Create(Fields[0].AsDateTime));
+
+                        //ftCurrency, ftBCD,
+                        //ftBytes, ftVarBytes, ftAutoInc, ftBlob, , ftGraphic, ,
+                        //ftParadoxOle, ftDBaseOle, ftTypedBinary, ftCursor,
+                        //, ftLargeint, ftADT, ftArray, ftReference,
+                        //ftDataSet, ftOraBlob, ftOraClob, ftVariant, ftInterface,
+                        //ftIDispatch, ftGuid, ftFMTBcd, );
+                end;
+                Next;
+            end;
+        finally
+
+        end;
     end;
 end;
 
-const int_dyn: array[1..102] of TInternalFunctionRec = (
+function if_sql_commit          (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpSQLPointerActive]) of
+        1: begin
+            (PL.look[0] as TVSQLPointer).Commit;
+            result := TVT.Create;
+        end;
+    end;
+end;
+
+function if_sql_rollback        (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpSQLPointerActive]) of
+        1: begin
+            (PL.look[0] as TVSQLPointer).Rollback;
+            result := TVT.Create;
+        end;
+    end;
+end;
+
+
+
+const int_dyn: array[1..104] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
 (n:'TRUE?';                 f:if_true_p;                s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
@@ -2708,7 +2787,9 @@ const int_dyn: array[1..102] of TInternalFunctionRec = (
 
 (n:'SQL:MYSQL-CONNECTION';  f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
 (n:'SQL:QUERY';             f:if_sql_query;             s:'(db :rest q)'),
-(n:'SQL:FORMAT-DATETIME';   f:if_sql_format_datetime;   s:'(dt)')
+(n:'SQL:QUERY-LIST';        f:if_sql_query_list;        s:'(db :rest q)'),
+(n:'SQL:COMMIT';            f:if_sql_commit;            s:'(db)'),
+(n:'SQL:ROLLBACK';          f:if_sql_rollback;          s:'(db)')
 
 );
 

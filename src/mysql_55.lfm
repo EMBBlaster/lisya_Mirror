@@ -9,9 +9,6 @@ object module_mysql: Tmodule_mysql
     LoginPrompt = False
     DatabaseName = 'graph'
     KeepConnection = True
-    Params.Strings = (
-      'AUTOCOMMIT=1'
-    )
     Password = '1'
     Transaction = SQLTransaction55
     UserName = 'lisya'
