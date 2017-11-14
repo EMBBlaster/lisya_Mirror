@@ -3055,6 +3055,7 @@ begin try
     //если выражение не является корректным указанием на место,
     //то создать новую константу, содержащую значение выражения, и вернуть
     //указатель на неё
+    result := nil;
 
     if tpOrdinarySymbol(P) then begin
         i := stack.index_of((P as TVSymbol).uname);
@@ -3087,9 +3088,11 @@ begin try
 
     raise ELE.Create('eval_link не обработанный случай');
 except
-    on E:ELE do
-        raise ELE.Create('eval link '+P.AsString+new_line+'=> '+E.Message);
-end; end;
+    on E:ELE do begin
+        raise ELE.Create('eval link '+P.AsString+new_line+'=> '+E.Message, E.EClass);
+    end;
+end;
+end;
 
 
 function TEvaluationFlow.op_and                     (PL: TVList): TValue;
@@ -3256,6 +3259,7 @@ begin try
     //TODO: set не падает если устанавливает параметр функции переданный по значению
     if (PL.Count<3) or (PL.Count>3) then raise ELE.InvalidParameters;
 
+    CP := nil;
     CP := eval_link(PL.look[1]);
     if CP.constant then raise ELE.Create('target is not variable');
     CP.set_target(eval(PL[2]));
@@ -3619,6 +3623,8 @@ begin
     proc := TVProcedure.Create;
     proc.is_macro := (PL.look[0] as TVOperator).op_enum=oeMACRO;
 
+    if sign_pos=2 then proc.name:=PL.name[1];
+
     result := proc;
     proc.stack_pointer := stack.count;
     proc.body.Append(PL.Subseq(sign_pos+1, PL.Count) as TVList);
@@ -3632,10 +3638,9 @@ begin
         FreeAndNil(sl);
     end;
 
-    if sign_pos=2 then
-                stack.new_var(
-                    PL.uname[1],
-                    result.Copy, true);
+    if sign_pos=2 then stack.new_var(PL.uname[1],result.Copy, true);
+
+
 end;
 
 function TEvaluationFlow.op_var                     (PL: TVList): TValue;
@@ -4113,7 +4118,7 @@ return:
 
 except
     on E:ELisyaError do begin
-      //  WriteLn('eval ELE>> ', E.Eclass);
+       // WriteLn('eval ELE>> ', E.Eclass,'  ', e.Message);
        E.Message := V.AsString+new_line+'=> '+E.Message;
        //E.message := 'eval ELE';
         V.Free;

@@ -448,6 +448,7 @@ type
 
 
     TVSubprogram = class (TValue)
+        name: unicodestring;
         //TODO: нужно пересмотреть дерево классов подпрограмм
         //поле signature используется только внутренними функциями
         //TVProcedure использует поле fsignature
@@ -487,7 +488,6 @@ type
     { TVInternalSubprogram }
 
     TVInternalSubprogram = class (TVSubprogram)
-        name: unicodestring;
         signature: TVList;
         constructor Create;
         destructor Destroy; override;
@@ -504,7 +504,6 @@ type
     //операторов она не используется при вызове (только как справка)
 
         body: TInternalFunctionBody;
-        name: unicodestring;
         constructor Create(sign: TVList;
                             body: TInternalFunctionBody;
                             name: unicodestring = '');
@@ -1876,10 +1875,12 @@ var
 
 begin
 //    pl := parameters_list.AsString;
+    PL := '';
     for i := 0 to Length(fsignature)-1 do
-        PL := PL + fsignature[i].n+m(fsignature[i].m)+'|';
-    result := '#<PROCEDURE |'+pl+' '+
-        body.AsString()[1..(50-Length(PL))]+'...>';
+        PL := PL+' '+fsignature[i].n+m(fsignature[i].m);
+    if name=''
+    then result := '#<PROCEDURE'+pl+'>'
+    else result := '#<PROCEDURE '+name+'>';
 end;
 
 { TVGoto }
