@@ -2894,7 +2894,9 @@ end;
 
 constructor TEvaluationFlow.Create(parent_stack: TVSymbolStack);
 begin
-    main_stack := parent_stack;
+    if parent_stack<>nil
+    then main_stack := parent_stack
+    else main_stack := base_stack.Copy as TVSymbolStack;
     stack := main_stack;
 end;
 
