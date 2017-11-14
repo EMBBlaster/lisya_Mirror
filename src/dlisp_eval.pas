@@ -57,6 +57,7 @@ type
         function op_last(PL: TVList): TValue;
         function op_let(PL: TVList): TValue;
         function op_map(PL: TVList): TValue;
+        function op_macro_symbol(PL: TVList): TValue;
         function op_or(PL: TVList): TValue;
         function op_package(PL: TVList): TValue;
         function op_pop(PL: TVList): TValue;
@@ -2816,6 +2817,7 @@ var o: TOperatorEnum;
     procedure op(s: unicodestring);
     var V: TVList;
     begin
+        //WriteLn(s);
         V := read_from_string(s) as TVList;
         ops[o].n := V.uname[0];
         ops[o].s := V.Subseq(1, v.Count) as TVList;
@@ -2843,6 +2845,7 @@ begin
             oeLAST      : op('(LAST l)');
             oeLET       : op('(LET ((s v)))');
             oeMACRO     : op('(MACRO m :rest b)');
+            oeMACRO_SYMBOL: op('(MACRO-SYMBOL :rest body)');
             oeMAP       : op('(MAP f :rest l)');
             oeOR        : op('(OR :rest a)');
             oePACKAGE   : op('(PACKAGE name export :rest body)');
@@ -3528,6 +3531,39 @@ finally
 end;
 end;
 
+function TEvaluationFlow.op_macro_symbol(PL: TVList): TValue;
+var proc: TVProcedure; first_captured: integer; sl: TVList;
+    sign_pos: integer;
+begin
+    result := nil;
+
+    if (PL.Count<3) then raise ELE.Malformed('MACRO-SYMBOL');
+    if not tpOrdinarySymbol(PL.look[1]) then raise ELE.InvalidParameters;
+
+
+    proc := TVProcedure.Create;
+    proc.is_macro_symbol := true;
+
+    proc.name:=PL.name[1];
+
+    result := proc;
+    proc.stack_pointer := stack.count;
+    proc.body.Append(PL.Subseq(2, PL.Count) as TVList);
+    proc.fsignature := nil;
+    //proc.evaluated:=true;
+
+    try
+        sl := extract_body_symbols(proc.body);
+        fill_subprogram_stack(proc, sl);
+    finally
+        FreeAndNil(sl);
+    end;
+
+    procedure_complement(proc);
+
+    stack.new_var(PL.uname[1],result.Copy, true);
+end;
+
 function TEvaluationFlow.op_or                      (PL: TVList): TValue;
 var pc: integer;
 begin
@@ -4041,6 +4077,15 @@ begin try
                 if PV.V is TVChainPointer
                 then result := (PV.V as TVChainPointer).value
                 else result := PV.V.Copy;
+
+                if tpProcedure(PV.V) and (PV.V as TVProcedure).is_macro_symbol
+                then try
+                    PL := TVList.Create([PV.V.Copy]);
+                    result := eval(procedure_call(PL));
+                    //goto return;
+                finally
+                    FreeAndNil(PL);
+                end;
             finally
                 ReleaseVariable(PV);
             end;
@@ -4078,6 +4123,7 @@ begin try
                     oeLAST      : result := op_last(V as TVList);
                     oeLET       : result := op_let(V as TVList);
                     oeMACRO     : result := op_procedure(V as TVList);
+                    oeMACRO_SYMBOL: result := op_macro_symbol(V as TVList);
                     oeMAP       : result := op_map(V as TVList);
                     oeOR        : result := op_OR(V as TVList);
                     oePACKAGE   : result := op_package(V as TVList);

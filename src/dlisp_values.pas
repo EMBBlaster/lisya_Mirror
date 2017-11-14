@@ -460,6 +460,7 @@ type
 
     TVProcedure = class (TVSubprogram)
         is_macro: boolean;
+        is_macro_symbol: boolean;
         evaluated: boolean;
         fsignature: TSubprogramSignature;
         stack_pointer: integer;
@@ -534,6 +535,7 @@ type
             oeLAST,
             oeLET,
             oeMACRO,
+            oeMACRO_SYMBOL,
             oeMAP,
             oeOR,
             oePACKAGE,
@@ -1814,6 +1816,7 @@ begin
     evaluated := false;
     stack_pointer := -1;
     is_macro := false;
+    is_macro_symbol := false;
 end;
 
 constructor TVProcedure.CreateEmpty;
@@ -1826,6 +1829,7 @@ begin
     evaluated := false;
     stack_pointer := -1;
     is_macro := false;
+    is_macro_symbol := false;
 end;
 
 destructor TVProcedure.Destroy;
@@ -1856,6 +1860,8 @@ begin
     (result as TVProcedure).stack_pointer := stack_pointer;
 
     (result as tVProcedure).is_macro:=is_macro;
+    (result as tVProcedure).is_macro_symbol:=is_macro_symbol;
+    (result as tVProcedure).name:=name;
 end;
 
 function TVProcedure.AsString: unicodestring;
