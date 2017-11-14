@@ -3470,7 +3470,7 @@ begin
 end;
 
 function TEvaluationFlow.op_let(PL: TVList): TValue;
-var old_v, VPL: TVList; i, j: integer;
+var old_v, VPL: TVList; i, j, count: integer;
 begin
     //временно изменяет значение переменной, по завершении возвращает исходное
     //значение
@@ -3483,13 +3483,15 @@ begin
         for i := 0 to VPL.High do old_v.Add(eval(VPL.L[i][0]));
 
         try
-            for i := 0 to VPL.High do
+            count := 0;
+            for i := 0 to VPL.High do begin
                 stack.set_var(VPL.L[i].uname[0], eval(VPL.L[i][1]));
-            Inc(i);
+                Inc(count);
+            end;
 
             result := oph_block(PL,2, false);
         finally
-            for j := 0 to i-1 do stack.set_var(VPL.L[j].uname[0], old_v[j]);
+            for j := 0 to count-1 do stack.set_var(VPL.L[j].uname[0], old_v[j]);
         end;
     finally
         FreeAndNil(old_v);
