@@ -13,7 +13,8 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    process, Classes, SysUtils, dlisp_values, dlisp_read, math, lisya_xml, mar
+    process, Classes, SysUtils, dlisp_values, dlisp_read, math, lisya_xml, mar,
+    lisya_packages
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -63,6 +64,7 @@ type
         function op_pop(PL: TVList): TValue;
         function op_procedure(PL: TVList): TValue;
         function op_push(PL: TVList): TValue;
+        function op_secondary_error(PL: TVList): TValue;
         function op_set(PL: TVList): TValue;
         function op_structure(PL: TVList): TValue;
         function op_structure_as(PL: TVList): TValue;
@@ -70,6 +72,7 @@ type
         function op_var(PL: TVList): TValue;
         function op_when(PL: TVList): TValue;
         function op_while(PL: TVList): TValue;
+        function op_with(PL: TVList): TValue;
 
 
         function extract_body_symbols(body: TVList): TVList;
@@ -333,6 +336,7 @@ begin
         or (V is TVRecord)
         or (V is TVRange)
         or (V is TVDateTime)
+        or (V is TVSQLPointer)
         or (V is TVTimeInterval);
 end;
 
@@ -2373,7 +2377,8 @@ begin
     case params_is(PL, result, [
         vpStreamPointerActive,   tpList,
         tpNIL,                   tpList,
-        vpKeyword_RESULT,        tpList]) of
+        vpKeyword_RESULT,        tpList,
+        tpT,                     tpList]) of
         1: if ifh_write_string(PL.look[0] as TVStreamPointer, ifh_format(PL.L[1]))
             then result := TVT.Create
             else raise ELE.Stream('fmt');
@@ -2381,7 +2386,7 @@ begin
             System.Write(ifh_format(PL.L[1]));
             result := TVT.Create;
         end;
-        3: result := TVString.Create(ifh_format(PL.L[1]));
+        3,4: result := TVString.Create(ifh_format(PL.L[1]));
     end;
 end;
 
@@ -2813,6 +2818,8 @@ begin
             oeDEBUG     : op('(DEBUG key)');
             oeDEFAULT   : op('(DEFAULT n v)');
             oeELT       : op('(ELT o :rest s)');
+            oeELSE      : op('(ELSE :rest body)');
+            oeEXCEPTION : op('(EXCEPTION class :rest body)');
             oeFILTER    : op('(FILTER)');
             oeFOR       : op('(FOR i r :rest a)');
             oeGOTO      : op('(GOTO a)');
@@ -2832,10 +2839,12 @@ begin
             oeRECORD    : op('(STRUCTURE :rest s)');
             oeRECORD_AS : op('(STRUCTURE-AS t :rest s)');
             oeSET       : op('(SET n v)');
+            oeTHEN      : op('(THEN :rest body)');
             oeVAL       : op('(VAL a)');
             oeVAR       : op('(VAR n v)');
             oeWHEN      : op('(WHEN c :rest b)');
             oeWHILE     : op('(WHILE c :rest b)');
+            oeWITH      : op('(WITH :rest m)');
             else raise Exception.Create('неизвестный оператор');
         end
 end;
@@ -3125,6 +3134,17 @@ try
 finally
     CP.Free;
 end;
+end;
+
+function TEvaluationFlow.op_secondary_error(PL: TVList): TValue;
+begin
+    case (PL.look[0] as TVOperator).op_enum of
+        oeTHEN : raise ELE.Create('THEN not inside IF', 'syntax');
+        oeELSE : raise ELE.Create('ELSE not inside IF', 'syntax');
+        oeEXCEPTION : raise ELE.Create('EXCEPTION not inside block', 'syntax');
+        else raise ELE.Create('secondary op error');
+    end;
+    result := TVT.Create;
 end;
 
 function TEvaluationFlow.op_pop                     (PL: TVList): TValue;
@@ -3555,6 +3575,7 @@ function TEvaluationFlow.op_package(PL: TVList): TValue;
 var external_stack, package_stack: TVSymbolStack;
     P: PVariable;
     i: integer;
+    pack: TPackage;
 begin
     if (PL.Count<4)
         or (not tpOrdinarySymbol(PL.look[1]))
@@ -3574,6 +3595,14 @@ try
             ' not bound in package '+PL.uname[1], 'symbol not bound');
         external_stack.new_ref(PL.uname[1]+':'+PL.L[2].uname[i], P);
     end;
+
+    //  сохранение пакета
+    pack := TPackage.Create;
+    pack.name := PL.name[1];
+    pack.uname := PL.uname[1];
+    pack.export_list := PL[2] as TVList;
+    pack.stack := package_stack.Copy as TVSymbolStack;
+    AddPackage(pack);
 
     Result.Free;
     result := TVT.Create;
@@ -3701,6 +3730,62 @@ finally
     FreeAndNil(V);
 end;
     result := TVList.Create;
+end;
+
+function TEvaluationFlow.op_with(PL: TVList): TValue;
+var external_stack, package_stack: TVSymbolStack;
+    P: PVariable;
+    i, j: integer;
+    pack: TPackage;
+    fn: unicodestring;
+    expr: TVList;
+begin
+    if (PL.Count<2) then raise ELE.Malformed('WITH');
+    for i := 1 to PL.high do
+        if not (tpOrdinarySymbol(PL.look[i]) or tpString(PL.look[i]))
+        then raise ELE.InvalidParameters;
+
+    result := nil;
+
+    for i := 0 to PL.high do
+    begin
+        if tpSymbol(PL.look[i])
+        then begin
+            pack := FindPackage(PL.uname[i]);
+            if pack<>nil
+            then begin
+                for j := 0 to pack.export_list.high do
+                    stack.new_ref(pack.uname+':'+pack.export_list.uname[j],
+                        pack.stack.find_ref(pack.export_list.uname[j]));
+            end
+            else begin
+                fn := PL.name[i]+'.lisya';
+                if FileExists(fn)
+                then begin
+                    FreeAndNil(result);
+                    result := if_execute_file(TVList.Create([TVString.Create(fn)]), eval);
+                end
+                else begin
+                    raise ELE.Create('package '+PL.name[i]+' not found');
+                end;
+            end;
+        end;
+        if tpString(PL.look[i])
+        then begin
+            fn := DirSep(PL.S[i]);
+            if FileExists(fn)
+            then begin
+                FreeAndNil(result);
+                result := if_execute_file(TVList.Create([TVString.Create(fn)]), eval);
+            end
+            else begin
+                raise ELE.Create('package "'+fn+'" not found');
+            end;
+        end;
+    end;
+
+    result.Free;
+    result := TVT.Create;
 end;
 
 function TEvaluationFlow.extract_body_symbols(body: TVList): TVList;
@@ -4091,6 +4176,8 @@ begin try
                     oeDEBUG     : result := op_debug(V as TVList);
                     oeDEFAULT   : result := op_default(V as TVList);
                     oeELT       : result := op_elt(V as TVList);
+                    oeELSE      : result := op_secondary_error(V as TVList);
+                    oeEXCEPTION : result := op_secondary_error(V as TVList);
                     oeFILTER    : result := op_filter(V as TVList);
                     oeFOR       : result := op_for(V as TVList);
                     oeGOTO      : result := op_goto(V as TVList);
@@ -4111,10 +4198,12 @@ begin try
                     oeRECORD    : result := op_structure(V as TVList);
                     oeRECORD_AS : result := op_structure_as(V as TVList);
                     oeSET       : result := op_set(V as TVList);
+                    oeTHEN      : result := op_secondary_error(V as TVList);
                     oeVAL       : result := op_val(V as TVList);
                     oeVAR       : result := op_var(V as TVList);
                     oeWHEN      : result := op_when(V as TVList);
                     oeWHILE     : result := op_while(V as TVList);
+                    oeWITH      : result := op_with(V as TVList);
                     else raise ELE.Create('неизвестный оператор');
                 end
             else

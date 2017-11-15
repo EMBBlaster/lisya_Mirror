@@ -526,7 +526,9 @@ type
             oeCONTINUE,
             oeDEBUG,
             oeDEFAULT,
+            oeELSE,
             oeELT,
+            oeEXCEPTION,
             oeFILTER,
             oeFOR,
             oeGOTO,
@@ -546,10 +548,12 @@ type
             oeRECORD,
             oeRECORD_AS,
             oeSET,
+            oeTHEN,
             oeVAL,
             oeVAR,
             oeWHEN,
-            oeWHILE);
+            oeWHILE,
+            oeWITH);
     //and append block break case cond const continue default elt exception filter for goto if if-nil last let map or pop procedure push quote set stack structure structure-as val var when while
 
     TVOperator = class (TVInternalSubprogram)
