@@ -2663,31 +2663,8 @@ begin
     end;
 end;
 
-function if_sql_commit          (const PL: TVList; ep: TEvalProc): TValue;
-begin
-    case params_is(PL, result, [
-        vpSQLPointerActive]) of
-        1: begin
-            (PL.look[0] as TVSQLPointer).Commit;
-            result := TVT.Create;
-        end;
-    end;
-end;
 
-function if_sql_rollback        (const PL: TVList; ep: TEvalProc): TValue;
-begin
-    case params_is(PL, result, [
-        vpSQLPointerActive]) of
-        1: begin
-            (PL.look[0] as TVSQLPointer).Rollback;
-            result := TVT.Create;
-        end;
-    end;
-end;
-
-
-
-const int_dyn: array[1..104] of TInternalFunctionRec = (
+const int_dyn: array[1..102] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
 (n:'TRUE?';                 f:if_true_p;                s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
@@ -2803,9 +2780,8 @@ const int_dyn: array[1..104] of TInternalFunctionRec = (
 
 (n:'SQL:MYSQL-CONNECTION';  f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
 (n:'SQL:QUERY';             f:if_sql_query;             s:'(db :rest q)'),
-(n:'SQL:QUERY-LIST';        f:if_sql_query_list;        s:'(db :rest q)'),
-(n:'SQL:COMMIT';            f:if_sql_commit;            s:'(db)'),
-(n:'SQL:ROLLBACK';          f:if_sql_rollback;          s:'(db)')
+(n:'SQL:QUERY-LIST';        f:if_sql_query_list;        s:'(db :rest q)')
+
 
 );
 
@@ -2853,9 +2829,9 @@ begin
             oePROCEDURE : op('(PROCEDURE p :rest b)');
             oePUSH      : op('(PUSH l e)');
             oeQUOTE     : op('(QUOTE a)');
+            oeRECORD    : op('(STRUCTURE :rest s)');
+            oeRECORD_AS : op('(STRUCTURE-AS t :rest s)');
             oeSET       : op('(SET n v)');
-            oeSTRUCTURE : op('(STRUCTURE :rest s)');
-            oeSTRUCTURE_AS: op('(STRUCTURE-AS t :rest s)');
             oeVAL       : op('(VAL a)');
             oeVAR       : op('(VAR n v)');
             oeWHEN      : op('(WHEN c :rest b)');
@@ -4132,9 +4108,9 @@ begin try
                     oePUSH      : result := op_push(V as TVList);
                     oeQUOTE     : result := (V as TVList)[1];
                     //TODO: QUOTE не проверяет количество аргументов
+                    oeRECORD    : result := op_structure(V as TVList);
+                    oeRECORD_AS : result := op_structure_as(V as TVList);
                     oeSET       : result := op_set(V as TVList);
-                    oeSTRUCTURE : result := op_structure(V as TVList);
-                    oeSTRUCTURE_AS : result := op_structure_as(V as TVList);
                     oeVAL       : result := op_val(V as TVList);
                     oeVAR       : result := op_var(V as TVList);
                     oeWHEN      : result := op_when(V as TVList);

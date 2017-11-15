@@ -60,8 +60,6 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
 
-        procedure Commit;
-        procedure Rollback;
     end;
 
 
@@ -111,16 +109,6 @@ begin
     result := '<#SQL '+ (body.V as TVSQL).connection_parameters+'>';
 end;
 
-procedure TVSQLPointer.Commit;
-begin
-    (body.V as TVSQL).module.SQLTransaction55.Commit;
-
-end;
-
-procedure TVSQLPointer.Rollback;
-begin
-    (body.V as TVSQL).module.SQLTransaction55.Rollback;
-end;
 
 { TVSQL }
 

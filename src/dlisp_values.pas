@@ -543,9 +543,9 @@ type
             oePROCEDURE,
             oePUSH,
             oeQUOTE,
+            oeRECORD,
+            oeRECORD_AS,
             oeSET,
-            oeSTRUCTURE,
-            oeSTRUCTURE_AS,
             oeVAL,
             oeVAR,
             oeWHEN,
@@ -1166,8 +1166,6 @@ end;
 
 function TVSymbolStack.find_var(name: unicodestring): TValue;
 begin
-    //WriteLn(name);
-    //print(78);
     result := stack[index_of(name)].V.V.Copy;
 end;
 
