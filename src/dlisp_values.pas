@@ -1146,10 +1146,12 @@ begin
 end;
 
 procedure TVSymbolStack.Print(n: integer);
-var i: integer;
+var i, low_i: integer;
 begin
+    low_i := high(stack) - n;
+    if low_i<0 then low_i := 0;
     WriteLn('-----------------------');
-    for i := n to high(stack) do begin
+    for i := low_i to high(stack) do begin
         Write('  | ', stack[i].name);
         if stack[i].V<> nil
         then WriteLn('  >(', stack[i].V.ref_count,')',

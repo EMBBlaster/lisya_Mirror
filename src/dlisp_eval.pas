@@ -408,6 +408,16 @@ begin
         and ((V as TVList).uname[0]=n);
 end;
 
+function vphListHeadedSymbolOrOp(V: TValue; const n: unicodestring;
+                    op_en: TOperatorEnum): boolean;
+begin
+    result := (V is TVList)
+        and ((V as TVList).Count>0)
+        and (vphSymbolName((V as TVList).look[0], n)
+            or (((V as TVList).look[0] is TVOperator)
+                and (((V as TVList).look[0] as TVOperator).op_enum = op_en)));
+end;
+
 function vpIntegerAbsOne                            (V: TValue): boolean;
 begin
     result := (V is TVInteger) and (abs((V as TVInteger).fI) = 1);
@@ -691,9 +701,19 @@ begin
     result := vphListHeaded(V, 'ELT');
 end;
 
+function vpListHeadedSymbolOrOp_ELT                 (V: TValue): boolean;
+begin
+    result := vphListHeadedSymbolOrOp(V, 'ELT', oeELT);
+end;
+
 function vpListHeaded_THEN                          (V: TValue): boolean;
 begin
     result := vphListHeaded(V, 'THEN');
+end;
+
+function vpListHeadedSymbolOrOp_THEN                (V: TValue): boolean;
+begin
+    result := vphListHeadedSymbolOrOp(V, 'THEN', oeTHEN);
 end;
 
 function vpListHeaded_ELSE                          (V: TValue): boolean;
@@ -701,10 +721,22 @@ begin
     result := vphListHeaded(V, 'ELSE');
 end;
 
+function vpListHeadedSymbolOrOp_ELSE                (V: TValue): boolean;
+begin
+    result := vphListHeadedSymbolOrOp(V, 'ELSE', oeELSE);
+end;
+
 function vpListHeaded_EXCEPTION                     (V: TValue): boolean;
 begin
     result := vphListHeaded(V, 'EXCEPTION');
 end;
+
+function vpListHeadedSymbolOrOp_EXCEPTION           (V: TValue): boolean;
+begin
+    result := vphListHeadedSymbolOrOp(V, 'EXCEPTION', oeEXCEPTION);
+end;
+
+
 
 function vpListEvenLength                           (V: TValue): boolean;
 begin
@@ -2858,7 +2890,7 @@ begin
 end;
 
 procedure fill_base_stack;
-var i: integer;
+var i: integer; V: TValue;
 begin
     base_stack := TVSymbolStack.Create(nil);
     for i := low(int_dyn) to high(int_dyn) do
@@ -2925,7 +2957,7 @@ label return;
     begin
         result := false;
         ec := UpperCaseU(exception_class);
-        if vpListHeaded_Exception(PL.look[pc]) then
+        if vpListHeadedSymbolOrOp_EXCEPTION(PL.look[pc]) then
              if (PL.L[pc].Count>=2) and tpString(PL.L[pc].look[1])
              then begin
                 eh := UpperCaseU(PL.L[pc].S[1]);
@@ -3436,14 +3468,14 @@ begin
 
     if not tpNIL(PL.look[1])
     then begin
-        if vpListHeaded_THEN(PL.look[2])
+        if vpListHeadedSymbolOrOp_THEN(PL.look[2])
         then result := oph_block(PL.L[2], 1, false)
         else result := eval(PL[2]);
     end
     else
         if PL.Count=4
         then begin
-            if vpListHeaded_ELSE(PL.look[3])
+            if vpListHeadedSymbolOrOp_ELSE(PL.look[3])
             then result := oph_block(PL.L[3], 1, false)
             else result := eval(PL[3]);
         end
