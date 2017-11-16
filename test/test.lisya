@@ -179,10 +179,10 @@
 
 (block
     (log \ELT)
-    (var test (structure
+    (var test (record
         slot1 (list
-            (structure slot11 "a")
-            (structure slot11 "b"))
+            (record slot11 "a")
+            (record slot11 "b"))
         slot2 (list
             (list "x" "y" "z")
             (list "w" "u" "v"))))
@@ -196,7 +196,7 @@
 
     (log "SET ELT")
     (set test\slot1\0\slot11 "set A")
-    (assertion (= test\slot1\0 (structure slot11 "set A")) "set elt")
+    (assertion (= test\slot1\0 (record slot11 "set A")) "set elt")
 
     (log "PUSH ELT")
     (push test\slot2\0 "pushed")
@@ -213,14 +213,14 @@
     (set (last L) 9)
     (assertion (= L \(1 2 9)) "set last"))
 
-(log \STRUCTURE)
+(log \RECORD)
 (block
-    (var s0 (structure :x 0 :y 0))
-    (var s1 (structure :name "s1" :value 1))
-    (var s2 (structure-as s1 :name "s2"))
-    (assertion (structure? s1) "structure?")
-    (assertion (structure? s2 s1) "structure? s2 s1")
-    (assertion (not (structure? s2 s0)) "not structure s2 s0")
+    (var s0 (record :x 0 :y 0))
+    (var s1 (record :name "s1" :value 1))
+    (var s2 (record-as s1 :name "s2"))
+    (assertion (record? s1) "record?")
+    (assertion (record? s2 s1) "record? s2 s1")
+    (assertion (not (record? s2 s0)) "not record s2 s0")
     (assertion (= (elt s1 :name) "s1") "elt name")
     (assertion (= (elt s1 :value) (elt s2 :value)) "= elt s1 s2"))
 

@@ -2,7 +2,7 @@
 (fmt nil "модифицирующие операторы... ")
 (block
     (var l (list 1 2 3))
-    (var su (structure slot1 1 slot2 2))
+    (var su (record slot1 1 slot2 2))
     (var si "abcd")
     (var b (byte-vector 1 2 3))
 
@@ -13,7 +13,7 @@
     (assertion (not (elt l NIL)) "elt nil")
 
     (assertion (= 2 (elt (list 1 2 3) 1)) "elt list val")
-    (assertion (= 1 (elt (structure slot1 1) \slot1)) "elt struct val")
+    (assertion (= 1 (elt (record slot1 1) \slot1)) "elt struct val")
     (assertion (= "b" (elt "abcd" 1)) "elt string val")
     (assertion (= 2 (elt (byte-vector 1 2 3) 1)) "elt byte-vector val")
 
@@ -50,9 +50,9 @@
 
     (set su\slot2 "ab")
     (append su\slot2 "cd")
-    (assertion (= (structure slot1 9 slot2 "abcd") su) "append elt")
+    (assertion (= (record slot1 9 slot2 "abcd") su) "append elt")
 
-    (var LL (list 0 (structure slot "text")))
+    (var LL (list 0 (record slot "text")))
     (assertion (= "x" (elt (last LL) \slot 2)) "elt/last nested"))
 
 

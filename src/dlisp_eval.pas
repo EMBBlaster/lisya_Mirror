@@ -2715,7 +2715,7 @@ const int_dyn: array[1..102] of TInternalFunctionRec = (
 (n:'SYMBOL?';               f:if_symbol_p;              s:'(a)'),
 (n:'KEYWORD?';              f:if_keyword_p;             s:'(a)'),
 (n:'STRING?';               f:if_string_p;              s:'(a)'),
-(n:'STRUCTURE?';            f:if_structure_p;           s:'(s :optional t)'),
+(n:'RECORD?';               f:if_structure_p;           s:'(s :optional t)'),
 
 (n:'+';                     f:if_add;                   s:'(:rest n)'),
 (n:'-';                     f:if_sub;                   s:'(a :optional b)'),
@@ -2870,8 +2870,8 @@ begin
             oePROCEDURE : op('(PROCEDURE p :rest b)');
             oePUSH      : op('(PUSH l e)');
             oeQUOTE     : op('(QUOTE a)');
-            oeRECORD    : op('(STRUCTURE :rest s)');
-            oeRECORD_AS : op('(STRUCTURE-AS t :rest s)');
+            oeRECORD    : op('(RECORD :rest s)');
+            oeRECORD_AS : op('(RECORD-AS t :rest s)');
             oeSET       : op('(SET n v)');
             oeTHEN      : op('(THEN :rest body)');
             oeVAL       : op('(VAL a)');
@@ -3304,7 +3304,7 @@ end end;
 function TEvaluationFlow.op_structure               (PL: TVList): TValue;
 var i: integer; tmp: TVRecord;
 begin
-    if (PL.Count mod 2)<>1 then raise ELE.Malformed('record');
+    if (PL.Count mod 2)<>1 then raise ELE.Malformed('RECORD');
 try
     tmp := TVRecord.Create;
     for i := 0 to (PL.Count div 2)-1 do begin
@@ -3947,7 +3947,7 @@ begin
                             ':'+UpperCaseU(sign[i].n))
                     then begin
                     //TODO: ключевае параметры процедур не вычисляются !
-                        ts.new_var(sign[i].n, PL[key_start+j*2+1]);
+                        ts.new_var(sign[i].n, eval(PL[key_start+j*2+1]));
                         key_found := true;
                     end;
                 if not key_found then ts.new_var(sign[i].n, TVList.Create);
@@ -4051,7 +4051,6 @@ var first: TValue; proc: TVProcedure; i: integer; frame_start: integer;
     error_message: unicodestring;
     tmp_stack: TVSymbolStack; body: TVList;
 begin
-    //TODO: вызов процедуры с недостающими параметрами вызывает ошибку
     //TODO: при вызове процедуры с несуществующими переменными не возникает ошибка
     //TODO: лишний EVAL? голова должна быть вычислена до вызова?
     first := eval(PL[0]);
