@@ -3923,13 +3923,13 @@ begin
     for i:=0 to Length(sign)-1 do begin
         case sign[i].m of
             spmNec:
-                if PL.Count>= i+1
+                if PL.Count> i+1
                 then begin
                     bind(sign[i].n, PL.look[i+1]);
                 end
                 else raise ELE.InvalidParameters;
             spmOpt:
-                if PL.Count>= i+1+1
+                if PL.Count> i+1
                 then ts.new_var(sign[i].n, eval(PL[i+1]))
                 else ts.new_var(sign[i].n, TVList.Create);
             spmRest: begin
