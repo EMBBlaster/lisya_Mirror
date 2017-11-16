@@ -518,6 +518,7 @@ type
     type TOperatorEnum = (
             oeAND,
             oeAPPEND,
+            oeAPPLY,
             oeBLOCK,
             oeBREAK,
             oeCASE,
