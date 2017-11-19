@@ -348,6 +348,10 @@ begin
     then result := read_from_string(trans)
     else
 
+    if acc[1]=':'
+    then result := TVKeyword.Create(acc)
+    else
+
     result := TVSymbol.Create(acc);
 end;
 

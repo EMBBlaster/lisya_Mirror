@@ -1,0 +1,33 @@
+﻿(fmt nil "пакеты... ")
+
+(block
+    (package P1 (next reset)
+        (var counter 0)
+        (procedure next ()
+            (set counter (+ 1 counter))
+            counter)
+        (procedure reset ()
+            (set counter 0)))
+    (assertion (= 1 (P1:NEXT)) "package 1")
+)
+
+(block
+    (procedure pp1 ()
+        (with p1)
+        (p1:next))
+
+    (procedure pp2 ()
+        (with p1)
+        (p1:next))
+
+    (assertion (= 2 (pp1)) "package 2")
+    (assertion (= 3 (pp2)) "package 3")
+
+    (with p1)
+    (P1:RESET)
+    (assertion (= 1 (P1:NEXT)) "package 4"))
+
+
+(log " успешно")
+
+

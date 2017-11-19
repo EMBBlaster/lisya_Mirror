@@ -67,8 +67,8 @@ type
         function op_push(PL: TVList): TValue;
         function op_secondary_error(PL: TVList): TValue;
         function op_set(PL: TVList): TValue;
-        function op_structure(PL: TVList): TValue;
-        function op_structure_as(PL: TVList): TValue;
+        function op_record(PL: TVList): TValue;
+        function op_record_as(PL: TVList): TValue;
         function op_val(PL: TVList): TValue;
         function op_var(PL: TVList): TValue;
         function op_when(PL: TVList): TValue;
@@ -101,8 +101,9 @@ function execute_file(filename: unicodestring): boolean;
 
 implementation
 
-var root_evaluation_flow: TEvaluationFlow;
-    base_stack: TVSymbolStack;
+var root_evaluation_flow: TEvaluationFlow = nil;
+    base_stack: TVSymbolStack = nil;
+    quote_operator: TVOperator = nil;
 
 
 type TTypePredicate = function (V: TValue): boolean;
@@ -287,7 +288,8 @@ end;
 
 function tpOrdinarySymbol(V :TValue): boolean;
 begin
-    result := ((V is TVSymbol) and ((V as TVSymbol).name[1]<>':'));
+    result := (V is TVSymbol) //and ((V as TVSymbol).name[1]<>':'));
+        and not (V is TVKeyword);
 end;
 
 function tpListOfOrdinarySymbols(V: TValue): boolean;
@@ -306,7 +308,8 @@ end;
 
 function tpKeyword(V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).name[1]=':');
+    result := (V is TVKeyword); //and ((V as TVSymbol).name[1]=':');
+        //and (V as TVSymbol).is_keyword;
 end;
 
 function tpGoto(V: TValue): boolean;
@@ -392,7 +395,7 @@ end;
 
 function vphKeywordName(V: TValue; const n: unicodestring): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = n);
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = n);
 end;
 
 function vphSymbolName(V: TValue; const n: unicodestring): boolean;
@@ -470,42 +473,42 @@ end;
 
 function vpKeywordKey                               (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':KEY');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':KEY');
 end;
 
 function vpKeywordRest                              (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':REST');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':REST');
 end;
 
 function vpKeywordOptional                          (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':OPTIONAL');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':OPTIONAL');
 end;
 
 function vpKeywordCaptured                          (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':CAPTURED');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':CAPTURED');
 end;
 
 function vpKeywordCapture                           (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':CAPTURE');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':CAPTURE');
 end;
 
 function vpKeywordLast                              (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':LAST');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':LAST');
 end;
 
 function vpKeywordFirst                             (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':FIRST');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':FIRST');
 end;
 
 function vpKeywordSecond                            (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':SECOND');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':SECOND');
 end;
 
 function vpKeyword_ALL                              (V: TValue): boolean;
@@ -525,88 +528,88 @@ end;
 
 function vpKeyword_READ                             (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':READ');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':READ');
 end;
 
 function vpKeyword_WRITE                            (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':WRITE');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':WRITE');
 end;
 
 function vpKeyword_APPEND                           (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':APPEND');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':APPEND');
 end;
 
 function vpKeyword_BOM                              (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and ((V as TVSymbol).uname = ':BOM');
+    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':BOM');
 end;
 
 function vpKeyword_UTF8                             (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':UTF8')
         or ((V as TVSymbol).uname = ':UTF-8'));
 end;
 
 function vpKeyword_UTF16BE                          (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':UTF16BE')
         or ((V as TVSymbol).uname = ':UTF-16BE'));
 end;
 
 function vpKeyword_UTF16LE                          (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':UTF16LE')
         or ((V as TVSymbol).uname = ':UTF-16LE'));
 end;
 
 function vpKeyword_UTF32BE                          (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':UTF32BE')
         or ((V as TVSymbol).uname = ':UTF-32BE'));
 end;
 
 function vpKeyword_UTF32LE                          (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':UTF32LE')
         or ((V as TVSymbol).uname = ':UTF-32LE'));
 end;
 
 function vpKeyword_CP1251                           (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':CP1251')
         or ((V as TVSymbol).uname = ':WINDOWS-1251'));
 end;
 
 function vpKeyword_CP1252                           (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':CP1252')
         or ((V as TVSymbol).uname = ':WINDOWS-1252'));
 end;
 
 function vpKeyword_DEFLATE                          (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':DEFLATE'));
 end;
 
 function vpKeyword_RESULT                           (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':RESULT'));
 end;
 
 function vpKeyword_FLAG                             (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':FLAG'));
 end;
 
@@ -627,7 +630,7 @@ end;
 
 function vpKeywordFileMode                          (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
         ((V as TVSymbol).uname = ':READ')
         or ((V as TVSymbol).uname = ':WRITE')
         or ((V as TVSymbol).uname = ':APPEND'));
@@ -640,7 +643,7 @@ end;
 
 function vpKeywordEncoding                          (V: TValue): boolean;
 begin
-    result := (V is TVSymbol) and (
+    result := (V is TVKeyword) and (
             ((V as TVSymbol).uname = ':BOM')
         or vpKeyword_UTF8(V)
         or vpKeyword_CP1251(V));
@@ -680,6 +683,12 @@ function vpStreamPointerActive                      (V: TValue): boolean;
 begin
     result := (V is TVStreamPointer) and
         ((V as TVStreamPointer).body.V <> nil);
+end;
+
+function vpStreamPointer2Active                     (V: TValue): boolean;
+begin
+    result := (V is TVStreamPointer2) and
+        ((V as TVStreamPointer2).body.V <> nil);
 end;
 
 function vpSQLPointerActive                         (V: TValue): boolean;
@@ -1141,6 +1150,11 @@ begin
     end;
 end;
 
+function ifh_quote(const V: TValue): TVList;
+begin
+    result := TVList.Create([quote_operator.Copy, V.Copy]);
+end;
+
 function ifh_predicate_template(PL: TVList; p: TTypePredicate): TValue; inline;
 begin
     if PL.count<>1 then raise ELE.Malformed('predicate');
@@ -1374,20 +1388,13 @@ function if_symbol              (const PL: TVList; ep: TEvalProc): TValue;
 begin
     case params_is(PL, result, [
         tpString]) of
-        1: if (Pos(' ',PL.S[0])>0)
-                or (Pos(#9,PL.S[0])>0)
-                or (Pos(#10,PL.S[0])>0)
-                or (Pos(#13,PL.S[0])>0)
-                or (Pos('\',PL.S[0])>0)
-                or (Pos('/',PL.S[0])>0)
-                or (Pos('(',PL.S[0])>0)
-                or (Pos(')',PL.S[0])>0)
-                or (Pos('#',PL.S[0])>0)
-                or (Pos(';',PL.S[0])>0)
-                or (Pos('"',PL.S[0])>0)
-                or (Pos('''',PL.S[0])>0)
-            then raise ELE.Create('invalid symbol name', 'syntax')
-            else result := TVSymbol.Create(PL.S[0]);
+        1: begin
+            result := read_from_string(PL.S[0]);
+            if not tpSymbol(result) then begin
+                FreeAndNil(result);
+                raise ELE.Create('invalid symbol name', 'syntax');
+            end;
+        end;
     end;
 end;
 
@@ -2026,6 +2033,7 @@ begin
                     or (expr is TVEndOfStream)
                 then begin expr.Free; break; end;
 
+                //writeln('expr>> ', expr.AsString());
                 res := ep(expr);
                 FreeAndNil(res);
             end;
@@ -2153,6 +2161,21 @@ begin
     end;
 end;
 
+function if_inflate             (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpStreamPointerActive,
+        tpStreamPointer]) of
+        1:  begin
+            result := TVStreamPointer2.Create;
+            (result as TVStreamPointer2).body := NewVariable(
+                TVInflateStream.Create(
+                    RefVariable((PL.look[0] as TVStreamPointer).body)));
+        end;
+        2: raise ELE.Create('inactive stream', 'invalid parameters');
+    end;
+end;
+
 function if_stream_position     (const PL: TVList; ep: TEvalProc): TValue;
 var p: Int64;
 begin
@@ -2190,7 +2213,7 @@ begin
 end;
 
 function if_read_bytes          (const PL: TVList; ep: TEvalProc): TValue;
-var b: byte; i: integer; res: TVByteVector;
+var b: byte; i: integer; res: TVByteVector;  bb: TBytes;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, vpIntegerNotNegative,
@@ -2241,11 +2264,15 @@ var ch: unicodechar;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive,
+        vpStreamPointer2Active,
         tpNIL]) of
         1: if (PL.look[0] as TVStreamPointer).read_char(ch)
             then result := TVString.Create(ch)
             else result := TVList.Create;
-        2: begin
+        2: if ((PL.look[0] as TVStreamPointer2).body.V as TVStream).read_char(ch)
+            then result := TVString.Create(ch)
+            else result := TVList.Create;
+        3: begin
             System.Read(ch);
             result := TVString.Create(ch);
         end;
@@ -2702,7 +2729,7 @@ begin
 end;
 
 
-const int_dyn: array[1..102] of TInternalFunctionRec = (
+const int_dyn: array[1..103] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
 (n:'TRUE?';                 f:if_true_p;                s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
@@ -2787,6 +2814,7 @@ const int_dyn: array[1..102] of TInternalFunctionRec = (
 
 (n:'OPEN-FILE';             f:if_open_file;             s:'(n :key mode encoding)'),
 (n:'CLOSE-FILE';            f:if_close_stream;          s:'(s)'),
+(n:'INFLATE';               f:if_inflate;               s:'(s)'),
 (n:'SET-ENCODING';          f:if_set_encoding;          s:'(s e)'),
 (n:'SET-COMPRESSION-METHOD';f:if_set_compression_method;s:'(s c)'),
 (n:'STREAM-POSITION';       f:if_stream_position;       s:'(s :optional p)'),
@@ -2824,7 +2852,7 @@ const int_dyn: array[1..102] of TInternalFunctionRec = (
 );
 
 
-var ops: array[TOperatorEnum] of record n: unicodestring; s: TVList; end;
+var ops: array[TOperatorEnum] of record n: unicodestring; s: TVList; i: integer; end;
 
 procedure fill_ops_array;
 var o: TOperatorEnum;
@@ -2834,6 +2862,7 @@ var o: TOperatorEnum;
         //WriteLn(s);
         V := read_from_string(s) as TVList;
         ops[o].n := V.uname[0];
+        ops[o].i := V.SYM[0].N;
         ops[o].s := V.Subseq(1, v.Count) as TVList;
         FreeAndNil(V);
     end;
@@ -2893,7 +2922,7 @@ procedure fill_base_stack;
 var i: integer; V: TValue;
 begin
     base_stack := TVSymbolStack.Create(nil);
-    for i := low(int_dyn) to high(int_dyn) do
+    for i := low(int_dyn) to high(int_dyn) do begin
         base_stack.new_var(
             int_dyn[i].n,
             TVInternalFunction.Create(
@@ -2901,12 +2930,12 @@ begin
                     int_dyn[i].f,
                     int_dyn[i].n),
             true);
+    end;
     //загрузка констант
     base_stack.new_var('NL', TVString.Create(new_line), true);
     base_stack.new_var('CR', TVString.Create(#10), true);
     base_stack.new_var('LF', TVString.Create(#13), true);
     base_stack.new_var('TAB', TVString.Create(#09), true);
-    base_stack.new_var('SPACE', TVString.Create(' '), true);
 end;
 
 
@@ -2973,7 +3002,6 @@ begin
 
     frame_start := stack.Count;
     if with_frame then stack.new_var( ' <block>', TVT.Create);
-    //result := oph_frameless_block(PL, start);
 
     pc := start;
     V := TVList.Create;
@@ -2999,6 +3027,7 @@ begin
                 if matched_exception
                 then begin
                     exception_frame_start := stack.Count;
+
                     stack.new_var('EXCEPTION-MESSAGE',
                         TVString.Create(exception_message));
                     stack.new_var('EXCEPTION-CLASS',
@@ -3198,7 +3227,8 @@ function TEvaluationFlow.op_const                   (PL: TVList): TValue;
 begin
     if (PL.Count<>3) or not tpOrdinarySymbol(PL.look[1])
     then raise ELE.malformed('CONST');
-    stack.new_var(PL.name[1], eval(PL[2]), true);
+    //stack.new_var(PL.name[1], eval(PL[2]), true);
+    stack.new_var(PL.SYM[1], eval(PL[2]), true);
     result := TVT.Create;
 end;
 
@@ -3232,7 +3262,8 @@ try
     if tpNIL(CP.look)
     then
         if CP.constant
-        then stack.new_var(PL.uname[1], eval(PL[2]), true)
+        then //stack.new_var(PL.uname[1], eval(PL[2]), true)
+            stack.new_var(PL.SYM[1], eval(PL[2]), true)
         else CP.set_target(eval(PL[2]));
 
     result := TVT.Create;
@@ -3301,7 +3332,7 @@ finally
     FreeAndNil(CP);
 end end;
 
-function TEvaluationFlow.op_structure               (PL: TVList): TValue;
+function TEvaluationFlow.op_record               (PL: TVList): TValue;
 var i: integer; tmp: TVRecord;
 begin
     if (PL.Count mod 2)<>1 then raise ELE.Malformed('RECORD');
@@ -3319,7 +3350,7 @@ finally
 end;
 end;
 
-function TEvaluationFlow.op_structure_as            (PL: TVList): TValue;
+function TEvaluationFlow.op_record_as            (PL: TVList): TValue;
 var i: integer; rec: TVRecord;
 begin
     //TODO: очень запутанный алгоритм проверки параметров
@@ -3396,13 +3427,14 @@ try
     V := nil;
     result := nil;
     frame_start := stack.Count;
-    stack.new_var(' <for-list2>', TVT.Create);
+    //stack.new_var(' <for-list2>', TVT.Create);
 
     case op_var of
         sequence: begin
             high_i := (CP.look as TVCompoundIndexed).high;
             CP.add_index(0);
-            stack.new_var(PL.uname[1], CP, true);
+            //stack.new_var(PL.uname[1], CP, true);
+            stack.new_var(PL.SYM[1], CP, true);
             for i := 0 to high_i do begin
                 CP.set_last_index(i);
                 FreeAndNil(V);
@@ -3426,7 +3458,8 @@ try
                 end;
             end;
             index := TVInteger.Create(0);
-            stack.new_var(PL.uname[1], index, true);
+            //stack.new_var(PL.uname[1], index, true);
+            stack.new_var(PL.SYM[1], index, true);
             for i := low_i to high_i do begin
                 index.fI := i;
                 FreeAndNil(V);
@@ -3451,7 +3484,7 @@ begin
     if (PL.Count<>2) or not tpSymbol(PL.look[1])
     then raise ELE.malformed('GOTO');
 
-    result := TVGoto.Create(PL[1] as TVSymbol);
+    result := TVGoto.Create(PL.SYM[1]);
 end;
 
 function TEvaluationFlow.op_if                      (PL: TVList): TValue;
@@ -3518,13 +3551,15 @@ begin
         try
             count := 0;
             for i := 0 to VPL.High do begin
-                stack.set_var(VPL.L[i].uname[0], eval(VPL.L[i][1]));
+                //stack.set_var(VPL.L[i].uname[0], eval(VPL.L[i][1]));
+                stack.set_var(VPL.L[i].SYM[0], eval(VPL.L[i][1]));
                 Inc(count);
             end;
 
             result := oph_block(PL,2, false);
         finally
-            for j := 0 to count-1 do stack.set_var(VPL.L[j].uname[0], old_v[j]);
+            for j := 0 to count-1 do //stack.set_var(VPL.L[j].uname[0], old_v[j]);
+                stack.set_var(VPL.L[j].SYM[0], old_v[j]);
         end;
     finally
         FreeAndNil(old_v);
@@ -3533,33 +3568,37 @@ end;
 
 function TEvaluationFlow.op_map                     (PL: TVList): TValue;
 var binded, se: TVList; P: PVariable; i,j: integer;
+    min_count: integer;
 begin
+    result := nil;
     for i := 1 to PL.High do PL[i] := eval(PL[i]);
     if PL.look[1] is TVProcedure then procedure_complement(PL.look[1]);
+
+    if PL.Count<3 then raise ELE.Malformed('MAP');
+    if not tpSubprogram(PL.look[1]) then raise ELE.InvalidParameters;
+    for i := 2 to PL.high do
+        if not tpList(PL.look[i]) then raise ELE.InvalidParameters;
+
+    min_count := PL.L[2].Count;
+    for i := 3 to PL.high do
+        if PL.L[i].Count<min_count then min_count := PL.L[i].Count;
+
 try
-    binded := nil;
-    binded := bind_parameters_list(PL, ops[oeMAP].s);
-    case params_is(binded, result, [
-        tpSubprogram, tpListOfLists]) of
-        1: try
-            result := TVList.Create;
-            for i := 0 to min_list_length(binded.L[1])-1 do begin
-                se := TVList.Create((binded[0]));
-                se.SetCapacity(binded.L[1].Count+1);
-                for j := 0 to binded.L[1].High do se.Add(binded.L[1].L[j][i]);
-                (result as TVList).Add(eval(se));
-            end;
-        except
-            //удалить результаты предыдущих итераций если текущая завершилась
-            // с ошибкой
-            FreeAndNil(result);
-            raise;
-        end;
+    result := TVList.Create;
+    for i := 0 to min_count - 1 do begin
+        se := TVList.Create([PL[1]]);
+        se.SetCapacity(PL.Count-1);
+        for j := 2 to PL.High do se.Add(ifh_quote(PL.L[j].look[i]));
+        (result as TVList).Add(eval(se));
     end;
-finally
-    FreeAndNil(binded);
+except
+    //удалить результаты предыдущих итераций если текущая завершилась
+    // с ошибкой
+    FreeAndNil(result);
+    raise;
 end;
 end;
+
 
 function TEvaluationFlow.op_macro_symbol(PL: TVList): TValue;
 var proc: TVProcedure; first_captured: integer; sl: TVList;
@@ -3591,7 +3630,8 @@ begin
 
     procedure_complement(proc);
 
-    stack.new_var(PL.uname[1],result.Copy, true);
+    //stack.new_var(PL.uname[1],result.Copy, true);
+    stack.new_var(PL.SYM[1], result.Copy, true);
 end;
 
 function TEvaluationFlow.op_or                      (PL: TVList): TValue;
@@ -3624,7 +3664,8 @@ try
     result := oph_block(PL, 3, false);
 
     for i := 0 to PL.L[2].high do begin
-        P := package_stack.find_ref_or_nil(PL.L[2].uname[i]);
+        //P := package_stack.find_ref_or_nil(PL.L[2].uname[i]);
+        P := package_stack.find_ref_or_nil(PL.L[2].SYM[i]);
         if P=nil then raise ELE.Create(PL.L[2].uname[i]+
             ' not bound in package '+PL.uname[1], 'symbol not bound');
         external_stack.new_ref(PL.uname[1]+':'+PL.L[2].uname[i], P);
@@ -3684,22 +3725,28 @@ finally
 end end;
 
 function TEvaluationFlow.op_apply(PL: TVList): TValue;
-var expr: TVList; i: integer;
+var expr: TVList; i: integer; tmp: TValue; list: TVList;
 begin
-    expr := TVList.Create;
+    result := nil;
     if PL.Count<2 then raise ELE.Malformed('APPLY');
 try
+    tmp := nil;
+    expr := TVList.Create;
     expr.Add(eval(PL[1]));
-    for i := 2 to PL.high-1 do expr.Add(eval(PL[i]));
+    for i := 2 to PL.high-1 do expr.Add(PL[i]);
     if (PL.Count>=3) then begin
-        if tpList(PL.look[PL.high]) then begin
-            expr.Append(PL[PL.high] as TVList);
+        tmp := eval(PL[PL.high]);
+        if tpList(tmp) then begin
+            list := tmp as TVList;
+            for i := 0 to list.high do expr.Add(ifh_quote(list.look[i]));
             result := eval(expr.Copy);
         end
         else raise ELE.InvalidParameters;
+
     end;
 finally
     expr.Free;
+    tmp.Free;
 end;
 end;
 
@@ -3735,7 +3782,8 @@ begin
         FreeAndNil(sl);
     end;
 
-    if sign_pos=2 then stack.new_var(PL.uname[1],result.Copy, true);
+    if sign_pos=2 then //stack.new_var(PL.uname[1],result.Copy, true);
+        stack.new_var(PL.SYM[1],result.Copy, true);
 
 
 end;
@@ -3747,8 +3795,10 @@ begin
     then raise ELE.malformed('VAR');
 
     case PL.Count of
-        2: stack.new_var(PL.name[1], TVList.Create);
-        3: stack.new_var(PL.name[1], eval(PL[2]));
+        2: //stack.new_var(PL.name[1], TVList.Create);
+            stack.new_var(PL.SYM[1], TVList.Create);
+        3: //stack.new_var(PL.name[1], eval(PL[2]));
+            stack.new_var(PL.SYM[1], eval(PL[2]));
     end;
     result := TVT.Create;
 end;
@@ -3810,7 +3860,9 @@ begin
             then begin
                 for j := 0 to pack.export_list.high do
                     stack.new_ref(pack.uname+':'+pack.export_list.uname[j],
-                        pack.stack.find_ref(pack.export_list.uname[j]));
+                        //pack.stack.find_ref(pack.export_list.uname[j])
+                        pack.stack.find_ref(pack.export_list.SYM[j])
+                        );
             end
             else begin
                 fn := PL.name[i]+'.lisya';
@@ -3893,8 +3945,11 @@ begin
     //с целью избежания доступа по нулевым указателям
 
     for i := 0 to symbols.High do begin
-        sp.stack.new_ref(symbols.uname[i],
-            stack.find_ref_or_nil(symbols.uname[i]));
+        sp.stack.new_ref(//symbols.uname[i],
+            symbols.SYM[i],
+            //stack.find_ref_or_nil(symbols.uname[i])
+            stack.find_ref_or_nil(symbols.SYM[i])
+            );
     end;
 end;
 
@@ -3930,13 +3985,13 @@ begin
                 else raise ELE.InvalidParameters;
             spmOpt:
                 if PL.Count> i+1
-                then ts.new_var(sign[i].n, eval(PL[i+1]))
-                else ts.new_var(sign[i].n, TVList.Create);
+                then ts.new_var(sign[i].n, eval(PL[i+1]), true)
+                else ts.new_var(sign[i].n, TVList.Create, true);
             spmRest: begin
                 //TODO: излишнее копирование
                 rest := (PL as TVList).subseq(i+1, PL.Count) as TVList;
                 for j := 0 to Rest.Count-1 do rest[j] := eval(rest[j]);
-                ts.new_var(sign[i].n, rest);
+                ts.new_var(sign[i].n, rest, true);
             end;
             spmKey: begin
                 if key_start<0 then key_start := i+1;
@@ -3947,10 +4002,10 @@ begin
                             ':'+UpperCaseU(sign[i].n))
                     then begin
                     //TODO: ключевае параметры процедур не вычисляются !
-                        ts.new_var(sign[i].n, eval(PL[key_start+j*2+1]));
+                        ts.new_var(sign[i].n, eval(PL[key_start+j*2+1]), true);
                         key_found := true;
                     end;
-                if not key_found then ts.new_var(sign[i].n, TVList.Create);
+                if not key_found then ts.new_var(sign[i].n, TVList.Create, true);
             end;
         end;
     end;
@@ -4036,6 +4091,8 @@ begin
         for i := 0 to proc.stack.Count-1 do
             if proc.stack.stack[i].V=nil
             then proc.stack.stack[i].V :=
+                    //stack.find_ref_in_frame_or_nil(proc.stack.stack[i].name,
+                    //                                proc.stack_pointer);
                     stack.find_ref_in_frame_or_nil(proc.stack.stack[i].name,
                                                     proc.stack_pointer);
 
@@ -4087,7 +4144,9 @@ begin
         PL[i] := eval(PL[i]);
         if (PL.look[i] is TVProcedure) then procedure_complement(PL.look[i]);
     end;
+    //print_stdout_ln(PL);
 try
+    binded_PL := nil;
     binded_PL := bind_parameters_list(PL,
                         (PL.look[0] as TVInternalFunction).signature);
     result := nil;
@@ -4176,7 +4235,8 @@ begin try
             uname := (V as TVSymbol).uname;
             //WriteLn(uname);
             for o := low(ops) to high(ops) do
-                if ops[o].n=uname then begin
+                //if ops[o].n=uname then begin
+                if ops[o].i = (V as TVSymbol).N then begin
                     result := TVOperator.Create(uname, o, ops[o].s);
                     goto return;
                 end;
@@ -4184,7 +4244,8 @@ begin try
             try
                 //WriteLn('eval symbol>> ',uname);
                 PV := nil;
-                PV := stack.find_ref(uname);
+                PV := //stack.find_ref(uname);
+                    stack.find_ref(V as TVSymbol);
                 if tpProcedure(PV.V) and not (PV.V as TVProcedure).evaluated
                 then procedure_complement(PV.V);
 
@@ -4249,8 +4310,8 @@ begin try
                     oePUSH      : result := op_push(V as TVList);
                     oeQUOTE     : result := (V as TVList)[1];
                     //TODO: QUOTE не проверяет количество аргументов
-                    oeRECORD    : result := op_structure(V as TVList);
-                    oeRECORD_AS : result := op_structure_as(V as TVList);
+                    oeRECORD    : result := op_record(V as TVList);
+                    oeRECORD_AS : result := op_record_as(V as TVList);
                     oeSET       : result := op_set(V as TVList);
                     oeTHEN      : result := op_secondary_error(V as TVList);
                     oeVAL       : result := op_val(V as TVList);
@@ -4311,8 +4372,10 @@ initialization
     fill_base_stack;
     root_evaluation_flow := TEvaluationFlow.Create(base_stack.Copy as TVSymbolStack);
     fill_ops_array;
+    quote_operator := root_evaluation_flow.eval(TVSymbol.Create('QUOTE')) as TVOperator;
 
 finalization
+    quote_operator.Free;
     clear_ops_array;
     root_evaluation_flow.Free;
     base_stack.Free;
