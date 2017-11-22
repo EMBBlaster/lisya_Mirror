@@ -441,6 +441,21 @@ begin
     result := (V is TVNumber) and ((V as TVNumber).F <> 0);
 end;
 
+function vpNumberPositive                           (V: TValue): boolean;
+begin
+    result := (V is TVNumber) and ((V as TVNumber).F > 0);
+end;
+
+function vpNumberNegative                           (V: TValue): boolean;
+begin
+    result := (V is TVNumber) and ((V as TVNumber).F < 0);
+end;
+
+function vpNumberZero                               (V: TValue): boolean;
+begin
+    result := (V is TVNumber) and ((V as TVNumber).F = 0);
+end;
+
 function vpNumberAbsOneOrMore                       (V: TValue): boolean;
 begin
     result := (V is TVNumber) and (abs((V as TVNumber).F) >= 1);
@@ -644,6 +659,21 @@ end;
 function vpKeywordFileModeOrNIL                     (V: TValue): boolean;
 begin
     result := tpNil(V) or vpKeywordFileMode(V);
+end;
+
+function vpKeyword_MORE                             (V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':MORE');
+end;
+
+function vpKeyword_LESS                             (V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':LESS');
+end;
+
+function vpKeyword_EQUAL                            (V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':LESS');
 end;
 
 function vpKeywordEncoding                          (V: TValue): boolean;
@@ -1738,6 +1768,76 @@ begin
     end;
 end;
 
+
+function if_sort                (const PL: TVList; ep: TEvalProc): TValue;
+type Tvalues = array of TValue;
+var list: TValues; expr: TVlist; i: integer;
+    function compare(a, b: TValue): integer;
+    var tmp: TValue;
+    begin
+        expr[1] := a.copy;
+        expr[2] := b.copy;
+
+        try
+            tmp := nil;
+            tmp := ep(expr.copy);
+            Write(a.AsString(),'  -  ',b.AsString(),' = ', tmp.AsString());
+
+            if tpNIL(tmp) or vpNumberNegative(tmp) or vpKeyword_LESS(tmp)
+            then result := -1
+            else
+                if vpNumberZero(tmp) or vpKeyword_EQUAL(tmp)
+                then result := 0
+                else result := 1;
+
+            WriteLn('    ',result)
+        finally
+            tmp.Free;
+        end;
+    end;
+
+    procedure sort(var V: TValues);
+    var p: TValue; i, j : integer;
+    less, equal, more: TValues;
+    begin
+        p := V[random(Length(V))];
+       // WriteLn('p>> ',p.AsString);
+        for i := 0 to high(V) do case compare(p, v[i]) of
+            1: begin SetLength(more, Length(more)+1); more[high(more)] := v[i]; end;
+            0: begin SetLength(equal, Length(equal)+1); equal[high(equal)] := v[i]; end;
+            -1: begin SetLength(less, Length(less)+1); less[high(less)] := v[i]; end;
+        end;
+        if Length(less)>1 then sort(less);
+        if Length(more)>1 then sort(more);
+        for i := 0 to high(more) do V[i] := more[i];
+        for i := 0 to high(equal) do V[Length(more)+i] := equal[i];
+        for i := 0 to high(less) do V[Length(more)+Length(equal)+i] := less[i];
+    end;
+
+begin try
+    expr := nil;
+    case params_is(PL, result, [
+        tpList, tpSubprogram,
+        tpList, tpNIL]) of
+        1: expr := TVList.Create([PL[1], TVT.Create, TVT.Create]);
+        2: expr := TVList.Create([TVSymbol.Create('>'), TVT.Create, TVT.Create]);
+    end;
+    //WriteLn('sort>> ', expr.AsString);
+    SetLength(list, PL.L[0].Count);
+    for i := 0 to PL.L[0].high do list[i] := PL.L[0].look[i];
+
+    sort(list);
+
+    result := TVList.Create;
+    for i := 0 to high(list) do (result as TVList).Add(list[i].Copy);
+
+
+finally
+    expr.Free;
+end;
+
+end;
+
 function if_union               (const PL: TVList; ep: TEvalProc): TValue;
 var i, j: integer;
 begin
@@ -2709,7 +2809,7 @@ begin
 end;
 
 
-const int_dyn: array[1..102] of TInternalFunctionRec = (
+const int_dyn: array[1..103] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
 (n:'TRUE?';                 f:if_true_p;                s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
@@ -2767,6 +2867,7 @@ const int_dyn: array[1..102] of TInternalFunctionRec = (
 (n:'SOME';                  f:if_some;                  s:'(p :rest l)'),
 (n:'CAR';                   f:if_car;                   s:'(l)'),
 (n:'SUBSEQ';                f:if_subseq;                s:'(s b :optional e)'),
+(n:'SORT';                  f:if_sort;                  s:'(s :optional p)'),
 
 (n:'UNION';                 f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION';          f:if_intersection;          s:'(:rest a)'),

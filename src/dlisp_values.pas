@@ -346,6 +346,7 @@ type
 
         function POP: TValue;
         procedure Clear;
+        procedure sort(sc: TListSortCompare);
         function ValueList: TValueList;
         function CdrValueList: TValueList;
         function CAR: TValue;
@@ -2736,6 +2737,11 @@ end;
 procedure TVList.Clear;
 begin
     fL.Clear;
+end;
+
+procedure TVList.sort(sc: TListSortCompare);
+begin
+    fL.Sort(sc);
 end;
 
 function TVList.ValueList: TValueList;
