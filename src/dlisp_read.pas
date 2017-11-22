@@ -191,7 +191,7 @@ var
     function read_char: boolean;
     var b1, b2: byte;
     begin
-        if sp<>nil then begin result := sp.read_char(ch); exit; end;
+        if sp<>nil then begin result := sp.stream.read_char(ch); exit; end;
         if ss_in<>nil then begin
             if ss_in.i <=Length(ss_in.s) then begin
                 ch := ss_in.S[ss_in.i];
@@ -453,7 +453,7 @@ var  i: integer; sn: unicodestring;
     var i: integer;
     begin
         if stream<>nil
-        then for i := 1 to Length(s) do stream.write_char(s[i])
+        then for i := 1 to Length(s) do stream.stream.write_char(s[i])
         else System.Write(s);
     end;
     procedure indent;

@@ -1,0 +1,64 @@
+﻿(fmt nil "потоки... ")
+
+(assertion (not (file-exists "test.bin")) "мешает файл test.bin")
+
+
+(block "бинарные файлы"
+
+    (block
+        (var out (open-file "test.bin" :mode :write))
+        (write-byte out 1)
+        (write-byte out 2))
+
+    (block
+        (var app (open-file "test.bin" :mode :append))
+        (write-byte app (byte-vector 3 4 5)))
+
+    (block
+        (var in (open-file "test.bin" :mode :read))
+        (assertion (= (byte-vector 1 2) (read-bytes in 2)) "file read bytes")
+        (assertion (= 2 (stream-position in)) "stream-position")
+        (assertion (= (byte-vector 3 4 5) (read-bytes in :ALL)) "file read all"))
+
+    (delete-file "test.bin")
+
+    (exception ""
+        (delete-file "test.bin")
+        (error exception-message exception-class)))
+
+(assertion (not (file-exists "test.txt")) "мешает файл test.txt")
+
+(block "текстовые файлы"
+
+    (block
+        (var out (open-file "test.txt" :mode :write :encoding :utf32BE))
+        (write-BOM out)
+        (fmt out "10 строка" NL))
+
+    (block
+        (var app (open-file "test.txt" :mode :append :encoding :utf8))
+        (fmt app "20 string" NL))
+
+    (block
+        (var app (open-file "test.txt" :mode :append :encoding :cp1251))
+        (fmt app "30 строка"))
+
+    (block
+        (var in (open-file "test.txt" :mode :read :encoding :BOM))
+        (assertion (= "10 строка" (read-line in)) "read line 1")
+        (set-encoding in :utf8)
+        (assertion (= "20 string" (read-line in)) "read line 2")
+        (set-encoding in :cp1251)
+        (assertion (= "30 строка" (read-line in)) "read line 3"))
+
+
+    (delete-file "test.txt")
+    (exception ""
+       (delete-file "test.txt")
+        (error exception-message exception-class))
+        )
+
+
+(log " успешно")
+
+

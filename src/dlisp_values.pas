@@ -618,6 +618,9 @@ type
         function write_byte(b: byte): boolean;
         function write_bytes(bb: TBytes): boolean;
 
+        procedure read_BOM; virtual;
+        procedure write_BOM;
+
         function read_char(var ch: unicodechar): boolean;
         function write_char(ch: unicodechar): boolean;
     end;
@@ -628,7 +631,8 @@ type
     TVFileStream = class (TVStream)
         file_name: unicodestring;
 
-        constructor Create(fn: unicodestring; mode: TFileMode);
+        constructor Create(fn: unicodestring; mode: TFileMode;
+            enc: TStreamEncoding = seUTF8);
 
         function AsString: unicodestring; override;
     end;
@@ -639,70 +643,76 @@ type
     TVInflateStream = class (TVStream)
         target: PVariable;
 
-        constructor Create(_target: PVariable);
+        constructor Create(_target: PVariable; enc: TStreamEncoding = seUTF8;
+            head: boolean = false);
         destructor Destroy; override;
 
+        procedure read_BOM; override;
         function AsString: unicodestring; override;
     end;
 
     { TVStreamPointer2 }
 
-    TVStreamPointer2 = class (TValue)
+    TVStreamPointer = class (TValue)
         body: PVariable;
+        stream: TVStream;
 
+        constructor Create(_body: PVariable);
         destructor Destroy; override;
 
         function Copy: TValue; override;
         function AsString: unicodestring; override;
+
+        procedure close_stream;
     end;
 
     { TVStreamBody }
-    TCompressionMode = (cmNone, cmDeflate);
-    TStreamDirection = (sdIn, sdOut);
-
-    TVStreamBody = class (TValue)
-        fstream: TStream;
-        fZstream: TStream;
-        stream_type: (stFile);
-        stream_direction: TStreamDirection;
-        file_name: unicodestring;
-        encoding: TStreamEncoding;
-        constructor Create(fn: unicodestring; mode: TFileMode);
-        destructor Destroy; override;
-
-        function Copy: TValue; override;
-        function AsString: unicodestring; override;
-
-        function read_byte(var b: byte): boolean;
-        function write_byte(b: byte): boolean;
-    end;
+    //TCompressionMode = (cmNone, cmDeflate);
+    //TStreamDirection = (sdIn, sdOut);
+    //
+    //TVStreamBody = class (TValue)
+    //    fstream: TStream;
+    //    fZstream: TStream;
+    //    stream_type: (stFile);
+    //    stream_direction: TStreamDirection;
+    //    file_name: unicodestring;
+    //    encoding: TStreamEncoding;
+    //    constructor Create(fn: unicodestring; mode: TFileMode);
+    //    destructor Destroy; override;
+    //
+    //    function Copy: TValue; override;
+    //    function AsString: unicodestring; override;
+    //
+    //    function read_byte(var b: byte): boolean;
+    //    function write_byte(b: byte): boolean;
+    //end;
 
     { TVStreamPointer }
 
-    TVStreamPointer = class (TValue)
-        body: PVariable;
-        //encoding: TStreamEncoding;
-        constructor Create(fn: unicodestring;
-                            mode: TFileMode;
-                            _encoding: TStreamEncoding); overload;
-        constructor Create; overload;
-        destructor Destroy; override;
-
-        function Copy: TValue; override;
-        function AsString: unicodestring; override;
-
-        function read_byte(var b: byte): boolean;
-        function write_byte(b: byte): boolean;
-        function read_char(var ch: unicodechar): boolean;
-        function write_char(ch: unicodechar): boolean;
-        function write_BOM: boolean;
-        procedure close_stream;
-
-        function Set_compression_mode(mode: TCompressionMode): boolean;
-        function set_position(p: Int64): boolean;
-        function get_position(var p: Int64): boolean;
-        function stream_length: Int64;
-    end;
+    //TVStreamPointer = class (TValue)
+    //    body: PVariable;
+    //    //encoding: TStreamEncoding;
+    //    constructor Create(fn: unicodestring;
+    //                        mode: TFileMode;
+    //                        _encoding: TStreamEncoding); overload;
+    //    constructor Create; overload;
+    //    destructor Destroy; override;
+    //
+    //    function Copy: TValue; override;
+    //    function AsString: unicodestring; override;
+    //
+    //    function read_byte(var b: byte): boolean;
+    //    function write_byte(b: byte): boolean;
+    //    function read_char(var ch: unicodechar): boolean;
+    //    function write_char(ch: unicodechar): boolean;
+    //    function write_BOM: boolean;
+    //    procedure close_stream;
+    //
+    //    function Set_compression_mode(mode: TCompressionMode): boolean;
+    //    function set_position(p: Int64): boolean;
+    //    function get_position(var p: Int64): boolean;
+    //    function stream_length: Int64;
+    //end;
 
 
 
@@ -770,38 +780,57 @@ begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
 
-{ TVStreamPointer2 }
+{ TVStreamPointer }
 
-destructor TVStreamPointer2.Destroy;
+constructor TVStreamPointer.Create(_body: PVariable);
+begin
+    body := _body;
+    stream := body.V as TVStream;
+end;
+
+destructor TVStreamPointer.Destroy;
 begin
     ReleaseVariable(body);
     inherited Destroy;
 end;
 
-function TVStreamPointer2.Copy: TValue;
+function TVStreamPointer.Copy: TValue;
 begin
-    result := TVStreamPointer2.Create;
-    (result as TVStreamPointer2).body := RefVariable(body);
+    result := TVStreamPointer.Create(RefVariable(body));
 end;
 
-function TVStreamPointer2.AsString: unicodestring;
+function TVStreamPointer.AsString: unicodestring;
 begin
-    result := '#<STREAM-POINTER-2 '+body.V.AsString+'>';
+    result := '#<STREAM-POINTER '+body.V.AsString+'>';
+end;
+
+procedure TVStreamPointer.close_stream;
+begin
+    ReleaseVariable(body);
+    stream := nil;
 end;
 
 { TVInflateStream }
 
-constructor TVInflateStream.Create(_target: PVariable);
+constructor TVInflateStream.Create(_target: PVariable; enc: TStreamEncoding = seUTF8;
+    head: boolean = false);
 begin
+    if enc = seBOM then read_BOM else encoding := enc;
     target := _target;
-    WriteLn('inflate>> ',target.V.AsString());
-    fStream := TDecompressionStream.create((target.V as TVStreamBody).fstream, true);
+    //WriteLn('inflate>> ',target.V.AsString());
+    fStream := TDecompressionStream.create((target.V as TVStream).fstream, not head);
 end;
 
 destructor TVInflateStream.Destroy;
 begin
     ReleaseVariable(target);
     inherited Destroy;
+end;
+
+procedure TVInflateStream.read_BOM;
+begin
+    raise ELE.Create('can not read BOM from decompression stream',
+                                                        'invalid parameters');
 end;
 
 function TVInflateStream.AsString: unicodestring;
@@ -811,7 +840,8 @@ end;
 
 { TVFileStream }
 
-constructor TVFileStream.Create(fn: unicodestring; mode: TFileMode);
+constructor TVFileStream.Create(fn: unicodestring; mode: TFileMode;
+    enc: TStreamEncoding = seUTF8);
 begin
     file_name := fn;
     case mode of
@@ -828,6 +858,7 @@ begin
             fStream.Seek(fStream.Size,0);
         end;
     end;
+    if enc = seBOM then read_BOM else encoding := enc;
 end;
 
 
@@ -851,20 +882,28 @@ begin
 end;
 
 function TVStream.read_byte(var b: byte): boolean;
-begin
+begin try
     b := fstream.ReadByte;
     result := true;
+except
+    on E:EStreamError do result := false;
+end;
 end;
 
 function TVStream.read_bytes(var bb: TBytes; count: integer): boolean;
+var i: integer;
 begin
     if count>0 then begin
         SetLength(bb, count);
-        fStream.ReadBuffer(bb, count);
+        for i := 0 to count-1 do bb[i] := fStream.ReadByte;
+        //fStream.ReadBuffer(bb, count);
+        //TODO: по загадочным причинам readbuffer вызывает разрушение памяти при освобождении буфера
         result := true;
     end
     else begin
+        //WriteLn('size>> ', fStream.Size, '   ', fStream.Position);
         SetLength(bb, fStream.Size - fStream.Position);
+        for i := 0 to fStream.Size - fStream.Position - 1 do bb[i] := fStream.ReadByte;
         fStream.ReadBuffer(bb, fStream.Size - fStream.Position);
         result := true;
     end;
@@ -877,9 +916,59 @@ begin
 end;
 
 function TVStream.write_bytes(bb: TBytes): boolean;
+var i: integer;
 begin
-    fStream.WriteBuffer(bb, Length(bb));
+//    WriteLn('write_bytes>> ', Length(bb));
+    for i := 0 to high(bb) do fStream.WriteByte(bb[i]);
+    //TODO: writeBuffer глючит так же как readbuffer
+    //fStream.WriteBuffer(bb, Length(bb));
     result := true;
+end;
+
+procedure TVStream.read_BOM;
+    function b: byte; begin result := fstream.ReadByte; end;
+var p: integer;
+begin
+    p := (fstream as TFileStream).Position;
+    //UTF-8
+    if (b=$EF) and (b=$BB) and (b=$BF) then begin
+        encoding := seUTF8;
+        exit;
+    end else fstream.Seek(p,0);
+    //UTF16BE
+    if (b=$FE) and (b=$FF) then begin
+        encoding := seUTF16BE;
+        exit;
+    end else fstream.Seek(p,0);
+    //UTF32BE
+    if (b=$00) and (b=$00) and (b=$FE) and (b=$FF) then begin
+        encoding := seUTF32BE;
+        exit;
+    end else fstream.Seek(p,0);
+    //UTF32LE
+    if (b=$FF) and (b=$FE) and (b=$00) and (b=$00) then begin
+        encoding := seUTF32LE;
+        exit;
+    end else fstream.Seek(p,0);
+    //UTF16LE
+    if (b=$FF) and (b=$FE) then begin
+        encoding := seUTF16LE;
+        exit;
+    end else fstream.Seek(p,0);
+
+    encoding := seCP1251;
+end;
+
+procedure TVStream.write_BOM;
+    procedure b(b: byte); begin write_byte(b); end;
+begin
+    case encoding of
+        seUTF8:    begin b($EF); b($BB); b($BF); end;
+        seUTF16BE: begin b($FE); b($FF); end;
+        seUTF16LE: begin b($FF); b($FE); end;
+        seUTF32BE: begin b($00); b($00); b($FE); b($FF); end;
+        seUTF32LE: begin b($FF); b($FE); b($00); b($00); end;
+    end;
 end;
 
 function TVStream.read_char(var ch: unicodechar): boolean;
@@ -937,11 +1026,20 @@ end;
 
 function TVStream.write_char(ch: unicodechar): boolean;
 var cp: integer;
+    function write8bit(const enc: TCodePage): boolean;
+    var i: byte;
+    begin
+        for i := 0 to 255 do
+            if enc[i]=ch then begin
+                result := write_byte(i);
+                exit;
+            end;
+        result := write_byte(ord('?'));
+    end;
 begin
+    cp := ord(ch);
     case encoding of
-        seUTF8: begin
-            cp := ord(ch);
-            case cp of
+        seUTF8: case cp of
                 0..127: result := write_byte(cp);
                 128..2047: result := write_byte((cp shr 6) or 192)
                                 and write_byte((cp and 63) or 128);
@@ -954,8 +1052,19 @@ begin
                                 and write_byte((cp and 63) or 128);
                 else result := false;
             end;
-        end;
-        else result := false;
+        seUTF16LE: result := write_byte(cp and $FF) and write_byte(cp shr 8);
+        seUTF16BE: result := write_byte(cp shr 8) and write_byte(cp and $FF);
+        seUTF32LE: result := write_byte(cp and $FF)
+                            and write_byte((cp shr 8) and $FF)
+                            and write_byte((cp shr 16) and $FF)
+                            and write_byte((cp shr 24) and $FF);
+        seUTF32BE: result := write_byte((cp shr 24) and $FF)
+                            and write_byte((cp shr 16) and $FF)
+                            and write_byte((cp shr 8) and $FF)
+                            and write_byte(cp and $FF);
+        seCP1251: result := write8bit(cp1251_cp);
+        seCP1252: result := write8bit(cp1252_cp);
+        else raise ELE.Create('неизвестная кодировка','invalid parameters');
     end
 end;
 
@@ -1810,305 +1919,305 @@ end;
 
 { TVStreamPointer }
 
-constructor TVStreamPointer.Create(fn: unicodestring;
-                                    mode: TFileMode;
-                                    _encoding: TStreamEncoding);
-    function b: byte;
-    begin
-        result := (body.v as TVStreamBody).fstream.ReadByte;
-    end;
-begin
-    body := NewVariable;
-    body.V := TVStreamBody.Create(fn, mode);
-    (body.V as TVStreamBody).encoding :=_encoding;
-
-    if _encoding=seBOM
-    then begin
-        //UTF-8
-        if (b=$EF) and (b=$BB) and (b=$BF) then begin
-            (body.V as TVStreamBody).encoding := seUTF8;
-            exit;
-        end else (body.v as TVStreamBody).fstream.Seek(0,0);
-        //UTF16BE
-        if (b=$FE) and (b=$FF) then begin
-            (body.V as TVStreamBody).encoding := seUTF16BE;
-            exit;
-        end else (body.v as TVStreamBody).fstream.Seek(0,0);
-        //UTF32BE
-        if (b=$00) and (b=$00) and (b=$FE) and (b=$FF) then begin
-            (body.V as TVStreamBody).encoding := seUTF32BE;
-            exit;
-        end else (body.v as TVStreamBody).fstream.Seek(0,0);
-        //UTF32LE
-        if (b=$FF) and (b=$FE) and (b=$00) and (b=$00) then begin
-            (body.V as TVStreamBody).encoding := seUTF32LE;
-            exit;
-        end else (body.v as TVStreamBody).fstream.Seek(0,0);
-        //UTF16LE
-        if (b=$FF) and (b=$FE) then begin
-            (body.V as TVStreamBody).encoding := seUTF16LE;
-            exit;
-        end else (body.v as TVStreamBody).fstream.Seek(0,0);
-
-        (body.V as TVStreamBody).encoding := seCP1251;
-    end;
-end;
-
-constructor TVStreamPointer.Create;
-begin
-    //
-end;
-
-destructor TVStreamPointer.Destroy;
-begin
-    ReleaseVariable(body);
-    inherited Destroy;
-end;
-
-
-function TVStreamPointer.Copy: TValue;
-begin
-    result := TVStreamPointer.Create;
-    (result as TVStreamPointer).body := RefVariable(body);
-end;
-
-function TVStreamPointer.AsString: unicodestring;
-begin
-    if body.V<>nil
-    then result := '#<STREAM POINTER '+body.V.AsString()+' >'
-    else result := '#<STREAM POINTER closed>';
-end;
-
-function TVStreamPointer.read_byte(var b: byte): boolean;
-begin
-try
-    if body.V<>nil
-    then result := (body.v as TVStreamBody).read_byte(b)
-    else result := false;
-except
-    on EStreamError do result := false;
-end;
-end;
-
-function TVStreamPointer.write_byte(b: byte): boolean;
-begin
-try
-    if body.V<>nil
-    then result := (body.v as TVStreamBody).write_byte(b)
-    else result := false;
-except
-    on EStreamError do result := false;
-end;
-end;
-
-function TVStreamPointer.read_char(var ch: unicodechar): boolean;
-var b1, b2, b3, b4: byte;
-    function read8bit(const enc: TCodePage): boolean;
-    begin
-        result := read_byte(b1);
-        ch := enc[b1];
-    end;
-begin
-    case (body.V as TVStreamBody).encoding of
-        seUTF8: begin
-            //TODO: read_char кошмарик
-            result := read_byte(b1);
-            if result and ((b1 shr 6)=3) then result := read_byte(b2);
-            if result and ((b1 shr 5)=7) then result := read_byte(b3);
-            if result and ((b1 shr 4)=15) then result := read_byte(b4);
-
-            ch := unicodechar(b1);
-            if (b1 shr 6)=3 then ch := unicodechar(64*(b1 and 31)
-                                                    + (b2 and 63));
-            if (b1 shr 5)=7 then ch := unicodechar(64*64*(b1 and 15)
-                                                    + 64*(b2 and 63)
-                                                    + (b3 and 63));
-            if (b1 shr 4)=15 then ch :=unicodechar(64*64*64*(b1 and 7)
-                                                    + 64*64*(b2 and 63)
-                                                    + 64*(b3 and 64)
-                                                    + (b4 and 64));
-        end;
-        seUTF16LE: begin
-            result := read_byte(b1) and read_byte(b2);
-            ch := unicodechar(b1+b2*256);
-            //TODO: суррогатные пары не поддерживаются
-        end;
-        seUTF16BE: begin
-            result := read_byte(b1) and read_byte(b2);
-            ch := unicodechar(256*b1+b2);
-            //TODO: суррогатные пары не поддерживаются
-        end;
-        seUTF32LE: begin
-            result := read_byte(b1) and read_byte(b2) and read_byte(b3)
-                        and read_byte(b4);
-            ch := unicodechar(b1+b2*256+b3*256*256+b4*256*256*256);
-        end;
-        seUTF32BE: begin
-            result := read_byte(b1) and read_byte(b2) and read_byte(b3)
-                        and read_byte(b4);
-            ch := unicodechar(256*256*256*b1+256*256*b2+256*b3+b4);
-        end;
-        seCP1251: result := read8bit(cp1251_cp);
-        seCP1252: result := read8bit(cp1252_cp);
-        else begin result := read_byte(b1); ch := unicodechar(b1); end;
-    end
-end;
-
-function TVStreamPointer.write_char(ch: unicodechar): boolean;
-var b1, b2, b3, b4: byte; cp: integer;
-begin
-    case (body.V as TVStreamBody).encoding of
-        seUTF8: begin
-            cp := ord(ch);
-            case cp of
-                0..127: result := write_byte(cp);
-                128..2047: result := write_byte((cp shr 6) or 192)
-                                and write_byte((cp and 63) or 128);
-                2048..65535: result := write_byte((cp shr 12) or 224)
-                                and write_byte(((cp shr 6) and 63) or 128)
-                                and write_byte((cp and 63) or 128);
-                65536..2097152: result := write_byte((cp shr 18) or 240)
-                                and write_byte(((cp shr 12) and 63) or 128)
-                                and write_byte(((cp shr 6) and 63) or 128)
-                                and write_byte((cp and 63) or 128);
-                else result := false;
-            end;
-        end;
-        else result := false;
-    end
-end;
-
-function TVStreamPointer.write_BOM: boolean;
-    function wb(b: byte): boolean; begin result := write_byte(b); end;
-begin
-    case (body.V as TVStreamBody).encoding of
-        seUTF8:    result := wb($EF) and wb($BB) and wb($BF);
-        seUTF16LE: result := wb($FF) and wb($FE);
-        seUTF16BE: result := wb($FE) and wb($FF);
-        seUTF32LE: result := wb($FF) and wb($FE) and wb($00) and wb($00);
-        seUTF32BE: result := wb($00) and wb($00) and wb($FE) and wb($FF);
-        else result := true;
-    end
-end;
-
-procedure TVStreamPointer.close_stream;
-begin
-    FreeAndNil(body.V);
-end;
-
-function TVStreamPointer.Set_compression_mode(mode: TCompressionMode): boolean;
-begin
-    if body.V=nil then begin result := false; exit; end;
-    with (body.V as TVStreamBody) do begin
-        FreeAndNil(fZstream);
-        case stream_direction of
-            sdIn: case mode of
-                cmDeflate: fZstream := TDecompressionStream.create(
-                                            fstream, true);
-            end;
-            sdOut: case mode of
-                cmDeflate: fZstream := TCompressionStream.create(clDefault,
-                                            fstream, true);
-            end;
-        end;
-    end;
-    result := true;
-end;
-
-function TVStreamPointer.set_position(p: Int64): boolean;
-begin
-    if body.V=nil then begin result := false; exit; end;
-    with (body.V as TVStreamBody) do begin
-        FreeAndNil(fZstream);
-        fStream.Position := p;
-    end;
-    result := true;
-end;
-
-function TVStreamPointer.get_position(var p: Int64): boolean;
-begin
-    if body.V=nil then begin result := false; exit; end;
-    with (body.V as TVStreamBody) do begin
-        p := fStream.Position;
-    end;
-    result := true;
-end;
-
-function TVStreamPointer.stream_length: Int64;
-begin
-    (body.V as TVStreamBody).fstream.Size;
-end;
+//constructor TVStreamPointer.Create(fn: unicodestring;
+//                                    mode: TFileMode;
+//                                    _encoding: TStreamEncoding);
+//    function b: byte;
+//    begin
+//        result := (body.v as TVStreamBody).fstream.ReadByte;
+//    end;
+//begin
+//    body := NewVariable;
+//    body.V := TVStreamBody.Create(fn, mode);
+//    (body.V as TVStreamBody).encoding :=_encoding;
+//
+//    if _encoding=seBOM
+//    then begin
+//        //UTF-8
+//        if (b=$EF) and (b=$BB) and (b=$BF) then begin
+//            (body.V as TVStreamBody).encoding := seUTF8;
+//            exit;
+//        end else (body.v as TVStreamBody).fstream.Seek(0,0);
+//        //UTF16BE
+//        if (b=$FE) and (b=$FF) then begin
+//            (body.V as TVStreamBody).encoding := seUTF16BE;
+//            exit;
+//        end else (body.v as TVStreamBody).fstream.Seek(0,0);
+//        //UTF32BE
+//        if (b=$00) and (b=$00) and (b=$FE) and (b=$FF) then begin
+//            (body.V as TVStreamBody).encoding := seUTF32BE;
+//            exit;
+//        end else (body.v as TVStreamBody).fstream.Seek(0,0);
+//        //UTF32LE
+//        if (b=$FF) and (b=$FE) and (b=$00) and (b=$00) then begin
+//            (body.V as TVStreamBody).encoding := seUTF32LE;
+//            exit;
+//        end else (body.v as TVStreamBody).fstream.Seek(0,0);
+//        //UTF16LE
+//        if (b=$FF) and (b=$FE) then begin
+//            (body.V as TVStreamBody).encoding := seUTF16LE;
+//            exit;
+//        end else (body.v as TVStreamBody).fstream.Seek(0,0);
+//
+//        (body.V as TVStreamBody).encoding := seCP1251;
+//    end;
+//end;
+//
+//constructor TVStreamPointer.Create;
+//begin
+//    //
+//end;
+//
+//destructor TVStreamPointer.Destroy;
+//begin
+//    ReleaseVariable(body);
+//    inherited Destroy;
+//end;
+//
+//
+//function TVStreamPointer.Copy: TValue;
+//begin
+//    result := TVStreamPointer.Create;
+//    (result as TVStreamPointer).body := RefVariable(body);
+//end;
+//
+//function TVStreamPointer.AsString: unicodestring;
+//begin
+//    if body.V<>nil
+//    then result := '#<STREAM POINTER '+body.V.AsString()+' >'
+//    else result := '#<STREAM POINTER closed>';
+//end;
+//
+//function TVStreamPointer.read_byte(var b: byte): boolean;
+//begin
+//try
+//    if body.V<>nil
+//    then result := (body.v as TVStreamBody).read_byte(b)
+//    else result := false;
+//except
+//    on EStreamError do result := false;
+//end;
+//end;
+//
+//function TVStreamPointer.write_byte(b: byte): boolean;
+//begin
+//try
+//    if body.V<>nil
+//    then result := (body.v as TVStreamBody).write_byte(b)
+//    else result := false;
+//except
+//    on EStreamError do result := false;
+//end;
+//end;
+//
+//function TVStreamPointer.read_char(var ch: unicodechar): boolean;
+//var b1, b2, b3, b4: byte;
+//    function read8bit(const enc: TCodePage): boolean;
+//    begin
+//        result := read_byte(b1);
+//        ch := enc[b1];
+//    end;
+//begin
+//    case (body.V as TVStreamBody).encoding of
+//        seUTF8: begin
+//            //TODO: read_char кошмарик
+//            result := read_byte(b1);
+//            if result and ((b1 shr 6)=3) then result := read_byte(b2);
+//            if result and ((b1 shr 5)=7) then result := read_byte(b3);
+//            if result and ((b1 shr 4)=15) then result := read_byte(b4);
+//
+//            ch := unicodechar(b1);
+//            if (b1 shr 6)=3 then ch := unicodechar(64*(b1 and 31)
+//                                                    + (b2 and 63));
+//            if (b1 shr 5)=7 then ch := unicodechar(64*64*(b1 and 15)
+//                                                    + 64*(b2 and 63)
+//                                                    + (b3 and 63));
+//            if (b1 shr 4)=15 then ch :=unicodechar(64*64*64*(b1 and 7)
+//                                                    + 64*64*(b2 and 63)
+//                                                    + 64*(b3 and 64)
+//                                                    + (b4 and 64));
+//        end;
+//        seUTF16LE: begin
+//            result := read_byte(b1) and read_byte(b2);
+//            ch := unicodechar(b1+b2*256);
+//            //TODO: суррогатные пары не поддерживаются
+//        end;
+//        seUTF16BE: begin
+//            result := read_byte(b1) and read_byte(b2);
+//            ch := unicodechar(256*b1+b2);
+//            //TODO: суррогатные пары не поддерживаются
+//        end;
+//        seUTF32LE: begin
+//            result := read_byte(b1) and read_byte(b2) and read_byte(b3)
+//                        and read_byte(b4);
+//            ch := unicodechar(b1+b2*256+b3*256*256+b4*256*256*256);
+//        end;
+//        seUTF32BE: begin
+//            result := read_byte(b1) and read_byte(b2) and read_byte(b3)
+//                        and read_byte(b4);
+//            ch := unicodechar(256*256*256*b1+256*256*b2+256*b3+b4);
+//        end;
+//        seCP1251: result := read8bit(cp1251_cp);
+//        seCP1252: result := read8bit(cp1252_cp);
+//        else begin result := read_byte(b1); ch := unicodechar(b1); end;
+//    end
+//end;
+//
+//function TVStreamPointer.write_char(ch: unicodechar): boolean;
+//var b1, b2, b3, b4: byte; cp: integer;
+//begin
+//    case (body.V as TVStreamBody).encoding of
+//        seUTF8: begin
+//            cp := ord(ch);
+//            case cp of
+//                0..127: result := write_byte(cp);
+//                128..2047: result := write_byte((cp shr 6) or 192)
+//                                and write_byte((cp and 63) or 128);
+//                2048..65535: result := write_byte((cp shr 12) or 224)
+//                                and write_byte(((cp shr 6) and 63) or 128)
+//                                and write_byte((cp and 63) or 128);
+//                65536..2097152: result := write_byte((cp shr 18) or 240)
+//                                and write_byte(((cp shr 12) and 63) or 128)
+//                                and write_byte(((cp shr 6) and 63) or 128)
+//                                and write_byte((cp and 63) or 128);
+//                else result := false;
+//            end;
+//        end;
+//        else result := false;
+//    end
+//end;
+//
+//function TVStreamPointer.write_BOM: boolean;
+//    function wb(b: byte): boolean; begin result := write_byte(b); end;
+//begin
+//    case (body.V as TVStreamBody).encoding of
+//        seUTF8:    result := wb($EF) and wb($BB) and wb($BF);
+//        seUTF16LE: result := wb($FF) and wb($FE);
+//        seUTF16BE: result := wb($FE) and wb($FF);
+//        seUTF32LE: result := wb($FF) and wb($FE) and wb($00) and wb($00);
+//        seUTF32BE: result := wb($00) and wb($00) and wb($FE) and wb($FF);
+//        else result := true;
+//    end
+//end;
+//
+//procedure TVStreamPointer.close_stream;
+//begin
+//    FreeAndNil(body.V);
+//end;
+//
+//function TVStreamPointer.Set_compression_mode(mode: TCompressionMode): boolean;
+//begin
+//    if body.V=nil then begin result := false; exit; end;
+//    with (body.V as TVStreamBody) do begin
+//        FreeAndNil(fZstream);
+//        case stream_direction of
+//            sdIn: case mode of
+//                cmDeflate: fZstream := TDecompressionStream.create(
+//                                            fstream, true);
+//            end;
+//            sdOut: case mode of
+//                cmDeflate: fZstream := TCompressionStream.create(clDefault,
+//                                            fstream, true);
+//            end;
+//        end;
+//    end;
+//    result := true;
+//end;
+//
+//function TVStreamPointer.set_position(p: Int64): boolean;
+//begin
+//    if body.V=nil then begin result := false; exit; end;
+//    with (body.V as TVStreamBody) do begin
+//        FreeAndNil(fZstream);
+//        fStream.Position := p;
+//    end;
+//    result := true;
+//end;
+//
+//function TVStreamPointer.get_position(var p: Int64): boolean;
+//begin
+//    if body.V=nil then begin result := false; exit; end;
+//    with (body.V as TVStreamBody) do begin
+//        p := fStream.Position;
+//    end;
+//    result := true;
+//end;
+//
+//function TVStreamPointer.stream_length: Int64;
+//begin
+//    (body.V as TVStreamBody).fstream.Size;
+//end;
 
 { TVStreamBody }
 
-constructor TVStreamBody.Create(fn: unicodestring; mode: TFileMode);
-begin
-    stream_type := stFile;
-
-    file_name := fn;
-    case mode of
-        fmRead: begin
-            fStream := TFileStream.Create(fn, fmOpenRead);
-            stream_direction := sdIn;
-        end;
-        fmWrite: begin
-            fStream := TFileStream.Create(fn, fmCreate);
-            stream_direction := sdOut;
-        end;
-        fmAppend: begin
-            if FileExists(fn)
-            then fStream := TFileStream.Create(fn, fmOpenReadWrite)
-            else fStream := TFileStream.Create(fn, fmCreate);
-            fStream.Seek(fStream.Size,0);
-            stream_direction := sdOut;
-        end;
-    end;
-    fZstream := nil;
-end;
-
-destructor TVStreamBody.Destroy;
-begin
-    FreeAndNil(fZstream);
-    FreeAndNil(fStream);
-
-    file_name := '';
-    inherited Destroy;
-end;
-
-function TVStreamBody.Copy: TValue;
-begin
-    result := nil;
-    raise Exception.Create('копирование потока');
-end;
-
-function TVStreamBody.AsString: unicodestring;
-begin
-    result := '#<STREAM '+file_name+' >';
-end;
-
-function TVStreamBody.read_byte(var b: byte): boolean;
-begin
-try
-    result := true;
-    if fZstream<>nil
-    then b := fZstream.ReadByte
-    else b := fstream.ReadByte;
-except
-    on EStreamError do result := false;
-end;
-end;
-
-function TVStreamBody.write_byte(b: byte): boolean;
-begin
-try
-    result := true;
-    if fZstream<>nil
-    then fZstream.Write(b,1)
-    else fstream.Write(b,1);
-except
-    on EStreamError do result := false;
-end;
-end;
+//constructor TVStreamBody.Create(fn: unicodestring; mode: TFileMode);
+//begin
+//    stream_type := stFile;
+//
+//    file_name := fn;
+//    case mode of
+//        fmRead: begin
+//            fStream := TFileStream.Create(fn, fmOpenRead);
+//            stream_direction := sdIn;
+//        end;
+//        fmWrite: begin
+//            fStream := TFileStream.Create(fn, fmCreate);
+//            stream_direction := sdOut;
+//        end;
+//        fmAppend: begin
+//            if FileExists(fn)
+//            then fStream := TFileStream.Create(fn, fmOpenReadWrite)
+//            else fStream := TFileStream.Create(fn, fmCreate);
+//            fStream.Seek(fStream.Size,0);
+//            stream_direction := sdOut;
+//        end;
+//    end;
+//    fZstream := nil;
+//end;
+//
+//destructor TVStreamBody.Destroy;
+//begin
+//    FreeAndNil(fZstream);
+//    FreeAndNil(fStream);
+//
+//    file_name := '';
+//    inherited Destroy;
+//end;
+//
+//function TVStreamBody.Copy: TValue;
+//begin
+//    result := nil;
+//    raise Exception.Create('копирование потока');
+//end;
+//
+//function TVStreamBody.AsString: unicodestring;
+//begin
+//    result := '#<STREAM '+file_name+' >';
+//end;
+//
+//function TVStreamBody.read_byte(var b: byte): boolean;
+//begin
+//try
+//    result := true;
+//    if fZstream<>nil
+//    then b := fZstream.ReadByte
+//    else b := fstream.ReadByte;
+//except
+//    on EStreamError do result := false;
+//end;
+//end;
+//
+//function TVStreamBody.write_byte(b: byte): boolean;
+//begin
+//try
+//    result := true;
+//    if fZstream<>nil
+//    then fZstream.Write(b,1)
+//    else fstream.Write(b,1);
+//except
+//    on EStreamError do result := false;
+//end;
+//end;
 
 { TVOperator }
 
