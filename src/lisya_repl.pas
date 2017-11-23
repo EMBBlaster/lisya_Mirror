@@ -9,7 +9,7 @@ uses
     cwstring,
     {$ENDIF}
 
-    Classes, SysUtils, dlisp_eval, dlisp_values, dlisp_read;
+    Classes, SysUtils, dlisp_eval, dlisp_values, dlisp_read, mar;
 
 
 
@@ -22,9 +22,15 @@ var
 
 procedure REPL;
 var input_string: unicodestring; expr, res: TValue;
+    last_error_stack: unicodestring;
 begin
     Write('> ');ReadLn(input_string);
     while input_string<>'' do begin
+
+        if UpperCaseU(input_string) = 'ERROR STACK'
+        then WriteLn(last_error_stack)
+        else
+
         try
             expr := nil;
             expr := read_from_string(input_string);
@@ -40,6 +46,7 @@ begin
                 if E.EClass<>''
                 then WriteLn(' (',E.EClass,')')
                 else WriteLn();
+                last_error_stack := E.EStack + E.Message + ' ('+E.EClass+')';
             end;
         end;
         Write('> ');ReadLn(input_string);

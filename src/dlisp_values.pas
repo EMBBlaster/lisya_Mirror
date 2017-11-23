@@ -31,8 +31,9 @@ type
 
     ELisyaError              = class (Exception)
         EClass: unicodestring;
+        EStack: unicodestring;
         constructor InvalidParameters;
-        constructor Create(msg: unicodestring; ec: unicodestring='');
+        constructor Create(msg: unicodestring; ec: unicodestring=''; es: unicodestring='');
         constructor Malformed(msg: unicodestring);
         constructor Stream(msg: unicodestring);
         destructor Destroy; override;
@@ -1469,10 +1470,11 @@ begin
 //    fmessage := 'invalid parameters';
 end;
 
-constructor ELisyaError.Create(msg: unicodestring; ec: unicodestring);
+constructor ELisyaError.Create(msg: unicodestring; ec: unicodestring; es: unicodestring='');
 begin
     inherited Create(msg);
     EClass := ec;
+    EStack := es;
 end;
 
 constructor ELisyaError.Malformed(msg: unicodestring);
@@ -1490,6 +1492,7 @@ end;
 destructor ELisyaError.Destroy;
 begin
     EClass := '';
+    EStack := '';
     inherited Destroy;
 end;
 

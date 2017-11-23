@@ -2203,6 +2203,7 @@ begin try
     except
         on E:ELE do begin
             WriteLn('ERROR during execution ',filename);
+            Write(E.EStack);
             WriteLn(E.Message,' (',E.EClass,')');
         end;
     end;
@@ -3053,7 +3054,7 @@ end;
 
 function TEvaluationFlow.oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
 var frame_start, exception_frame_start: integer; pc, i: integer; V: TValue;
-    exception_message, exception_class: unicodestring;
+    exception_message, exception_class, exception_stack: unicodestring;
 label return;
     function val(): boolean;
     begin try
@@ -3065,6 +3066,7 @@ label return;
             result := false;
             exception_message := E.Message;
             exception_class := E.EClass;
+            exception_stack := E.EStack;
    //         WriteLn('val Ele>> ',E.EClass);
         end;
         on E:Exception do begin
@@ -3127,6 +3129,8 @@ begin
                         TVString.Create(exception_message));
                     stack.new_var('EXCEPTION-CLASS',
                         TVString.Create(exception_class));
+                    stack.new_var('EXCEPTION-STACK',
+                        TVString.Create(exception_stack));
                     result := oph_block(PL.L[pc], 1, false);
                     stack.clear_frame(exception_frame_start);
                     goto return;
@@ -3135,7 +3139,7 @@ begin
             end;
             //если обработчик не найден
             if with_frame then stack.clear_frame(frame_start);
-            raise ELE.Create(exception_message, exception_class);
+            raise ELE.Create(exception_message, exception_class, exception_stack);
         end;
     end;
     if (V is TVProcedure) and with_frame then procedure_complement(V);
@@ -3235,7 +3239,8 @@ begin try
     raise ELE.Create('eval_link не обработанный случай');
 except
     on E:ELE do begin
-        raise ELE.Create('eval link '+P.AsString+new_line+'=> '+E.Message, E.EClass);
+        E.EStack := 'eval link '+P.AsString+new_line+'=> '+E.EStack;
+        raise ELE.Create(E.Message, E.EClass, E.EStack);
     end;
 end;
 end;
@@ -4334,6 +4339,7 @@ var PL: TVList;
     o: TOperatorEnum;
     type_v: (selfEval, symbol, list, unexpected);
     head, uname: unicodestring;
+    estack: unicodestring;
     function op(oe: TOperatorEnum): TValue;
     begin result := TVOperator.Create(uname, oe, TVList.Create); end;
 
@@ -4479,21 +4485,23 @@ return:
 except
     on E:ELisyaError do begin
        // WriteLn('eval ELE>> ', E.Eclass,'  ', e.Message);
-       E.Message := V.AsString+new_line+'=> '+E.Message;
-       //E.message := 'eval ELE';
+       //E.Message := V.AsString+new_line+'=> '+E.Message;
+       //WriteLn('1>> ',E.EStack);
+       E.EStack := V.AsString+new_line+'=> '+E.EStack;
+       //WriteLn('2>> ',E.EStack);
         V.Free;
-        raise ELE.Create(E.Message, E.EClass);
+        raise ELE.Create(E.Message, E.EClass, E.EStack);
     end;
     on E:Exception do begin
         //WriteLn('eval E>> ');
         try
-            E.Message:=V.AsString+new_line+'=> '+E.Message+' (!'+E.ClassName+'!)';
+            EStack := V.AsString+new_line+'=> ';
         except
-            E.Message:='XXXX'+new_line+'=> '+E.Message+' (!'+E.ClassName+'!)';
+            EStack := 'XXXX'+new_line+'=> ';
         end;
   //      stack.Print;
   //      WriteLn('>>>> ',E.Message);
-        raise ELE.Create(E.Message, E.ClassName);
+        raise ELE.Create(E.Message, '!'+E.ClassName+'!', EStack);
     end;
 end;
 end;
