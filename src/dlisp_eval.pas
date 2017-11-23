@@ -69,6 +69,7 @@ type
         function op_set(PL: TVList): TValue;
         function op_record(PL: TVList): TValue;
         function op_record_as(PL: TVList): TValue;
+        function op_return(PL: TVList): TValue;
         function op_val(PL: TVList): TValue;
         function op_var(PL: TVList): TValue;
         function op_when(PL: TVList): TValue;
@@ -341,6 +342,7 @@ begin
         or (V is TVRange)
         or (V is TVDateTime)
         or (V is TVSQLPointer)
+        or (V is TVReturn)
         or (V is TVTimeInterval);
 end;
 
@@ -392,6 +394,11 @@ end;
 function tpKeywordOrNIL(V: TValue): boolean;
 begin
     result := tpKeyword(V) or tpNIL(V);
+end;
+
+function tpReturn(V: TValue): boolean;
+begin
+    result := V is TVReturn;
 end;
 
 /////////////////////////////////////
@@ -2173,6 +2180,7 @@ begin
 
                 //writeln('expr>> ', expr.AsString());
                 res := ep(expr);
+                if res is TVReturn then break;
                 FreeAndNil(res);
             end;
         finally
@@ -2986,6 +2994,7 @@ begin
             oeQUOTE     : op('(QUOTE a)');
             oeRECORD    : op('(RECORD :rest s)');
             oeRECORD_AS : op('(RECORD-AS t :rest s)');
+            oeRETURN    : op('(RETURN :optional v)');
             oeSET       : op('(SET n v)');
             oeTHEN      : op('(THEN :rest body)');
             oeVAL       : op('(VAL a)');
@@ -3104,7 +3113,8 @@ begin
                 if pc<0 then break;
             end
             else
-                if tpBreak(V) or tpContinue(V) then break;
+                if tpBreak(V) or tpContinue(V) or tpReturn(V) then break;
+
         end
         else begin //поиск обработчика исключений
             inc(pc);
@@ -3463,6 +3473,17 @@ begin
     result := rec.Copy;
 end;
 
+function TEvaluationFlow.op_return(PL: TVList): TValue;
+begin
+    if PL.Count>2 then raise ELE.Malformed('RETURN');
+
+    result := nil;
+    case PL.Count of
+        2: result := TVReturn.Create(eval(PL[1]));
+        1: result := TVReturn.Create(TVList.Create);
+    end;
+end;
+
 function TEvaluationFlow.op_cond                    (PL: TVList): TValue;
 var pc, i, sp_i: integer; tmp: TValue;
 begin try
@@ -3534,6 +3555,10 @@ try
                     result := CP.value;
                     break;
                 end;
+                if tpReturn(V) then begin
+                    result := V.Copy;
+                    break;
+                end;
             end;
         end;
 
@@ -3557,6 +3582,10 @@ try
                 V := oph_block(PL, 3, true);
                 if tpBreak(V) then begin
                     result := TVInteger.Create(i);
+                    break;
+                end;
+                if tpReturn(V) then begin
+                    result := V.Copy;
                     break;
                 end;
             end;
@@ -3909,6 +3938,7 @@ var cond, V: TValue;
 begin
     if PL.Count<2 then raise ELE.malformed('WHILE');
 try
+    result := TVList.Create;
     V := nil;
     cond := nil;
     cond := eval(PL[1]);
@@ -3916,6 +3946,10 @@ try
         V := oph_block(PL, 2, true);
 
         if tpBreak(V) then break;
+        if tpReturn(V) then begin
+            result := V.Copy;
+            break;
+        end;
         FreeAndNil(V);
         FreeAndNil(cond);
         cond := eval(PL[1]);
@@ -3924,7 +3958,7 @@ finally
     FreeAndNil(cond);
     FreeAndNil(V);
 end;
-    result := TVList.Create;
+
 end;
 
 function TEvaluationFlow.op_with(PL: TVList): TValue;
@@ -4198,6 +4232,7 @@ function TEvaluationFlow.procedure_call(PL: TVList): TValue;
 var first: TValue; proc: TVProcedure; i: integer; frame_start: integer;
     error_message: unicodestring;
     tmp_stack: TVSymbolStack; body: TVList;
+    tmp: TValue;
 begin
     //TODO: при вызове процедуры с несуществующими переменными не возникает ошибка
     //TODO: лишний EVAL? голова должна быть вычислена до вызова?
@@ -4219,6 +4254,11 @@ begin
         tmp_stack := stack;
         stack := proc.stack;
         result := oph_block(proc.body, 0, false);
+        if tpReturn(result) then begin
+            tmp := (result as TVReturn).value.Copy;
+            result.Free;
+            result := tmp;
+        end;
     finally
         stack := tmp_stack;
         proc.Free;
@@ -4230,12 +4270,12 @@ end;
 function TEvaluationFlow.internal_function_call(PL: TVList): TValue;
 var i: integer; binded_PL: TVList;
 begin
-    //print_stdout_ln(PL);
+   // print_stdout_ln(PL);
     for i := 1 to PL.High do begin
         PL[i] := eval(PL[i]);
         if (PL.look[i] is TVProcedure) then procedure_complement(PL.look[i]);
     end;
-    //print_stdout_ln(PL);
+   // print_stdout_ln(PL);
 try
     binded_PL := nil;
     binded_PL := bind_parameters_list(PL,
@@ -4403,6 +4443,7 @@ begin try
                     //TODO: QUOTE не проверяет количество аргументов
                     oeRECORD    : result := op_record(V as TVList);
                     oeRECORD_AS : result := op_record_as(V as TVList);
+                    oeRETURN    : result := op_return(V as TVList);
                     oeSET       : result := op_set(V as TVList);
                     oeTHEN      : result := op_secondary_error(V as TVList);
                     oeVAL       : result := op_val(V as TVList);

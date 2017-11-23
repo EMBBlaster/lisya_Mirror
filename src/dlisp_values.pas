@@ -223,6 +223,16 @@ type
     end;
 
 
+    { TVReturn }
+
+    TVReturn = class (TVGo)
+        value: TValue;
+        constructor Create(V: TValue);
+        destructor Destroy; override;
+        function Copy: TValue; override;
+        function AsString: unicodestring; override;
+    end;
+
     { TVPrimitive }
 
     TVPrimitive = class (TValue)
@@ -578,6 +588,7 @@ type
             oeQUOTE,
             oeRECORD,
             oeRECORD_AS,
+            oeRETURN,
             oeSET,
             oeTHEN,
             oeVAL,
@@ -779,6 +790,29 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVReturn }
+
+constructor TVReturn.Create(V: TValue);
+begin
+    value := V;
+end;
+
+destructor TVReturn.Destroy;
+begin
+    value.Free;
+    inherited Destroy;
+end;
+
+function TVReturn.Copy: TValue;
+begin
+    result := TVReturn.Create(value.Copy);
+end;
+
+function TVReturn.AsString: unicodestring;
+begin
+    result := '#<RETURN '+value.AsString+'>';
 end;
 
 { TVStreamPointer }
