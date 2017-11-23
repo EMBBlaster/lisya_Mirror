@@ -1444,6 +1444,16 @@ begin
     end;
 end;
 
+function if_random              (const PL: TVList; ep: TEvalProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpIntegerNotNegative,
+        tpNIL]) of
+        1: result := TVInteger.Create(system.Random(PL.I[0]));
+        2: result := TVFloat.Create(system.Random);
+    end;
+end;
+
 function if_equal               (const PL: TVList; ep: TEvalProc): TValue;
 begin
     case params_is(PL, result, [tpAny, tpAny]) of
@@ -1552,12 +1562,8 @@ end;
 function if_error               (const PL: TVList; ep: TEvalProc): TValue;
 begin
     case params_is (PL, result, [
-        tpString, tpString,
-        tpString, tpNIL,
-        tpNIL,    tpNIL]) of
-        1: raise ELE.Create(PL.S[0], PL.S[1]);
-        2: raise ELE.Create(PL.S[0]);
-        3: raise ELE.Create('');
+        tpString, tpList]) of
+        1: raise ELE.Create(ifh_format(PL.L[1]), PL.S[0]);
     end;
 end;
 
@@ -1768,7 +1774,6 @@ begin
     end;
 end;
 
-
 function if_sort                (const PL: TVList; ep: TEvalProc): TValue;
 type Tvalues = array of TValue;
 var list: TValues; expr: TVlist; i: integer;
@@ -1781,7 +1786,7 @@ var list: TValues; expr: TVlist; i: integer;
         try
             tmp := nil;
             tmp := ep(expr.copy);
-            Write(a.AsString(),'  -  ',b.AsString(),' = ', tmp.AsString());
+            //Write(a.AsString(),'  -  ',b.AsString(),' = ', tmp.AsString());
 
             if tpNIL(tmp) or vpNumberNegative(tmp) or vpKeyword_LESS(tmp)
             then result := -1
@@ -1790,7 +1795,7 @@ var list: TValues; expr: TVlist; i: integer;
                 then result := 0
                 else result := 1;
 
-            WriteLn('    ',result)
+            //WriteLn('    ',result)
         finally
             tmp.Free;
         end;
@@ -1836,6 +1841,20 @@ finally
     expr.Free;
 end;
 
+end;
+
+function if_slots               (const PL: TVList; ep: TEvalProc): TValue;
+var i: integer;
+begin
+    case params_is(PL, result, [
+        tpRecord]) of
+        1: begin
+            result := TVList.Create;
+            for i := 0 to (PL.look[0] as TVRecord).count-1 do
+                (result as TVList).Add(
+                    TVSymbol.Create((PL.look[0] as TVRecord).name_n(i)));
+        end;
+    end;
 end;
 
 function if_union               (const PL: TVList; ep: TEvalProc): TValue;
@@ -2238,23 +2257,6 @@ begin
         end;
     end;
 end;
-
-//function if_set_compression_method(const PL: TVList; ep: TEvalProc): TValue;
-//var mode: TFileMode; enc: TStreamEncoding;
-//begin
-//    case params_is(PL, result, [
-//        tpStreamPointer, vpKeyword_DEFLATE,
-//        tpStreamPointer, tpNIL]) of
-//        1: begin
-//            (PL.look[0] as TVStreamPointer).Set_compression_mode(cmDeflate);
-//            result := TVT.Create;
-//        end;
-//        2: begin
-//            (PL.look[0] as TVStreamPointer).Set_compression_mode(cmNone);
-//            result := TVT.Create;
-//        end;
-//    end;
-//end;
 
 function if_close_stream        (const PL: TVList; ep: TEvalProc): TValue;
 begin
@@ -2809,7 +2811,7 @@ begin
 end;
 
 
-const int_dyn: array[1..103] of TInternalFunctionRec = (
+const int_dyn: array[1..105] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
 (n:'TRUE?';                 f:if_true_p;                s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
@@ -2836,6 +2838,7 @@ const int_dyn: array[1..103] of TInternalFunctionRec = (
 (n:'ROUND';                 f:if_round;                 s:'(a)'),
 (n:'RANGE';                 f:if_range;                 s:'(l :optional h)'),
 (n:'SYMBOL';                f:if_symbol;                s:'(n)'),
+(n:'RANDOM';                f:if_random;                s:'(:optional r)'),
 
 (n:'=';                     f:if_equal;                 s:'(a b)'),
 (n:'>';                     f:if_more;                  s:'(a b)'),
@@ -2847,7 +2850,7 @@ const int_dyn: array[1..103] of TInternalFunctionRec = (
 (n:'EQUAL-CASE-INSENSITIVE';f:if_equal_case_insensitive;s:'(s s)'),
 
 (n:'TEST-DYN';              f:if_test_dyn;              s:'(a :rest r)'),
-(n:'ERROR';                 f:if_error;                 s:'(:optional m c)'),
+(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
 
 
 (n:'EXTRACT-FILE-EXT';      f:if_extract_file_ext;      s:'(s)'),
@@ -2868,6 +2871,7 @@ const int_dyn: array[1..103] of TInternalFunctionRec = (
 (n:'CAR';                   f:if_car;                   s:'(l)'),
 (n:'SUBSEQ';                f:if_subseq;                s:'(s b :optional e)'),
 (n:'SORT';                  f:if_sort;                  s:'(s :optional p)'),
+(n:'SLOTS';                 f:if_slots;                 s:'(r)'),
 
 (n:'UNION';                 f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION';          f:if_intersection;          s:'(:rest a)'),
@@ -3230,7 +3234,7 @@ end;
 function TEvaluationFlow.op_and                     (PL: TVList): TValue;
 var pc: integer;
 begin
-    result := TVList.Create;
+    result := TVT.Create;
     for pc := 1 to PL.count-1 do begin
         FreeAndNil(result);
         result := eval(PL[pc]);
@@ -3244,26 +3248,32 @@ begin
 end;
 
 function TEvaluationFlow.op_case                    (PL: TVList): TValue;
-var i: integer;
+var i: integer; expr: TValue;
 begin
     if Pl.Count<2 then raise ELE.Malformed('CASE');
 
     for i := 2 to PL.High do
         if tpNIL(PL.look[i]) then raise ELE.Malformed('CASE');
     //TODO: CASE не проверяет наличие OTHERWISE в середине списка альтернатив
-    result := eval(PL[1]);
-    //TODO: CASE должен вычислять ключи, иначе не получается использовать константы
+try
+    expr := nil;
+    result := nil;
+    expr := eval(PL[1]);
+
     for i := 2 to PL.High do
-        if ifh_equal(result, PL.L[i].look[0])
+        if ifh_equal(expr, PL.L[i].look[0])
             or (tpListNotEmpty(PL.L[i].look[0]) and
-                    ifh_member(PL.L[i].L[0], result))
+                    ifh_member(PL.L[i].L[0], expr))
             or tpT(PL.L[i].look[0])
             or vpSymbol_OTHERWISE(PL.L[i].look[0])
         then begin
-            result.Free;
             result := oph_block(PL.L[i], 1, false);
             exit;
         end;
+    raise ELE.Create('CASE without result', 'invalid parameters');
+finally
+    expr.Free;
+end;
 end;
 
 function TEvaluationFlow.op_push                    (PL: TVList): TValue;
@@ -3718,7 +3728,7 @@ end;
 function TEvaluationFlow.op_or                      (PL: TVList): TValue;
 var pc: integer;
 begin
-    result := TVT.Create;
+    result := TVList.Create;
     for pc := 1 to PL.count-1 do begin
         FreeAndNil(result);
         result := eval(PL[pc]);
@@ -4450,6 +4460,7 @@ end;
 
 
 initialization
+    system.Randomize;
     fill_base_stack;
     root_evaluation_flow := TEvaluationFlow.Create(base_stack.Copy as TVSymbolStack);
     fill_ops_array;
