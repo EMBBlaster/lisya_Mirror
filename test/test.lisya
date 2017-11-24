@@ -239,10 +239,11 @@
 
 
 (log \STREAM)
-(block 
-(var out (open-file "1.txt" :mode :write))
+(block
+    (var out (open-file "1.txt" :mode :write))
     (write-byte out 37)
-    (close-file out)	
+    (close-file out)
+    (log "здесь падает с ошибкой памяти если не вставлен оператор")
     (var in (open-file "1.txt"))
 	(assertion (= 37 (read-byte in)) "file stream"))
 
@@ -255,7 +256,7 @@
     
 
 (var tests (directory "../test/*_test.lisya"))
-(assertion (= 8 (length tests)) "tests count")
+(assertion (= 9 (length tests)) "tests count")
 (for test tests (execute-file test))
 
 

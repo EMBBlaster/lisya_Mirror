@@ -1,0 +1,60 @@
+﻿(fmt nil "деструктурирующая привязка... ")
+
+(block "привязка обзательных параметров"
+    (var x \(1 2 3))
+    (var (a b c) x)
+    (assertion (= 1 a) "bind 1 1")
+    (assertion (= 2 b) "bind 1 2")
+    (assertion (= 3 c) "bind 1 2"))
+
+(block "привязка опциональных параметров"
+    (var x \(1 2))
+    (var (a :optional b c) x)
+    (assertion (= 1 a) "bind 2 1")
+    (assertion (= 2 b) "bind 2 2")
+    (assertion (= NIL c) "bind 2 3"))
+
+(block "привязка ключевых параметров"
+    (var x \(1 :c 3))
+    (var (a :key b c) x)
+    (assertion (= 1 a) "bind 3 1")
+    (assertion (= NIL b) "bind 3 2")
+    (assertion (= 3 c) "bind 3 3"))
+
+(block "привязка остаточного параметра"
+    (var x \(1 2 3))
+    (var (a :rest b) x)
+    (assertion (= 1 a) "bind 4 1")
+    (assertion (= \(2 3) b) "bind 4 2"))
+
+(block "привязка вложенных параметров"
+    (var x \(1 (2 3) 4))
+    (var (a (b c) d) x)
+    (assertion (= a 1) "bind 5 1")
+    (assertion (= b 2) "bind 5 2")
+    (assertion (= c 3) "bind 5 3")
+    (assertion (= d 4) "bind 5 4"))
+
+(block "привязка вложенных опциональных параметров"
+    (var x \(1 (2)))
+    (var (a :optional (b)) x)
+    (assertion (= 1 a) "bind 6 1")
+    (assertion (= 2 b) "bind 6 2"))
+
+(block "привязка отсутствующих вложенных опциональных параметров"
+    (var x \(1))
+    (var (a :optional (b)) x)
+    (assertion (= 1 a) "bind 7 1")
+    (assertion (= nil b) "bind 7 2"))
+
+(block "привязка констант"
+    (var x \(1 (2 3 4)))
+    (const (a (b :rest c)) x)
+    (assertion (= 1 a) "bind 8 1")
+    (assertion (= 2 b) "bind 8 2")
+    (assertion (= \(3 4) c) "bind 8 3"))
+
+
+
+
+(log \успешно)

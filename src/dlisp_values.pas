@@ -2284,7 +2284,7 @@ end;
 
 function TVOperator.AsString: unicodestring;
 begin
-    result := '#<OPERATOR '+name+' '+signature.AsString()+'>';
+    result := '#<OPERATOR '+name+'>';//+signature.AsString()+'>';
 end;
 
 { TVInternalFunction }

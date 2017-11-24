@@ -37,6 +37,7 @@ type
         destructor Destroy; override;
 
         function oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
+        procedure oph_bind(P: TValue; s: TValue; constant: boolean);
 
         function opl_elt(PL: TVList): TVChainPointer;
         function opl_last(PL: TVList): TVChainPointer;
@@ -498,17 +499,17 @@ begin
         and ((V as TVInteger).fI<256);
 end;
 
-function vpKeywordKey                               (V: TValue): boolean;
+function vpKeyword_KEY                              (V: TValue): boolean;
 begin
     result := (V is TVKeyword) and ((V as TVSymbol).uname = ':KEY');
 end;
 
-function vpKeywordRest                              (V: TValue): boolean;
+function vpKeyword_REST                             (V: TValue): boolean;
 begin
     result := (V is TVKeyword) and ((V as TVSymbol).uname = ':REST');
 end;
 
-function vpKeywordOptional                          (V: TValue): boolean;
+function vpKeyword_OPTIONAL                         (V: TValue): boolean;
 begin
     result := (V is TVKeyword) and ((V as TVSymbol).uname = ':OPTIONAL');
 end;
@@ -853,6 +854,7 @@ end;
 
 
 
+
 function value_by_key(L: TVList; key: unicodestring): TValue;
 var i: integer;
 begin
@@ -909,9 +911,9 @@ begin
         then begin
             // Предполагается, что эта функция получает уже верифицированную
             //сигнатуру
-            if vpKeywordKey(sign.look[i]) then mode := spmKey;
-            if vpKeywordOptional(sign.look[i]) then mode := spmOpt;
-            if vpKeywordrest(sign.look[i]) then mode := spmRest;
+            if vpKeyword_KEY(sign.look[i]) then mode := spmKey;
+            if vpKeyword_OPTIONAL(sign.look[i]) then mode := spmOpt;
+            if vpKeyword_REST(sign.look[i]) then mode := spmRest;
             if vpKeyword_FLAG(sign.look[i]) then mode := spmFlag;
         end
         else
@@ -3149,6 +3151,114 @@ return:
     if with_frame then stack.clear_frame(frame_start);
 end;
 
+procedure TEvaluationFlow.oph_bind(P: TValue; s: TValue; constant: boolean);
+var mode: (necessary, optional, rest, key);
+    i, n, key_start: integer;
+    PL, sign: TVList;
+
+    procedure nil_const(s: TValue);
+    var i: integer;
+    begin
+        if tpOrdinarySymbol(s)
+        then stack.new_var(s as TVSymbol, TVList.Create, true)
+        else
+            if tpList(s)
+            then for i := 0 to (s as TVList).high do nil_const((s as TVList).look[i])
+            else
+                raise ELE.Create(s.AsString+' - is not symbol or list', 'syntax');
+    end;
+
+    function key_number(key: unicodestring): integer;
+    var i: integer;
+    begin
+        i := PL.high-1;
+        while i>=key_start do begin
+            if tpSymbol(PL.look[i]) and (key=PL.uname[i])
+            then begin
+                result := i;
+                exit;
+            end;
+            Dec(i, 2);
+        end;
+        result := -1;
+    end;
+begin
+    if tpOrdinarySymbol(s)
+    then begin
+        stack.new_var(s as TVSymbol, P.Copy);
+        Exit;
+    end;
+
+    if tpList(s) and tpList(P)
+    then begin
+        sign := s as TVList;
+        PL := P as TVList;
+    end
+    else raise ELE.Create('7', 'syntax');
+
+    if (sign.Count=0) and (PL.Count>0) then raise ELE.Create('6', 'syntax');
+    mode := necessary;
+    for i := 0 to sign.high do begin
+        if tpKeyword(sign.look[i]) then begin
+            if mode<>necessary then raise ELE.Create('invalid signature', 'syntax');
+            if vpKeyword_OPTIONAL(sign.look[i])
+            then mode := optional
+            else
+                if vpKeyword_REST(sign.look[i])
+                then mode := rest
+                else
+                    if vpKeyword_KEY(sign.look[i])
+                    then begin
+                        mode := key;
+                        key_start := i;
+                    end
+                    else
+                        raise ELE.Create('invalid parameters mode '+sign.look[i].AsString,
+                            'syntax');
+        end
+        else
+            case mode of
+                necessary: begin
+                    if i>PL.high then raise ELE.Create('not enought necessary parameters', 'invalid parameters');
+                    if (i=sign.high) and (PL.Count>sign.Count) then raise ELE.Create('4', 'syntax');
+                    if tpOrdinarySymbol(sign.look[i])
+                    then stack.new_var(sign.SYM[i], PL[i], constant)
+                    else
+                        if tpList(sign.look[i]) and tpList(PL.look[i])
+                        then oph_bind(PL.L[i], sign.L[i], constant)
+                        else
+                            raise ELE.Create('value for '+sign.L[i].AsString+' is not list', 'invalid parameters');
+                end;
+                optional: begin
+                    if (i=sign.high) and (PL.Count>sign.Count) then raise ELE.Create('5', 'syntax');
+                    if (i-1)>PL.high
+                    then nil_const(sign.look[i])
+                    else
+                        if tpOrdinarySymbol(sign.look[i])
+                        then stack.new_var(sign.SYM[i], PL[i-1], constant)
+                        else
+                            if tpList(sign.look[i]) and tpList(PL.look[i-1])
+                            then oph_bind(PL.L[i-1], sign.L[i], constant)
+                            else
+                                raise ELE.Create('value for '+sign.L[i].AsString+' is not list', 'invalid parameters');
+                end;
+                key: begin
+                    //TODO: &key не проверяет параметры на наличие лишних ключей
+                    if not tpOrdinarySymbol(sign.look[i]) then raise ELE.Create('1','syntax');
+                    n := key_number(':'+sign.uname[i]);
+                    if n>0
+                    then stack.new_var(sign.SYM[i], PL[n+1], constant)
+                    else nil_const(sign.look[i]);
+                end;
+                rest: begin
+                    if not tpOrdinarySymbol(sign.look[i]) then raise ELE.Create('2','syntax');
+                    if i<sign.high then raise ELE.Create('3', 'syntax');
+                    stack.new_var(sign.SYM[i], PL.subseq(i-1, -1));
+                end;
+            end;
+    end;
+end;
+
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
 var i: integer; tmp: TValue;
 begin
@@ -3330,11 +3440,21 @@ end;
 end;
 
 function TEvaluationFlow.op_const                   (PL: TVList): TValue;
+var tmp: TValue;
 begin
-    if (PL.Count<>3) or not tpOrdinarySymbol(PL.look[1])
+    if (PL.Count<>3) or not (tpOrdinarySymbol(PL.look[1]) or tpList(PL.look[1]))
     then raise ELE.malformed('CONST');
-    //stack.new_var(PL.name[1], eval(PL[2]), true);
-    stack.new_var(PL.SYM[1], eval(PL[2]), true);
+    //stack.new_var(PL.SYM[1], eval(PL[2]), true);
+    //result := TVT.Create;
+
+    try
+        tmp := nil;
+        tmp := eval(PL[2]);
+        oph_bind(tmp, PL.look[1], true);
+    finally
+        tmp.Free;
+    end;
+
     result := TVT.Create;
 end;
 
@@ -3914,16 +4034,24 @@ begin
 end;
 
 function TEvaluationFlow.op_var                     (PL: TVList): TValue;
+var tmp: TValue;
 begin
     if (PL.Count<2) or (PL.Count>3)
-        or not tpOrdinarySymbol(PL.look[1])
+        or not (tpOrdinarySymbol(PL.look[1]) or tpList(PL.look[1]))
     then raise ELE.malformed('VAR');
 
     case PL.Count of
-        2: //stack.new_var(PL.name[1], TVList.Create);
-            stack.new_var(PL.SYM[1], TVList.Create);
-        3: //stack.new_var(PL.name[1], eval(PL[2]));
-            stack.new_var(PL.SYM[1], eval(PL[2]));
+        2: if tpOrdinarySymbol(PL.look[1])
+            then stack.new_var(PL.SYM[1], TVList.Create)
+            else raise ELE.Malformed('VAR');
+        3: //stack.new_var(PL.SYM[1], eval(PL[2]));
+            try
+                tmp := nil;
+                tmp := eval(PL[2]);
+                oph_bind(tmp, PL.look[1], false);
+            finally
+                tmp.Free;
+            end;
     end;
     result := TVT.Create;
 end;
