@@ -2925,7 +2925,7 @@ const int_dyn: array[1..105] of TInternalFunctionRec = (
 );
 
 
-var ops: array[TOperatorEnum] of record n: unicodestring; s: TVList; i: integer; end;
+var ops: array[TOperatorEnum] of record n: unicodestring; s: TVList; nN: integer; end;
 
 procedure fill_ops_array;
 var o: TOperatorEnum;
@@ -2935,7 +2935,7 @@ var o: TOperatorEnum;
         //WriteLn(s);
         V := read_from_string(s) as TVList;
         ops[o].n := V.uname[0];
-        ops[o].i := V.SYM[0].N;
+        ops[o].nN := V.SYM[0].N;
         ops[o].s := V.Subseq(1, v.Count) as TVList;
         FreeAndNil(V);
     end;
@@ -3835,7 +3835,7 @@ begin
     proc := TVProcedure.Create;
     proc.is_macro_symbol := true;
 
-    proc.name:=PL.name[1];
+    proc.nN := PL.SYM[1].N;
 
     result := proc;
     proc.stack_pointer := stack.count;
@@ -3989,7 +3989,7 @@ begin
     proc := TVProcedure.Create;
     proc.is_macro := (PL.look[0] as TVOperator).op_enum=oeMACRO;
 
-    if sign_pos=2 then proc.name:=PL.name[1];
+    if sign_pos=2 then proc.nN:=PL.SYM[1].N;
 
     result := proc;
     proc.stack_pointer := stack.count;
@@ -4439,8 +4439,8 @@ var PL: TVList;
     type_v: (selfEval, symbol, list, unexpected);
     uname: unicodestring;
     estack: unicodestring;
-    function op(oe: TOperatorEnum): TValue;
-    begin result := TVOperator.Create(uname, oe, TVList.Create); end;
+  //  function op(oe: TOperatorEnum): TValue;
+  //  begin result := TVOperator.Create(uname, oe, TVList.Create); end;
 
 label return;
 begin try
@@ -4472,8 +4472,8 @@ begin try
             //WriteLn(uname);
             for o := low(ops) to high(ops) do
                 //if ops[o].n=uname then begin
-                if ops[o].i = (V as TVSymbol).N then begin
-                    result := TVOperator.Create(uname, o, ops[o].s);
+                if ops[o].nN = (V as TVSymbol).N then begin
+                    result := TVOperator.Create(ops[o].nN, o, ops[o].s);
                     goto return;
                 end;
 

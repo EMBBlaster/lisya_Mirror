@@ -483,7 +483,8 @@ type
 
 
     TVSubprogram = class (TValue)
-        name: unicodestring;
+        //name: unicodestring;
+        nN: integer;
         //TODO: нужно пересмотреть дерево классов подпрограмм
         //поле signature используется только внутренними функциями
         //TVProcedure использует поле fsignature
@@ -543,6 +544,7 @@ type
         constructor Create(sign: TVList;
                             body: TInternalFunctionBody;
                             name: unicodestring = '');
+        constructor CreateEmpty;
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
@@ -594,11 +596,11 @@ type
     //and append block break case cond const continue default elt exception filter for goto if if-nil last let map or pop procedure push quote set stack structure structure-as val var when while
 
     TVOperator = class (TVInternalSubprogram)
-        name: unicodestring;
         op_enum: TOperatorEnum;
         param_is_check: boolean;
 
-        constructor Create(name: unicodestring; en: TOperatorEnum; sign: TVList);
+        constructor Create(name: unicodestring; en: TOperatorEnum; sign: TVList); overload;
+        constructor Create(_nN: integer; en: TOperatorEnum; sign: TVList); overload;
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
@@ -1385,7 +1387,8 @@ end;
 
 constructor TVInternalSubprogram.Create;
 begin
-    name := '';
+    //name := '';
+    nN := -1;
     signature := nil;
 end;
 
@@ -1844,7 +1847,15 @@ end;
 
 constructor TVOperator.Create(name: unicodestring; en: TOperatorEnum; sign: TVList);
 begin
-    self.name := UpperCaseU(name);
+    //self.name := UpperCaseU(name);
+    self.nN := TVSymbol.symbol_n(name);
+    self.op_enum := en;
+    self.signature := sign;
+end;
+
+constructor TVOperator.Create(_nN: integer; en: TOperatorEnum; sign: TVList);
+begin
+    self.nN := _nN;
     self.op_enum := en;
     self.signature := sign;
 end;
@@ -1862,12 +1873,12 @@ function TVOperator.Copy: TValue;
 begin
     //сигнатура копируется по ссылке, поскольку операторы не могут быть
     //изменены или полностью уничтожены
-    result := TVOperator.Create(name, op_enum, signature);
+    result := TVOperator.Create(nN, op_enum, signature);
 end;
 
 function TVOperator.AsString: unicodestring;
 begin
-    result := '#<OPERATOR '+name+'>';//+signature.AsString()+'>';
+    result := '#<OPERATOR '+symbols[nN]+'>';//+signature.AsString()+'>';
 end;
 
 { TVInternalFunction }
@@ -1879,7 +1890,12 @@ begin
     inherited Create;
     signature := sign;
     self.body := body;
-    self.name := name;
+    self.nN := TVSymbol.symbol_n(name);
+end;
+
+constructor TVInternalFunction.CreateEmpty;
+begin
+//
 end;
 
 destructor TVInternalFunction.Destroy;
@@ -1890,12 +1906,17 @@ end;
 
 function TVInternalFunction.Copy: TValue;
 begin
-    result := TVInternalFunction.Create(signature.Copy as TVList, body, name);
+    result := TVInternalFunction.CreateEmpty;
+    with (result as TVInternalFunction) do begin
+        signature := self.signature.Copy as TVList;
+        body := self.body;
+        nN := self.nN;
+    end;
 end;
 
 function TVInternalFunction.AsString: unicodestring;
 begin
-    result := '#<INTERNAL '+name+' '+signature.AsString()+'>';
+    result := '#<INTERNAL '+symbols[nN]+' '+signature.AsString()+'>';
 end;
 
 { TVContinue }
@@ -1980,7 +2001,7 @@ begin
 
     (result as tVProcedure).is_macro:=is_macro;
     (result as tVProcedure).is_macro_symbol:=is_macro_symbol;
-    (result as tVProcedure).name:=name;
+    (result as tVProcedure).nN := nN;
 end;
 
 function TVProcedure.AsString: unicodestring;
@@ -2003,9 +2024,9 @@ begin
     PL := '';
     for i := 0 to Length(fsignature)-1 do
         PL := PL+' '+fsignature[i].n+m(fsignature[i].m);
-    if name=''
+    if nN<0
     then result := '#<PROCEDURE'+pl+'>'
-    else result := '#<PROCEDURE '+name+'>';
+    else result := '#<PROCEDURE '+symbols[nN]+'>';
 end;
 
 { TVGoto }
