@@ -8,7 +8,9 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    Classes, SysUtils, dlisp_values, strutils, mar;
+    Classes, SysUtils, dlisp_values
+    //, strutils
+    , mar;
 
 function xml_read_from_string(s: unicodestring): TValue;
 
@@ -139,8 +141,7 @@ begin
 end;
 
 function xml_read_from_string(S: unicodestring): TValue;
-var p_ths, p_the, p_tn, p_tcs, p_tcn, p, depth: integer;
-    node: TVRecord;
+var node: TVRecord;
     elts: TVList;
     sr: TSSrec;
     tag_name: unicodestring;

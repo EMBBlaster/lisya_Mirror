@@ -12,7 +12,8 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    SysUtils, Classes, Contnrs, lisia_charset, zstream, mar;
+    SysUtils, Classes, Contnrs,
+    lisia_charset, zstream, mar;
 
 
 const
@@ -39,10 +40,8 @@ type
         destructor Destroy; override;
     end;
     ELE                      = ELisyaError;
-    ESymbolNotBound          = class (ELisyaError) end;
     EObjectNotCompound       = class (ELisyaError) end;
     EInvalidParameters       = class (ELisyaError) end;
-    EOutOfBounds             = class (ELisyaError) end;
 
     { TValue }
 
@@ -166,14 +165,12 @@ type
     private
         fN: integer;
         fname: unicodestring;
-        funame: unicodestring;
-        //fKeyword: boolean;
         function fGetUname: unicodestring;
     public
         property name: unicodestring read fname;
         property uname: unicodestring read fGetUname;
         property N: integer read fN;
-        //property is_keyword: boolean read fKeyword;
+
         constructor Create(S: unicodestring);
         constructor CreateEmpty;
         destructor Destroy; override;
@@ -254,7 +251,7 @@ type
     public
         constructor Create(P: PVariable); overload;
         constructor Create(P: PVariable; indices: array of integer); overload;
-        destructor Destroy;
+        destructor Destroy; override;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
 
@@ -286,7 +283,7 @@ type
     TVCompoundIndexed = class (TVCompound)
         function high: integer;
         function subseq(istart: integer; iend: integer = -1): TValue; virtual; abstract;
-        function append(ss: TVCompoundIndexed): TValue; virtual; abstract;
+        //function append(ss: TVCompoundIndexed): TValue; virtual; abstract;
     end;
 
     TVCompoundOfPrimitive = class (TVCompoundIndexed)
@@ -300,7 +297,7 @@ type
     private
         function GetItem(index: integer): TValue; override;
         procedure SetItem(index: integer; _V: TValue); override;
-        function LookItem(index: integer): TValue; override;
+        function LookItem({%H-}index: integer): TValue; override;
       public
         S: unicodestring;
         constructor Create(S: unicodestring);
@@ -374,7 +371,7 @@ type
 
         function GetItem(index: integer): TValue; override;
         procedure SetItem(index: integer; _V: TValue); override;
-        function LookItem(index: integer): TValue; override;
+        function LookItem({%H-}index: integer): TValue; override;
 
     public
         fBytes: TBytes;
@@ -421,7 +418,7 @@ type
         property slot[index: unicodestring]:TValue read fGetSlot write fSetSlot;
         property look_name[n: unicodestring]: TValue read flook;
         function is_class(cl: TVRecord): boolean;
-        function AddSlot(name: unicodestring; V: TValue): boolean;
+        procedure AddSlot(name: unicodestring; V: TValue);
 
         function count: integer; override;
         function name_n(n: integer): unicodestring;
@@ -442,15 +439,14 @@ type
 
         constructor Create(parent: TVSymbolStack);
         destructor Destroy; override;
-        procedure Print;  overload;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
 
         function Count: integer; //override;
         function set_n(n: integer; V: TValue): boolean; //override;
-        function get_n(n: integer): TValue; //override;
+        //function get_n(n: integer): TValue; //override;
 
-        procedure Print(n: integer); overload;
+        procedure Print(n: integer = -1); overload;
 
         procedure new_var(name: unicodestring; V: TValue; c: boolean = false); overload;
         procedure new_var(symbol: TVSymbol; V: TValue; c: boolean = false); overload;
@@ -463,8 +459,6 @@ type
         procedure bind_var(symbol, target: TVSymbol); overload;
         //function find_ref(name: unicodestring): PVariable; overload;
         function find_ref(symbol: TVSymbol): PVariable; overload;
-        //function find_ref_in_frame(name: unicodestring; n: integer): PVariable; overload;
-        function find_ref_in_frame(symbol: TVSymbol; n: integer): PVariable; overload;
         procedure new_ref(name: unicodestring; P: PVariable); overload;
         procedure new_ref(symbol: TVSymbol; P: PVariable); overload;
 
@@ -626,7 +620,7 @@ type
 
         function Copy: TValue; override;
 
-        function read_byte(var b: byte): boolean;
+        function read_byte(out b: byte): boolean;
         function read_bytes(var bb: TBytes; count: integer = -1): boolean;
         function write_byte(b: byte): boolean;
         function write_bytes(bb: TBytes): boolean;
@@ -634,7 +628,7 @@ type
         procedure read_BOM; virtual;
         procedure write_BOM;
 
-        function read_char(var ch: unicodechar): boolean;
+        function read_char(out ch: unicodechar): boolean;
         function write_char(ch: unicodechar): boolean;
     end;
 
@@ -678,55 +672,6 @@ type
 
         procedure close_stream;
     end;
-
-    { TVStreamBody }
-    //TCompressionMode = (cmNone, cmDeflate);
-    //TStreamDirection = (sdIn, sdOut);
-    //
-    //TVStreamBody = class (TValue)
-    //    fstream: TStream;
-    //    fZstream: TStream;
-    //    stream_type: (stFile);
-    //    stream_direction: TStreamDirection;
-    //    file_name: unicodestring;
-    //    encoding: TStreamEncoding;
-    //    constructor Create(fn: unicodestring; mode: TFileMode);
-    //    destructor Destroy; override;
-    //
-    //    function Copy: TValue; override;
-    //    function AsString: unicodestring; override;
-    //
-    //    function read_byte(var b: byte): boolean;
-    //    function write_byte(b: byte): boolean;
-    //end;
-
-    { TVStreamPointer }
-
-    //TVStreamPointer = class (TValue)
-    //    body: PVariable;
-    //    //encoding: TStreamEncoding;
-    //    constructor Create(fn: unicodestring;
-    //                        mode: TFileMode;
-    //                        _encoding: TStreamEncoding); overload;
-    //    constructor Create; overload;
-    //    destructor Destroy; override;
-    //
-    //    function Copy: TValue; override;
-    //    function AsString: unicodestring; override;
-    //
-    //    function read_byte(var b: byte): boolean;
-    //    function write_byte(b: byte): boolean;
-    //    function read_char(var ch: unicodechar): boolean;
-    //    function write_char(ch: unicodechar): boolean;
-    //    function write_BOM: boolean;
-    //    procedure close_stream;
-    //
-    //    function Set_compression_mode(mode: TCompressionMode): boolean;
-    //    function set_position(p: Int64): boolean;
-    //    function get_position(var p: Int64): boolean;
-    //    function stream_length: Int64;
-    //end;
-
 
 
 procedure Assign(var v1, v2: TValue);
@@ -842,7 +787,7 @@ end;
 
 procedure TVStreamPointer.close_stream;
 begin
-    ReleaseVariable(body);
+    FreeAndNil(stream.fstream);
     stream := nil;
 end;
 
@@ -917,8 +862,10 @@ begin
     raise ELE.Create('копирование потока', 'internal');
 end;
 
-function TVStream.read_byte(var b: byte): boolean;
-begin try
+function TVStream.read_byte(out b: byte): boolean;
+begin
+    Assert(fstream<>nil, 'operation on closed stream');
+try
     b := fstream.ReadByte;
     result := true;
 except
@@ -929,6 +876,7 @@ end;
 function TVStream.read_bytes(var bb: TBytes; count: integer): boolean;
 var i: integer;
 begin
+    Assert(fstream<>nil, 'operation on closed stream');
     if count>0 then begin
         SetLength(bb, count);
         for i := 0 to count-1 do bb[i] := fStream.ReadByte;
@@ -947,6 +895,7 @@ end;
 
 function TVStream.write_byte(b: byte): boolean;
 begin
+    Assert(fstream<>nil, 'operation on closed stream');
     fstream.WriteByte(b);
     result := true;
 end;
@@ -954,6 +903,7 @@ end;
 function TVStream.write_bytes(bb: TBytes): boolean;
 var i: integer;
 begin
+    Assert(fstream<>nil, 'operation on closed stream');
 //    WriteLn('write_bytes>> ', Length(bb));
     for i := 0 to high(bb) do fStream.WriteByte(bb[i]);
     //TODO: writeBuffer глючит так же как readbuffer
@@ -965,6 +915,7 @@ procedure TVStream.read_BOM;
     function b: byte; begin result := fstream.ReadByte; end;
 var p: integer;
 begin
+    Assert(fstream<>nil, 'operation on closed stream');
     p := (fstream as TFileStream).Position;
     //UTF-8
     if (b=$EF) and (b=$BB) and (b=$BF) then begin
@@ -998,6 +949,7 @@ end;
 procedure TVStream.write_BOM;
     procedure b(b: byte); begin write_byte(b); end;
 begin
+    Assert(fstream<>nil, 'operation on closed stream');
     case encoding of
         seUTF8:    begin b($EF); b($BB); b($BF); end;
         seUTF16BE: begin b($FE); b($FF); end;
@@ -1007,7 +959,7 @@ begin
     end;
 end;
 
-function TVStream.read_char(var ch: unicodechar): boolean;
+function TVStream.read_char(out ch: unicodechar): boolean;
 var b1, b2, b3, b4: byte;
     function read8bit(const enc: TCodePage): boolean;
     begin
@@ -1015,13 +967,14 @@ var b1, b2, b3, b4: byte;
         ch := enc[b1];
     end;
 begin
+    Assert(fstream<>nil, 'operation on closed stream');
     case encoding of
         seUTF8: begin
             //TODO: read_char кошмарик
             result := read_byte(b1);
-            if result and ((b1 shr 6)=3) then result := read_byte(b2);
-            if result and ((b1 shr 5)=7) then result := read_byte(b3);
-            if result and ((b1 shr 4)=15) then result := read_byte(b4);
+            if result and ((b1 shr 6)=3) then result := read_byte(b2{%H-});
+            if result and ((b1 shr 5)=7) then result := read_byte(b3{%H-});
+            if result and ((b1 shr 4)=15) then result := read_byte(b4{%H-});
 
             ch := unicodechar(b1);
             if (b1 shr 6)=3 then ch := unicodechar(64*(b1 and 31)
@@ -1073,6 +1026,7 @@ var cp: integer;
         result := write_byte(ord('?'));
     end;
 begin
+    Assert(fstream<>nil, 'operation on closed stream');
     cp := ord(ch);
     case encoding of
         seUTF8: case cp of
@@ -1131,6 +1085,7 @@ end;
 function TVPrimitive.Copy: TValue;
 begin
     raise ELE.Create('primitive copy');
+    result := nil;
 end;
 
 function TVPrimitive.AsString: unicodestring;
@@ -1254,7 +1209,7 @@ begin
 end;
 
 function TVTimeInterval.AsString: unicodestring;
-var year,month,day,hour,minute,second, ms: WORD;
+var hour,minute,second, ms: WORD;
     function dd(i: integer): unicodestring;
     begin
         result := IntToStr(i);
@@ -1288,18 +1243,7 @@ begin
 end;
 
 function TVDateTime.AsString(): unicodestring;
-var year,month,day,hour,minute,second, ms: WORD;
-    function dd(i: integer): unicodestring;
-    begin
-        result := IntToStr(i);
-        if Length(result)=1 then result := '0'+result;
-    end;
 begin
-    //DecodeDate(fDT, year, month, day);
-    //DecodeTime(fDT, hour, minute, second, ms);
-    //result := '#<'+
-    //    IntToStr(Year)+'-'+dd(month)+'-'+dd(day)+
-        //' '+dd(hour)+':'+dd(minute)+':'+dd(second)+'>';
     result := AsSQLDateTime;
 end;
 
@@ -1350,6 +1294,7 @@ end;
 function TVByteVector.LookItem(index: integer): TValue;
 begin
     raise ELE.Create('TVByteVector.LookItem');
+    result := nil;
 end;
 
 constructor TVByteVector.Create;
@@ -1527,41 +1472,27 @@ constructor TVSymbolStack.Create(parent: TVSymbolStack);
 begin
     self.parent := parent;
     SetLength(stack,0);
+    //WriteLn('--------------------> stack +1');
 end;
 
 destructor TVSymbolStack.Destroy;
 var i: integer;
 begin
+    //WriteLn('--------------------> stack -1');
     for i := 0 to high(stack) do ReleaseVariable(stack[i].V);
     inherited Destroy;
 end;
 
-procedure TVSymbolStack.Print;
-var i: integer;
-begin
-    WriteLn('-----------------------');
-    for i := 0 to high(stack) do begin
-        Write('  | ', stack[i].name);
-        if stack[i].V<> nil
-        then WriteLn('  >(', stack[i].V.ref_count,')',
-                        IntToHex(Cardinal(stack[i].V),9),'>  ', stack[i].V.V.AsString)
-        else WriteLn(' nil');
-    end;
-    WriteLn('-----------------------');
-end;
 
 function TVSymbolStack.Copy: TValue;
 var i: integer;
 begin
-   // print;
-    result := TVSymbolStack.Create(nil);
+    result := TVSymbolStack.Create(parent);
     SetLength((result as TVSymbolStack).stack, Length(stack));
     for i := 0 to high(stack) do begin
         (result as TVSymbolStack).stack[i].name := stack[i].name;
         (result as TVSymbolStack).stack[i].N := stack[i].N;
         (result as TVSymbolStack).stack[i].V := RefVariable(stack[i].V)
-//        (result as TVSymbolStack).new_ref(stack[i].name,
-//                                            RefVariable(stack[i].V));
     end;
 end;
 
@@ -1578,34 +1509,36 @@ end;
 function TVSymbolStack.set_n(n: integer; V: TValue): boolean;
 begin
     if (n<0) or (n>high(stack))
-    then raise EOutOfBounds.Create('stack '+IntToStr(n));
+    then raise ELE.Create('stack '+IntToStr(n), 'out of bounds');
 
     if stack[n].V.constant
-    then raise ELisyaError.Create('stack element '+IntToStr(n)+' is constant');
+    then raise ELE.Create('stack element '+IntToStr(n)+' is constant');
     stack[n].V.V.Free;
     stack[n].V.V := V;
     result := true;
 end;
 
-function TVSymbolStack.get_n(n: integer): TValue;
-begin
-    if (n<0) or (n>high(stack))
-    then raise EOutOfBounds.Create('stack '+IntToStr(n));
-
-    result := stack[n].V.V.Copy;
-end;
+//function TVSymbolStack.get_n(n: integer): TValue;
+//begin
+//    if (n<0) or (n>high(stack))
+//    then raise EOutOfBounds.Create('stack '+IntToStr(n));
+//
+//    result := stack[n].V.V.Copy;
+//end;
 
 procedure TVSymbolStack.Print(n: integer);
 var i, low_i: integer;
 begin
-    low_i := high(stack) - n;
+    if n<0
+    then low_i := 0
+    else low_i := high(stack) - n;
     if low_i<0 then low_i := 0;
     WriteLn('-----------------------');
     for i := low_i to high(stack) do begin
         Write('  | ', stack[i].name);
         if stack[i].V<> nil
         then WriteLn('  >(', stack[i].V.ref_count,')',
-                        Cardinal(stack[i].V),'>  ', stack[i].V.V.AsString)
+                        {%H-}Cardinal(stack[i].V),'>  ', stack[i].V.V.AsString)
         else WriteLn(' nil');
     end;
     WriteLn('-----------------------');
@@ -1632,11 +1565,6 @@ begin
     stack[high(stack)].V.constant := c;
 end;
 
-//function TVSymbolStack.find_var(name: unicodestring): TValue;
-//begin
-//    result := stack[index_of(name)].V.V.Copy;
-//end;
-
 function TVSymbolStack.find_var(symbol: TVSymbol): TValue;
 begin
    result := stack[index_of(symbol.N)].V.V.Copy;
@@ -1655,6 +1583,7 @@ end;
 procedure TVSymbolStack.clear_frame(n: integer);
 var i, _n: integer;
 begin
+    Assert(n<=high(stack), 'очистка выше стека');
     if n<0
     then begin
         for i := high(stack) downto 0 do
@@ -1694,38 +1623,6 @@ begin
     result := RefVariable(stack[index_of(symbol.N)].V);
 end;
 
-//function TVSymbolStack.find_ref_in_frame(name: unicodestring; n: integer
-//    ): PVariable;
-//var i: integer; uname: unicodestring;
-//begin
-//    uname := UpperCaseU(name);
-//    //print(78);
-//    for i := n to high(stack) do begin
-//        if stack[i].name = uname then begin
-//            result := RefVariable(stack[i].V);
-//            exit;
-//        end;
-//        if stack[i].name[1]=' '
-//        then raise ESymbolNotBound.Create('recursive '+name);
-//    end;
-//    raise ESymbolNotBound.Create('recursive '+name);
-//end;
-
-function TVSymbolStack.find_ref_in_frame(symbol: TVSymbol; n: integer
-    ): PVariable;
-var i: integer;
-begin
-    for i := n to high(stack) do begin
-        if stack[i].N = symbol.N then begin
-            result := RefVariable(stack[i].V);
-            exit;
-        end;
-        if stack[i].name[1]=' '
-        then raise ESymbolNotBound.Create('recursive '+symbol.name);
-    end;
-    raise ESymbolNotBound.Create('recursive '+symbol.name);
-end;
-
 procedure TVSymbolStack.new_ref(name: unicodestring; P: PVariable);
 begin
     SetLength(stack, Length(stack)+1);
@@ -1741,17 +1638,6 @@ begin
     stack[high(stack)].N := symbol.N;
     stack[high(stack)].V := P;
 end;
-
-//function TVSymbolStack.find_ref_or_nil(name: unicodestring): PVariable;
-//var i: integer;
-//begin
-//    result := nil;
-//    for i := high(stack) downto 0 do
-//        if stack[i].name=name then begin
-//            result := RefVariable(stack[i].V);
-//            exit;
-//        end;
-//end;
 
 function TVSymbolStack.find_ref_or_nil(symbol: TVSymbol): PVariable;
 var i: integer;
@@ -1932,7 +1818,7 @@ begin
     result := true;
 end;
 
-function TVRecord.AddSlot(name: unicodestring; V: TValue): boolean;
+procedure TVRecord.AddSlot(name: unicodestring; V: TValue);
 begin
     unames.Add(UpperCaseU(name));
     slots.Add(V);
@@ -1951,311 +1837,8 @@ end;
 function TVRecord.get_n_of(index: unicodestring): integer;
 begin
     result := unames.IndexOf(index);
-
 end;
 
-
-{ TVStreamPointer }
-
-//constructor TVStreamPointer.Create(fn: unicodestring;
-//                                    mode: TFileMode;
-//                                    _encoding: TStreamEncoding);
-//    function b: byte;
-//    begin
-//        result := (body.v as TVStreamBody).fstream.ReadByte;
-//    end;
-//begin
-//    body := NewVariable;
-//    body.V := TVStreamBody.Create(fn, mode);
-//    (body.V as TVStreamBody).encoding :=_encoding;
-//
-//    if _encoding=seBOM
-//    then begin
-//        //UTF-8
-//        if (b=$EF) and (b=$BB) and (b=$BF) then begin
-//            (body.V as TVStreamBody).encoding := seUTF8;
-//            exit;
-//        end else (body.v as TVStreamBody).fstream.Seek(0,0);
-//        //UTF16BE
-//        if (b=$FE) and (b=$FF) then begin
-//            (body.V as TVStreamBody).encoding := seUTF16BE;
-//            exit;
-//        end else (body.v as TVStreamBody).fstream.Seek(0,0);
-//        //UTF32BE
-//        if (b=$00) and (b=$00) and (b=$FE) and (b=$FF) then begin
-//            (body.V as TVStreamBody).encoding := seUTF32BE;
-//            exit;
-//        end else (body.v as TVStreamBody).fstream.Seek(0,0);
-//        //UTF32LE
-//        if (b=$FF) and (b=$FE) and (b=$00) and (b=$00) then begin
-//            (body.V as TVStreamBody).encoding := seUTF32LE;
-//            exit;
-//        end else (body.v as TVStreamBody).fstream.Seek(0,0);
-//        //UTF16LE
-//        if (b=$FF) and (b=$FE) then begin
-//            (body.V as TVStreamBody).encoding := seUTF16LE;
-//            exit;
-//        end else (body.v as TVStreamBody).fstream.Seek(0,0);
-//
-//        (body.V as TVStreamBody).encoding := seCP1251;
-//    end;
-//end;
-//
-//constructor TVStreamPointer.Create;
-//begin
-//    //
-//end;
-//
-//destructor TVStreamPointer.Destroy;
-//begin
-//    ReleaseVariable(body);
-//    inherited Destroy;
-//end;
-//
-//
-//function TVStreamPointer.Copy: TValue;
-//begin
-//    result := TVStreamPointer.Create;
-//    (result as TVStreamPointer).body := RefVariable(body);
-//end;
-//
-//function TVStreamPointer.AsString: unicodestring;
-//begin
-//    if body.V<>nil
-//    then result := '#<STREAM POINTER '+body.V.AsString()+' >'
-//    else result := '#<STREAM POINTER closed>';
-//end;
-//
-//function TVStreamPointer.read_byte(var b: byte): boolean;
-//begin
-//try
-//    if body.V<>nil
-//    then result := (body.v as TVStreamBody).read_byte(b)
-//    else result := false;
-//except
-//    on EStreamError do result := false;
-//end;
-//end;
-//
-//function TVStreamPointer.write_byte(b: byte): boolean;
-//begin
-//try
-//    if body.V<>nil
-//    then result := (body.v as TVStreamBody).write_byte(b)
-//    else result := false;
-//except
-//    on EStreamError do result := false;
-//end;
-//end;
-//
-//function TVStreamPointer.read_char(var ch: unicodechar): boolean;
-//var b1, b2, b3, b4: byte;
-//    function read8bit(const enc: TCodePage): boolean;
-//    begin
-//        result := read_byte(b1);
-//        ch := enc[b1];
-//    end;
-//begin
-//    case (body.V as TVStreamBody).encoding of
-//        seUTF8: begin
-//            //TODO: read_char кошмарик
-//            result := read_byte(b1);
-//            if result and ((b1 shr 6)=3) then result := read_byte(b2);
-//            if result and ((b1 shr 5)=7) then result := read_byte(b3);
-//            if result and ((b1 shr 4)=15) then result := read_byte(b4);
-//
-//            ch := unicodechar(b1);
-//            if (b1 shr 6)=3 then ch := unicodechar(64*(b1 and 31)
-//                                                    + (b2 and 63));
-//            if (b1 shr 5)=7 then ch := unicodechar(64*64*(b1 and 15)
-//                                                    + 64*(b2 and 63)
-//                                                    + (b3 and 63));
-//            if (b1 shr 4)=15 then ch :=unicodechar(64*64*64*(b1 and 7)
-//                                                    + 64*64*(b2 and 63)
-//                                                    + 64*(b3 and 64)
-//                                                    + (b4 and 64));
-//        end;
-//        seUTF16LE: begin
-//            result := read_byte(b1) and read_byte(b2);
-//            ch := unicodechar(b1+b2*256);
-//            //TODO: суррогатные пары не поддерживаются
-//        end;
-//        seUTF16BE: begin
-//            result := read_byte(b1) and read_byte(b2);
-//            ch := unicodechar(256*b1+b2);
-//            //TODO: суррогатные пары не поддерживаются
-//        end;
-//        seUTF32LE: begin
-//            result := read_byte(b1) and read_byte(b2) and read_byte(b3)
-//                        and read_byte(b4);
-//            ch := unicodechar(b1+b2*256+b3*256*256+b4*256*256*256);
-//        end;
-//        seUTF32BE: begin
-//            result := read_byte(b1) and read_byte(b2) and read_byte(b3)
-//                        and read_byte(b4);
-//            ch := unicodechar(256*256*256*b1+256*256*b2+256*b3+b4);
-//        end;
-//        seCP1251: result := read8bit(cp1251_cp);
-//        seCP1252: result := read8bit(cp1252_cp);
-//        else begin result := read_byte(b1); ch := unicodechar(b1); end;
-//    end
-//end;
-//
-//function TVStreamPointer.write_char(ch: unicodechar): boolean;
-//var b1, b2, b3, b4: byte; cp: integer;
-//begin
-//    case (body.V as TVStreamBody).encoding of
-//        seUTF8: begin
-//            cp := ord(ch);
-//            case cp of
-//                0..127: result := write_byte(cp);
-//                128..2047: result := write_byte((cp shr 6) or 192)
-//                                and write_byte((cp and 63) or 128);
-//                2048..65535: result := write_byte((cp shr 12) or 224)
-//                                and write_byte(((cp shr 6) and 63) or 128)
-//                                and write_byte((cp and 63) or 128);
-//                65536..2097152: result := write_byte((cp shr 18) or 240)
-//                                and write_byte(((cp shr 12) and 63) or 128)
-//                                and write_byte(((cp shr 6) and 63) or 128)
-//                                and write_byte((cp and 63) or 128);
-//                else result := false;
-//            end;
-//        end;
-//        else result := false;
-//    end
-//end;
-//
-//function TVStreamPointer.write_BOM: boolean;
-//    function wb(b: byte): boolean; begin result := write_byte(b); end;
-//begin
-//    case (body.V as TVStreamBody).encoding of
-//        seUTF8:    result := wb($EF) and wb($BB) and wb($BF);
-//        seUTF16LE: result := wb($FF) and wb($FE);
-//        seUTF16BE: result := wb($FE) and wb($FF);
-//        seUTF32LE: result := wb($FF) and wb($FE) and wb($00) and wb($00);
-//        seUTF32BE: result := wb($00) and wb($00) and wb($FE) and wb($FF);
-//        else result := true;
-//    end
-//end;
-//
-//procedure TVStreamPointer.close_stream;
-//begin
-//    FreeAndNil(body.V);
-//end;
-//
-//function TVStreamPointer.Set_compression_mode(mode: TCompressionMode): boolean;
-//begin
-//    if body.V=nil then begin result := false; exit; end;
-//    with (body.V as TVStreamBody) do begin
-//        FreeAndNil(fZstream);
-//        case stream_direction of
-//            sdIn: case mode of
-//                cmDeflate: fZstream := TDecompressionStream.create(
-//                                            fstream, true);
-//            end;
-//            sdOut: case mode of
-//                cmDeflate: fZstream := TCompressionStream.create(clDefault,
-//                                            fstream, true);
-//            end;
-//        end;
-//    end;
-//    result := true;
-//end;
-//
-//function TVStreamPointer.set_position(p: Int64): boolean;
-//begin
-//    if body.V=nil then begin result := false; exit; end;
-//    with (body.V as TVStreamBody) do begin
-//        FreeAndNil(fZstream);
-//        fStream.Position := p;
-//    end;
-//    result := true;
-//end;
-//
-//function TVStreamPointer.get_position(var p: Int64): boolean;
-//begin
-//    if body.V=nil then begin result := false; exit; end;
-//    with (body.V as TVStreamBody) do begin
-//        p := fStream.Position;
-//    end;
-//    result := true;
-//end;
-//
-//function TVStreamPointer.stream_length: Int64;
-//begin
-//    (body.V as TVStreamBody).fstream.Size;
-//end;
-
-{ TVStreamBody }
-
-//constructor TVStreamBody.Create(fn: unicodestring; mode: TFileMode);
-//begin
-//    stream_type := stFile;
-//
-//    file_name := fn;
-//    case mode of
-//        fmRead: begin
-//            fStream := TFileStream.Create(fn, fmOpenRead);
-//            stream_direction := sdIn;
-//        end;
-//        fmWrite: begin
-//            fStream := TFileStream.Create(fn, fmCreate);
-//            stream_direction := sdOut;
-//        end;
-//        fmAppend: begin
-//            if FileExists(fn)
-//            then fStream := TFileStream.Create(fn, fmOpenReadWrite)
-//            else fStream := TFileStream.Create(fn, fmCreate);
-//            fStream.Seek(fStream.Size,0);
-//            stream_direction := sdOut;
-//        end;
-//    end;
-//    fZstream := nil;
-//end;
-//
-//destructor TVStreamBody.Destroy;
-//begin
-//    FreeAndNil(fZstream);
-//    FreeAndNil(fStream);
-//
-//    file_name := '';
-//    inherited Destroy;
-//end;
-//
-//function TVStreamBody.Copy: TValue;
-//begin
-//    result := nil;
-//    raise Exception.Create('копирование потока');
-//end;
-//
-//function TVStreamBody.AsString: unicodestring;
-//begin
-//    result := '#<STREAM '+file_name+' >';
-//end;
-//
-//function TVStreamBody.read_byte(var b: byte): boolean;
-//begin
-//try
-//    result := true;
-//    if fZstream<>nil
-//    then b := fZstream.ReadByte
-//    else b := fstream.ReadByte;
-//except
-//    on EStreamError do result := false;
-//end;
-//end;
-//
-//function TVStreamBody.write_byte(b: byte): boolean;
-//begin
-//try
-//    result := true;
-//    if fZstream<>nil
-//    then fZstream.Write(b,1)
-//    else fstream.Write(b,1);
-//except
-//    on EStreamError do result := false;
-//end;
-//end;
 
 { TVOperator }
 
@@ -2341,8 +1924,6 @@ end;
 
 
 { TVProcedure }
-
-var pc: integer=0;
 
 constructor TVProcedure.Create;
 begin
@@ -2509,6 +2090,7 @@ end;
 function TVString.LookItem(index: integer): TValue;
 begin
     raise ELE.Create('TVString.LookItem');
+    result := nil;
 end;
 
 constructor TVString.Create(S: unicodestring);
@@ -2612,13 +2194,9 @@ begin
 end;
 
 constructor TVSymbol.Create(S: unicodestring);
-var i: integer;
 begin
     fname := S;
-//    funame := UpperCaseU(S);
     fN := symbol_n(fname);
-    //funame := symbols[fN];
-  //  fKeyword := S[1]=':';
 end;
 
 destructor TVSymbol.Destroy;
@@ -2718,8 +2296,6 @@ begin  // try
         result[length(result)]:=')';
     end;
 end;
-
-var lc: integer = 0;
 
 constructor TVList.Create;
 begin

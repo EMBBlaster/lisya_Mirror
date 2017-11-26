@@ -1,4 +1,8 @@
-﻿(log \test.dlisp)
+﻿(var a 1)
+
+
+
+(log \test.dlisp)
 (log "русский")
 
 (assertion T "assert T")
@@ -163,15 +167,15 @@
         :exit)
     (assertion (= a 1) "block outer"))
 
-(log ">> взаимная рекурсия")
-(var n 5)
-(var a (procedure (n &captured b)
-    (set n (- n 1))
-    (if (= n 0) nil (b n))))
-(var b (procedure (n &captured a)
-    (a n)))
-(a n)
-(assertion (= n 0) "взаимная рекурсия")
+;(log ">> взаимная рекурсия")
+;(var n 5)
+;(var a (procedure (n &captured b)
+;    (set n (- n 1))
+;    (if (= n 0) nil (b n))))
+;(var b (procedure (n &captured a)
+;    (a n)))
+;(a n)
+;(assertion (= n 0) "взаимная рекурсия")
 
 
 
@@ -238,12 +242,12 @@
     (assertion (= 7 d) "default nil const"))
 
 
+
 (log \STREAM)
 (block
     (var out (open-file "1.txt" :mode :write))
     (write-byte out 37)
     (close-file out)
-    (log "здесь падает с ошибкой памяти если не вставлен оператор")
     (var in (open-file "1.txt"))
 	(assertion (= 37 (read-byte in)) "file stream"))
 

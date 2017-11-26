@@ -29,7 +29,7 @@ type TSS = record
     end;
     PSS = ^TSS;
 
-function str_is_range(s: unicodestring; var l, h: Int64): boolean;
+function str_is_range(s: unicodestring; out l, h: Int64): boolean;
 var p: integer;
 begin
 try
@@ -45,10 +45,8 @@ except
 end;
 end;
 
-function str_is_datetime(s: unicodestring; var dt: TDateTime): boolean;
-var p_ym, p_md, p_dh, p_hm, p_hs, p_d: integer;
-    year, month, day, hours, minutes, seconds, milliseconds: word;
-label ret;
+function str_is_datetime(s: unicodestring; out dt: TDateTime): boolean;
+var year, month, day, hours, minutes, seconds, milliseconds: word;
 begin try
     result := false;
     if not ((Length(s)>=12) and (s[1]='''') and (s[Length(s)]='''')
@@ -88,7 +86,7 @@ except
 end;
 end;
 
-function str_is_elt_call(s: unicodestring; var elt: unicodestring): boolean;
+function str_is_elt_call(s: unicodestring; out elt: unicodestring): boolean;
 var p2, p1: integer; sep: unicodestring;
     function PosS(offset: integer): integer;
     var f,b: integer;
@@ -159,7 +157,7 @@ begin
     result := true;
 end;
 
-function str_is_float(s: unicodestring; var f: double): boolean;
+function str_is_float(s: unicodestring; out f: double): boolean;
 var fs: TFormatSettings;
 begin
     fs.DecimalSeparator:='.';
@@ -178,10 +176,10 @@ end;
 
 function read_u(sp: TVStreamPointer; ss_in: PSS = nil): TValue;
 var
-    q, e, r, sq: boolean;
+    q, r, sq: boolean;
     p: integer;
     f: double;
-    i,l, h: Int64;
+    l, h: Int64;
     ch: unicodechar;
     acc, trans: unicodestring;
     ss: TSS;
@@ -189,7 +187,6 @@ var
     dt: TDateTime;
 
     function read_char: boolean;
-    var b1, b2: byte;
     begin
         if sp<>nil then begin result := sp.stream.read_char(ch); exit; end;
         if ss_in<>nil then begin
@@ -210,7 +207,6 @@ var
 begin
     q := false;
     sq := false;
-    e := false;
     p := 0;
     r := false;
     acc := '';

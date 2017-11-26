@@ -24,7 +24,7 @@
 
     (exception ""
         (delete-file "test.bin")
-        (error exception-message exception-class)))
+        (error exception-class exception-message)))
 
 
 (assertion (not (file-exists "test.txt")) "мешает файл test.txt")
@@ -56,7 +56,7 @@
     (delete-file "test.txt")
     (exception ""
         (delete-file "test.txt")
-        (error exception-message exception-class))
+        (error exception-class exception-message))
         )
 
 

@@ -24,6 +24,7 @@ procedure REPL;
 var input_string: unicodestring; expr, res: TValue;
     last_error_stack: unicodestring;
 begin
+    last_error_stack := '';
     Write('> ');ReadLn(input_string);
     while input_string<>'' do begin
 
