@@ -3226,7 +3226,7 @@ end;
 function TEvaluationFlow.opl_last(PL: TVList): TVChainPointer;
 begin
     result := nil;
-    result := eval_link(PL[1]);
+    result := eval_link(PL.look[1]);
 
     if not tpCompoundIndexed(result.look)
     then raise ELE.Create(result.look.AsString + ' is not indexed compound');
@@ -3628,6 +3628,7 @@ try
                     low_i := 0;
                 end;
             end;
+            CP.Free;
             index := TVInteger.Create(0);
             //stack.new_var(PL.uname[1], index, true);
             stack.new_var(PL.SYM[1], index, true);
@@ -3651,6 +3652,7 @@ try
 finally
     stack.clear_frame(frame_start);
     V.Free;
+    //CP.Free;
 end;
 end;
 
