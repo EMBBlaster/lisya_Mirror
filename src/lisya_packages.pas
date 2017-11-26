@@ -21,7 +21,7 @@ type
         export_list: TVList;
 
         constructor Create;
-        destructor Destroy;
+        destructor Destroy; override;
     end;
 
 
@@ -76,6 +76,7 @@ destructor TPackage.Destroy;
 begin
     stack.Free;
     export_list.Free;
+    inherited Destroy;
 end;
 
 procedure FreePackages;

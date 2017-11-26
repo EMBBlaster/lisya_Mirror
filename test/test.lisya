@@ -260,7 +260,7 @@
     
 
 (var tests (directory "../test/*_test.lisya"))
-(assertion (= 9 (length tests)) "tests count")
+(assertion (= 10 (length tests)) "tests count")
 (for test tests (execute-file test))
 
 

@@ -354,7 +354,6 @@ type
 
         function POP: TValue;
         procedure Clear;
-        procedure sort(sc: TListSortCompare);
         function ValueList: TValueList;
         function CdrValueList: TValueList;
         function CAR: TValue;
@@ -546,6 +545,19 @@ type
         function AsString(): unicodestring; override;
     end;
 
+
+    { TVPredicate }
+
+    type TTypePredicate = function (V: TValue): boolean;
+
+    TVPredicate = class (TVInternalSubprogram)
+        body: TTypePredicate;
+        constructor Create(name: unicodestring; _body: TTypePredicate); overload;
+        constructor Create(_nN: integer; _body: TTypePredicate); overload;
+        function Copy: TValue; override;
+        function AsString: unicodestring; override;
+    end;
+
     { TVOperator }
 
     type TOperatorEnum = (
@@ -733,6 +745,30 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVPredicate }
+
+constructor TVPredicate.Create(name: unicodestring; _body: TTypePredicate);
+begin
+    nN := TVSymbol.symbol_n(name);
+    body := _body;
+end;
+
+constructor TVPredicate.Create(_nN: integer; _body: TTypePredicate);
+begin
+    nN := _nN;
+    body := _body;
+end;
+
+function TVPredicate.Copy: TValue;
+begin
+    result := TVPredicate.Create(nN, body);
+end;
+
+function TVPredicate.AsString: unicodestring;
+begin
+    result := '#<PREDICATE '+symbols[nN]+'>';
 end;
 
 { TVReturn }
@@ -2350,11 +2386,6 @@ end;
 procedure TVList.Clear;
 begin
     fL.Clear;
-end;
-
-procedure TVList.sort(sc: TListSortCompare);
-begin
-    fL.Sort(sc);
 end;
 
 function TVList.ValueList: TValueList;

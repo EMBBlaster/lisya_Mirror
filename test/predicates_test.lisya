@@ -1,0 +1,17 @@
+﻿
+(fmt nil "предикаты... ")
+
+(assertion (T? T) "pr T")
+(assertion (not (T? 1)) "pr not T 1")
+(assertion (not (T? NIL)) "pr not T")
+
+(assertion (NIL? ()) "pr NIL")
+(assertion (not (NIL? \(1))) "pr not NIL")
+
+(assertion (TRUE? T) "pr TRUE")
+(assertion (not (TRUE? NIL)) "pr not TRUE")
+(assertion (TRUE? 1) "pr TRUE 1")
+
+
+(log \успешно)
+

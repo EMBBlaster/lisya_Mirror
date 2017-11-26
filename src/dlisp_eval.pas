@@ -90,6 +90,7 @@ type
         procedure procedure_complement(V: TValue);
         function procedure_call(PL: TVList): TValue;
         function internal_function_call(PL: TVList): TValue;
+        function internal_predicate_call(PL: TVList): TValue;
         procedure expand_ins(PL: TVList);
 
         function eval_link(P: TValue): TVChainPointer;
@@ -107,8 +108,6 @@ var root_evaluation_flow: TEvaluationFlow = nil;
     base_stack: TVSymbolStack = nil;
     quote_operator: TVOperator = nil;
 
-
-type TTypePredicate = function (V: TValue): boolean;
 
 function tpAny(V: TValue): boolean;
 begin
@@ -338,6 +337,7 @@ begin
         or tpKeyword(V)
         or (V is TVProcedure)
         or (V is TVInternalFunction)
+        or (V is TVPredicate)
         or (V is TVOperator)
         or (V is TVRecord)
         or (V is TVRange)
@@ -360,6 +360,11 @@ end;
 function tpInternalFunction(V: TValue): boolean;
 begin
     result := V is TVInternalFunction;
+end;
+
+function tpPredicate(V: TValue): boolean;
+begin
+    result := V is TVPredicate;
 end;
 
 function tpOperator(V: TValue): boolean;
@@ -1209,73 +1214,6 @@ begin
     raise ELE.Create('invalid encoding '+V.AsString, 'invalid parameters');
 end;
 
-function ifh_predicate_template(PL: TVList; p: TTypePredicate): TValue; inline;
-begin
-    if PL.count<>1 then raise ELE.Malformed('predicate');
-
-    if p(PL.look[0]) then result := TVT.Create else result := TVList.Create;
-end;
-
-
-function if_t_p                 (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL,    tpT        );
-end;
-
-function if_true_p              (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL,    tpTrue     );
-end;
-
-function if_nil_p               (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL,     tpNIL     );
-end;
-
-function if_number_p            (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL,   tpNumber    );
-end;
-
-function if_integer_p           (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL,    tpInteger  );
-end;
-
-function if_float_p             (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL,  tpFloat      );
-end;
-
-function if_atom_p              (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL,  tpAtom       );
-end;
-
-function if_subprogram_p        (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL, tpSubprogram  );
-end;
-
-function if_list_p              (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL,  tpList       );
-end;
-
-function if_symbol_p            (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL,  tpSymbol     );
-end;
-
-function if_keyword_p           (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL,  tpKeyword   );
-end;
-
-function if_string_p            (const PL: TVList; {%H-}ep: TEvalProc): TValue;
-begin
-    result := ifh_predicate_template(PL, tpString     );
-end;
 
 function if_structure_p         (const PL: TVList; {%H-}ep: TEvalProc): TValue;
 begin
@@ -2798,21 +2736,9 @@ begin
     end;
 end;
 
-const int_fun_count = 105;
+const int_fun_count = 93;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
-(n:'T?';                    f:if_t_p;                   s:'(a)'),
-(n:'TRUE?';                 f:if_true_p;                s:'(a)'),
-(n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
-(n:'NUMBER?';               f:if_number_p;              s:'(a)'),
-(n:'INTEGER?';              f:if_integer_p;             s:'(a)'),
-(n:'FLOAT?';                f:if_float_p;               s:'(a)'),
-(n:'ATOM?';                 f:if_atom_p;                s:'(a)'),
-(n:'SUBPROGRAM?';           f:if_subprogram_p;          s:'(a)'),
-(n:'LIST?';                 f:if_list_p;                s:'(a)'),
-(n:'SYMBOL?';               f:if_symbol_p;              s:'(a)'),
-(n:'KEYWORD?';              f:if_keyword_p;             s:'(a)'),
-(n:'STRING?';               f:if_string_p;              s:'(a)'),
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional t)'),
 
 (n:'+';                     f:if_add;                   s:'(:rest n)'),
@@ -2921,8 +2847,22 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SQL:MYSQL-CONNECTION';  f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
 (n:'SQL:QUERY';             f:if_sql_query;             s:'(db :rest q)'),
 (n:'SQL:QUERY-LIST';        f:if_sql_query_list;        s:'(db :rest q)')
+);
 
 
+const predicates: array[1..12] of record n: unicodestring; f: TTypePredicate; end = (
+(n:'T?';                    f:tpT),
+(n:'NIL?';                  f:tpNIL),
+(n:'TRUE?';                 f:tpTRUE),
+(n:'NUMBER?';               f:tpNumber),
+(n:'INTEGER?';              f:tpInteger),
+(n:'FLOAT?';                f:tpFloat),
+(n:'ATOM?';                 f:tpAtom),
+(n:'SUBPROGRAM?';           f:tpSubprogram),
+(n:'LIST?';                 f:tpList),
+(n:'SYMBOL?';               f:tpSymbol),
+(n:'KEYWORD?';              f:tpKeyword),
+(n:'STRING?';               f:tpString)
 );
 
 
@@ -2999,16 +2939,22 @@ procedure fill_base_stack;
 var i: integer;
 begin
     base_stack := TVSymbolStack.Create(nil);
-    for i := low(int_fun) to high(int_fun) do begin
+    for i := low(int_fun) to high(int_fun) do
         base_stack.new_var(
             int_fun[i].n,
             TVInternalFunction.Create(
-                    //read_from_string(int_fun[i].s) as TVList,
                     int_fun_sign[i],
                     int_fun[i].f,
                     int_fun[i].n),
             true);
-    end;
+
+    //загрузка предикатов
+    for i := low(predicates) to high(predicates) do
+        base_stack.new_var(
+            predicates[i].n,
+            TVPredicate.Create(predicates[i].n, predicates[i].f),
+            true);
+
     //загрузка констант
     base_stack.new_var('NL', TVString.Create(new_line), true);
     base_stack.new_var('CR', TVString.Create(#10), true);
@@ -4397,6 +4343,21 @@ finally
     FreeAndNil(binded_PL);
 end; end;
 
+function TEvaluationFlow.internal_predicate_call(PL: TVList): TValue;
+var CP: TVChainPointer;
+begin
+    if PL.Count<>2 then ELE.InvalidParameters;
+try
+    CP := nil;
+    CP := eval_link(PL.look[1]);
+    if (PL.look[0] as TVPredicate).body(CP.look)
+    then result := TVT.Create
+    else result := TVList.Create;
+finally
+    CP.Free;
+end;
+end;
+
 
 procedure TEvaluationFlow.expand_ins(PL: TVList);
 var expand: boolean; i: integer; tmp: TVList;
@@ -4441,7 +4402,7 @@ var PL: TVList;
     PV: PVariable;
     o: TOperatorEnum;
     type_v: (selfEval, symbol, list, unexpected);
-    uname: unicodestring;
+    //uname: unicodestring;
     estack: unicodestring;
   //  function op(oe: TOperatorEnum): TValue;
   //  begin result := TVOperator.Create(uname, oe, TVList.Create); end;
@@ -4472,7 +4433,7 @@ begin try
         selfEval: result := V.Copy;
 
         symbol: begin
-            uname := (V as TVSymbol).uname;
+            //uname := (V as TVSymbol).uname;
             //WriteLn(uname);
             for o := low(ops) to high(ops) do
                 //if ops[o].n=uname then begin
@@ -4514,6 +4475,10 @@ begin try
 
             if tpInternalFunction((V as TVList).look[0])
             then result := internal_function_call(V as TVList)
+            else
+
+            if tpPredicate((V as TVList).look[0])
+            then result := internal_predicate_call(V as TVList)
             else
 
             if tpOperator((V as TVList).look[0])

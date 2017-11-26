@@ -2,7 +2,7 @@ unit mysql_55;
 
 {$mode delphi}{$H+}
 
-{$ASERTION ON}
+{$ASSERTIONS ON}
 
 interface
 
