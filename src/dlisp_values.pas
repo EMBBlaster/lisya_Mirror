@@ -483,7 +483,6 @@ type
 
 
     TVSubprogram = class (TValue)
-        //name: unicodestring;
         nN: integer;
         //TODO: нужно пересмотреть дерево классов подпрограмм
         //поле signature используется только внутренними функциями
@@ -525,9 +524,6 @@ type
     { TVInternalSubprogram }
 
     TVInternalSubprogram = class (TVSubprogram)
-        signature: TVList;
-        constructor Create;
-        destructor Destroy; override;
     end;
 
     { TVInternalFunction }
@@ -539,7 +535,7 @@ type
     //при этом используют одно итоже поле signature родительского класса
     //возможно операторам вообще не нужна сигнатура, поскольку большинством
     //операторов она не используется при вызове (только как справка)
-
+        signature: TVList;
         body: TInternalFunctionBody;
         constructor Create(sign: TVList;
                             body: TInternalFunctionBody;
@@ -597,10 +593,9 @@ type
 
     TVOperator = class (TVInternalSubprogram)
         op_enum: TOperatorEnum;
-        param_is_check: boolean;
 
-        constructor Create(name: unicodestring; en: TOperatorEnum; sign: TVList); overload;
-        constructor Create(_nN: integer; en: TOperatorEnum; sign: TVList); overload;
+        constructor Create(name: unicodestring; en: TOperatorEnum); overload;
+        constructor Create(_nN: integer; en: TOperatorEnum); overload;
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
@@ -1383,20 +1378,6 @@ begin
     result := Length(fBytes);
 end;
 
-{ TVInternalSubprogram }
-
-constructor TVInternalSubprogram.Create;
-begin
-    //name := '';
-    nN := -1;
-    signature := nil;
-end;
-
-destructor TVInternalSubprogram.Destroy;
-begin
-    signature.Free;
-    inherited Destroy;
-end;
 
 { TVEndOfStream }
 
@@ -1845,35 +1826,29 @@ end;
 
 { TVOperator }
 
-constructor TVOperator.Create(name: unicodestring; en: TOperatorEnum; sign: TVList);
+constructor TVOperator.Create(name: unicodestring; en: TOperatorEnum);
 begin
     //self.name := UpperCaseU(name);
     self.nN := TVSymbol.symbol_n(name);
     self.op_enum := en;
-    self.signature := sign;
 end;
 
-constructor TVOperator.Create(_nN: integer; en: TOperatorEnum; sign: TVList);
+constructor TVOperator.Create(_nN: integer; en: TOperatorEnum);
 begin
     self.nN := _nN;
     self.op_enum := en;
-    self.signature := sign;
 end;
 
 destructor TVOperator.Destroy;
 begin
-    //унаследованный деструктор не должен вызываться поскольку он
-    //освобождает сигнатуру, но все экземпляры оператора используют общий
-    //экземпляр сигнатуры, хранимый в массиве ops
-
-    //inherited Destroy;
+    inherited Destroy;
 end;
 
 function TVOperator.Copy: TValue;
 begin
     //сигнатура копируется по ссылке, поскольку операторы не могут быть
     //изменены или полностью уничтожены
-    result := TVOperator.Create(nN, op_enum, signature);
+    result := TVOperator.Create(nN, op_enum);
 end;
 
 function TVOperator.AsString: unicodestring;
@@ -1900,6 +1875,10 @@ end;
 
 destructor TVInternalFunction.Destroy;
 begin
+    //сигнатура не должна освобождаться, поскольку все экземпляры встроенной
+    //функции используют общую сигнатуру, освобождаемую при завершении программы
+
+    //signature.Free;
     inherited Destroy;
 end;
 
@@ -1908,7 +1887,7 @@ function TVInternalFunction.Copy: TValue;
 begin
     result := TVInternalFunction.CreateEmpty;
     with (result as TVInternalFunction) do begin
-        signature := self.signature.Copy as TVList;
+        signature := self.signature;
         body := self.body;
         nN := self.nN;
     end;

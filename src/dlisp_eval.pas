@@ -2798,8 +2798,9 @@ begin
     end;
 end;
 
-
-const int_dyn: array[1..105] of TInternalFunctionRec = (
+const int_fun_count = 105;
+var int_fun_sign: array[1..int_fun_count] of TVList;
+const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'T?';                    f:if_t_p;                   s:'(a)'),
 (n:'TRUE?';                 f:if_true_p;                s:'(a)'),
 (n:'NIL?';                  f:if_nil_p;                 s:'(a)'),
@@ -2925,84 +2926,87 @@ const int_dyn: array[1..105] of TInternalFunctionRec = (
 );
 
 
-var ops: array[TOperatorEnum] of record n: unicodestring; s: TVList; nN: integer; end;
+var ops: array[TOperatorEnum] of record n: unicodestring; nN: integer; end;
 
 procedure fill_ops_array;
 var o: TOperatorEnum;
-    procedure op(s: unicodestring);
-    var V: TVList;
+    procedure op(name: unicodestring);
     begin
-        //WriteLn(s);
-        V := read_from_string(s) as TVList;
-        ops[o].n := V.uname[0];
-        ops[o].nN := V.SYM[0].N;
-        ops[o].s := V.Subseq(1, v.Count) as TVList;
-        FreeAndNil(V);
+        ops[o].n := name;
+        ops[o].nN := TVSymbol.symbol_n(name);
     end;
 begin
     for o := low(ops) to high(ops) do
         case o of
-            oeAND       : op('(AND :rest a)');
-            oeAPPEND    : op('(APPEND s s)');
-            oeAPPLY     : op('(APPLY :rest p)');
-            oeBLOCK     : op('(BLOCK :rest a)');
-            oeBREAK     : op('(BREAK)');
-            oeCASE      : op('(CASE o :rest c)');
-            oeCOND      : op('(COND :rest a)');
-            oeCONST     : op('(CONST n v)');
-            oeCONTINUE  : op('(CONTINUE)');
-            oeDEBUG     : op('(DEBUG key)');
-            oeDEFAULT   : op('(DEFAULT n v)');
-            oeELT       : op('(ELT o :rest s)');
-            oeELSE      : op('(ELSE :rest body)');
-            oeEXCEPTION : op('(EXCEPTION class :rest body)');
-            oeFILTER    : op('(FILTER)');
-            oeFOR       : op('(FOR i r :rest a)');
-            oeGOTO      : op('(GOTO a)');
-            oeIF        : op('(IF c t e)');
-            oeIF_NIL    : op('(IF-NIL c d)');
-            oeLAST      : op('(LAST l)');
-            oeLET       : op('(LET ((s v)))');
-            oeMACRO     : op('(MACRO m :rest b)');
-            oeMACRO_SYMBOL: op('(MACRO-SYMBOL :rest body)');
-            oeMAP       : op('(MAP f :rest l)');
-            oeOR        : op('(OR :rest a)');
-            oePACKAGE   : op('(PACKAGE name export :rest body)');
-            oePOP       : op('(POP l)');
-            oePROCEDURE : op('(PROCEDURE p :rest b)');
-            oePUSH      : op('(PUSH l e)');
-            oeQUOTE     : op('(QUOTE a)');
-            oeRECORD    : op('(RECORD :rest s)');
-            oeRECORD_AS : op('(RECORD-AS t :rest s)');
-            oeRETURN    : op('(RETURN :optional v)');
-            oeSET       : op('(SET n v)');
-            oeTHEN      : op('(THEN :rest body)');
-            oeVAL       : op('(VAL a)');
-            oeVAR       : op('(VAR n v)');
-            oeWHEN      : op('(WHEN c :rest b)');
-            oeWHILE     : op('(WHILE c :rest b)');
-            oeWITH      : op('(WITH :rest m)');
+            oeAND       : op('AND');
+            oeAPPEND    : op('APPEND');
+            oeAPPLY     : op('APPLY');
+            oeBLOCK     : op('BLOCK');
+            oeBREAK     : op('BREAK');
+            oeCASE      : op('CASE');
+            oeCOND      : op('COND');
+            oeCONST     : op('CONST');
+            oeCONTINUE  : op('CONTINUE');
+            oeDEBUG     : op('DEBUG');
+            oeDEFAULT   : op('DEFAULT');
+            oeELT       : op('ELT');
+            oeELSE      : op('ELSE');
+            oeEXCEPTION : op('EXCEPTION');
+            oeFILTER    : op('FILTER');
+            oeFOR       : op('FOR');
+            oeGOTO      : op('GOTO');
+            oeIF        : op('IF');
+            oeIF_NIL    : op('IF-NIL');
+            oeLAST      : op('LAST');
+            oeLET       : op('LET');
+            oeMACRO     : op('MACRO');
+            oeMACRO_SYMBOL: op('MACRO-SYMBOL');
+            oeMAP       : op('MAP');
+            oeOR        : op('OR');
+            oePACKAGE   : op('PACKAGE');
+            oePOP       : op('POP');
+            oePROCEDURE : op('PROCEDURE');
+            oePUSH      : op('PUSH');
+            oeQUOTE     : op('QUOTE');
+            oeRECORD    : op('RECORD');
+            oeRECORD_AS : op('RECORD-AS');
+            oeRETURN    : op('RETURN');
+            oeSET       : op('SET');
+            oeTHEN      : op('THEN');
+            oeVAL       : op('VAL');
+            oeVAR       : op('VAR');
+            oeWHEN      : op('WHEN');
+            oeWHILE     : op('WHILE');
+            oeWITH      : op('WITH');
             else raise Exception.Create('неизвестный оператор');
         end
 end;
 
-procedure clear_ops_array;
-var o: TOperatorEnum;
+procedure fill_int_fun_signs;
+var i: integer;
 begin
-    for o := low(ops) to high(ops) do ops[o].s.Free;
+    for i := low(int_fun) to high(int_fun) do
+        int_fun_sign[i] := read_from_string(int_fun[i].s) as TVList;
+end;
+
+procedure free_int_fun_signs;
+var i: integer;
+begin
+    for i := low(int_fun) to high(int_fun) do int_fun_sign[i].Free;
 end;
 
 procedure fill_base_stack;
 var i: integer;
 begin
     base_stack := TVSymbolStack.Create(nil);
-    for i := low(int_dyn) to high(int_dyn) do begin
+    for i := low(int_fun) to high(int_fun) do begin
         base_stack.new_var(
-            int_dyn[i].n,
+            int_fun[i].n,
             TVInternalFunction.Create(
-                    read_from_string(int_dyn[i].s) as TVList,
-                    int_dyn[i].f,
-                    int_dyn[i].n),
+                    //read_from_string(int_fun[i].s) as TVList,
+                    int_fun_sign[i],
+                    int_fun[i].f,
+                    int_fun[i].n),
             true);
     end;
     //загрузка констант
@@ -4473,7 +4477,7 @@ begin try
             for o := low(ops) to high(ops) do
                 //if ops[o].n=uname then begin
                 if ops[o].nN = (V as TVSymbol).N then begin
-                    result := TVOperator.Create(ops[o].nN, o, ops[o].s);
+                    result := TVOperator.Create(ops[o].nN, o);
                     goto return;
                 end;
 
@@ -4609,6 +4613,7 @@ end;
 
 initialization
     system.Randomize;
+    fill_int_fun_signs;
     fill_base_stack;
     root_evaluation_flow := TEvaluationFlow.Create(base_stack.Copy as TVSymbolStack);
     fill_ops_array;
@@ -4616,8 +4621,8 @@ initialization
 
 finalization
     quote_operator.Free;
-    clear_ops_array;
     root_evaluation_flow.Free;
     base_stack.Free;
+    free_int_fun_signs;
 end.
 
