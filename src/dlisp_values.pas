@@ -449,6 +449,7 @@ type
 
         procedure new_var(name: unicodestring; V: TValue; c: boolean = false); overload;
         procedure new_var(symbol: TVSymbol; V: TValue; c: boolean = false); overload;
+        procedure new_var(N: integer; V: TValue; c: boolean = false); overload;
         //function find_var(name: unicodestring): TValue; overload;
         function find_var(symbol: TVSymbol): TValue; overload;
         //procedure set_var(name: unicodestring; V: TValue); overload;
@@ -496,7 +497,8 @@ type
         is_macro: boolean;
         is_macro_symbol: boolean;
         evaluated: boolean;
-        fsignature: TSubprogramSignature;
+        //fsignature: TSubprogramSignature;
+        sign: TVList;
         stack_pointer: integer;
         stack: TVSymbolStack;
         body: TVList;
@@ -517,8 +519,7 @@ type
     end;
 
     type TEvalProc = function (V: TValue): TValue of Object;
-    type TInternalFunctionBody = function (const PL: TVList;
-                                            ep: TEvalProc = nil): TValue;
+    type TInternalFunctionBody = function (const PL: TVList; call: TEvalProc): TValue;
 
     { TVInternalSubprogram }
 
@@ -529,11 +530,6 @@ type
 
     TVInternalFunction = class (TVInternalSubprogram)
     //TODO: нужно унифицировать интерфейсы операторов и внутренних функций,
-    // а то они используют разные способы хранения сигнатур
-    // операторы по ссылке, а внутренние функции по значению
-    //при этом используют одно итоже поле signature родительского класса
-    //возможно операторам вообще не нужна сигнатура, поскольку большинством
-    //операторов она не используется при вызове (только как справка)
         signature: TVList;
         body: TInternalFunctionBody;
         constructor Create(sign: TVList;
@@ -544,7 +540,6 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
     end;
-
 
     { TVPredicate }
 
@@ -575,6 +570,7 @@ type
             oeELSE,
             oeELT,
             oeEXCEPTION,
+            oeEXECUTE_FILE,
             oeFILTER,
             oeFOR,
             oeGOTO,
@@ -691,9 +687,11 @@ function NewVariable(_V: TValue = nil; _constant: boolean = false): PVariable;
 function RefVariable(P: PVariable): PVariable;
 procedure ReleaseVariable(var P: PVariable);
 
+var symbols: array of unicodestring;
+
 implementation
 
-var symbols: array of unicodestring;
+
 
     { TVariable }
 
@@ -1567,19 +1565,19 @@ end;
 
 procedure TVSymbolStack.new_var(name: unicodestring; V: TValue; c: boolean);
 begin
-    SetLength(stack, Length(stack)+1);
-    stack[high(stack)].name := UpperCaseU(name);
-    stack[high(stack)].N := TVSymbol.symbol_n(stack[high(stack)].name);
-    stack[high(stack)].V := NewVariable;
-    stack[high(stack)].V.V := V;
-    stack[high(stack)].V.constant := c;
+    new_var(TVSymbol.symbol_n(name), V, c);
 end;
 
 procedure TVSymbolStack.new_var(symbol: TVSymbol; V: TValue; c: boolean);
 begin
+    new_var(symbol.N, V, c);
+end;
+
+procedure TVSymbolStack.new_var(N: integer; V: TValue; c: boolean);
+begin
     SetLength(stack, Length(stack)+1);
-    stack[high(stack)].name := symbol.uname;
-    stack[high(stack)].N := symbol.N;
+    stack[high(stack)].name := symbols[N];
+    stack[high(stack)].N := N;
     stack[high(stack)].V := NewVariable;
     stack[high(stack)].V.V := V;
     stack[high(stack)].V.constant := c;
@@ -1967,7 +1965,8 @@ begin
     body:= TVList.Create;
     stack := TVSymbolStack.Create(nil);
 
-    fsignature := nil;
+//    fsignature := nil;
+    sign := nil;
     evaluated := false;
     stack_pointer := -1;
     is_macro := false;
@@ -1980,7 +1979,8 @@ begin
     body := nil;
     stack := nil;
 
-    fsignature := nil;
+//    fsignature := nil;
+    sign := nil;
     evaluated := false;
     stack_pointer := -1;
     is_macro := false;
@@ -1990,11 +1990,12 @@ end;
 destructor TVProcedure.Destroy;
 var i: integer;
 begin
-    for i := 0 to high(fsignature) do fsignature[i].n := '';
-    SetLength(fsignature,0);
+//    for i := 0 to high(fsignature) do fsignature[i].n := '';
+//    SetLength(fsignature,0);
 
     stack.Free;
     body.Free;
+    sign.Free;
     inherited Destroy;
 end;
 
@@ -2008,9 +2009,11 @@ begin
     (result as TVProcedure).stack := stack.Copy as TVSymbolStack;
 
     (result as TVProcedure).evaluated := evaluated;
-    setLength((result as TVProcedure).fsignature, Length(fsignature));
-    for i := 0 to high(fsignature) do
-        (result as TVProcedure).fsignature[i] := fsignature[i];
+    //setLength((result as TVProcedure).fsignature, Length(fsignature));
+    //for i := 0 to high(fsignature) do
+    //    (result as TVProcedure).fsignature[i] := fsignature[i];
+
+    (result as TVProcedure).sign := sign.Copy as TVList;
 
     (result as TVProcedure).stack_pointer := stack_pointer;
 
@@ -2037,10 +2040,10 @@ var
 begin
 //    pl := parameters_list.AsString;
     PL := '';
-    for i := 0 to Length(fsignature)-1 do
-        PL := PL+' '+fsignature[i].n+m(fsignature[i].m);
+//    for i := 0 to Length(fsignature)-1 do
+//        PL := PL+' '+fsignature[i].n+m(fsignature[i].m);
     if nN<0
-    then result := '#<PROCEDURE'+pl+'>'
+    then result := '#<PROCEDURE'+sign.AsString+'>'
     else result := '#<PROCEDURE '+symbols[nN]+'>';
 end;
 

@@ -767,7 +767,118 @@ begin
     result := tpNil(V) or vpKeywordFileMode(V);
 end;
 
-//дальше не отсортировано
+
+function vpListEvenLength                           (V: TValue): boolean;
+begin
+    result := (V is TVList) and (((V as TVList).count mod 2) = 0);
+end;
+
+function vpListHeaded_ELSE                          (V: TValue): boolean;
+begin
+    result := vphListHeaded(V, 'ELSE');
+end;
+
+function vpListHeaded_ELT                           (V: TValue): boolean;
+begin
+    result := vphListHeaded(V, 'ELT');
+end;
+
+function vpListHeaded_EXCEPTION                     (V: TValue): boolean;
+begin
+    result := vphListHeaded(V, 'EXCEPTION');
+end;
+
+function vpListHeaded_INS                           (V: TValue): boolean;
+begin
+    result := vphListHeaded(V, 'INS');
+end;
+
+function vpListHeaded_THEN                          (V: TValue): boolean;
+begin
+    result := vphListHeaded(V, 'THEN');
+end;
+
+function vpListKeywordValue                         (V: TValue): boolean;
+var i: integer;
+begin
+    result := vpListEvenLength(V);
+    if result then
+        for i :=  0 to (V as TVList).Count div 2 - 1 do
+            if not tpKeyword((V as TVList).look[i*2]) then begin
+                result := false;
+                exit;
+            end;
+end;
+
+function vpListOfByte                               (V: Tvalue): boolean;
+begin
+    result := tphListOf(V, vpIntegerByte);
+end;
+
+function vpListOfSymbolValuePairs                   (V: TValue): boolean;
+var i: integer; L: TVList;
+begin
+    result := false;
+    if V is TVList then begin
+        L := V as TVList;
+        for i :=  0 to L.high do
+            if not (tpList(L.look[i])
+                and (L.L[i].count=2)
+                and tpOrdinarySymbol(L.L[i].look[0]))
+            then exit;
+    end
+    else exit;
+    result := true;
+end;
+
+function vpListOpCall_ELSE                          (V: TValue): boolean;
+begin
+    result := vphListOpCall(V, 'ELSE', oeELSE);
+end;
+
+function vpListOpCall_ELT                           (V: TValue): boolean;
+begin
+    result := vphListOpCall(V, 'ELT', oeELT);
+end;
+
+function vpListOpCall_EXCEPTION                     (V: TValue): boolean;
+begin
+    result := vphListOpCall(V, 'EXCEPTION', oeEXCEPTION);
+end;
+
+function vpListOpCall_THEN                          (V: TValue): boolean;
+begin
+    result := vphListOpCall(V, 'THEN', oeTHEN);
+end;
+
+function vpListSymbolValue                          (V: TValue): boolean;
+var i: integer;
+begin
+    result := vpListEvenLength(V);
+    if result then
+        for i :=  0 to (V as TVList).Count div 2 - 1 do
+            if not tpSymbol((V as TVList).look[i*2]) then begin
+                result := false;
+                exit;
+            end;
+end;
+
+
+function vpNumberAbsOneOrMore                       (V: TValue): boolean;
+begin
+    result := (V is TVNumber) and (abs((V as TVNumber).F) >= 1);
+end;
+
+function vpNumberNegative                           (V: TValue): boolean;
+begin
+    result := (V is TVNumber) and ((V as TVNumber).F < 0);
+end;
+
+function vpNumberNotNegative                        (V: TValue): boolean;
+begin
+    result := (V is TVNumber) and ((V as TVNumber).F >= 0);
+end;
+
 function vpNumberNotZero                            (V: TValue): boolean;
 begin
     result := (V is TVNumber) and ((V as TVNumber).F <> 0);
@@ -778,33 +889,39 @@ begin
     result := (V is TVNumber) and ((V as TVNumber).F > 0);
 end;
 
-function vpNumberNegative                           (V: TValue): boolean;
-begin
-    result := (V is TVNumber) and ((V as TVNumber).F < 0);
-end;
-
 function vpNumberZero                               (V: TValue): boolean;
 begin
     result := (V is TVNumber) and ((V as TVNumber).F = 0);
 end;
 
-function vpNumberAbsOneOrMore                       (V: TValue): boolean;
-begin
-    result := (V is TVNumber) and (abs((V as TVNumber).F) >= 1);
-end;
 
-function vpNumberNotNegative                        (V: TValue): boolean;
+function vpRangeNotNegative                         (V: TValue): boolean;
 begin
-    result := (V is TVNumber) and ((V as TVNumber).F >= 0);
+    result := (V is TVRange) and ((V as TVRange).high>=(V as TVRange).low);
 end;
 
 
-function vpSymbol_OTHERWISE                         (V: TValue): boolean;
+function vpSQLPointerActive                         (V: TValue): boolean;
 begin
-    result := vphSymbolName(V, 'OTHERWISE');
+    result := (V is TVSQLPointer) and
+        ((V as TVSQLPointer).body.V <> nil);
 end;
 
-function vpSymbol__(V: TValue): boolean;
+
+function vpStreamPointerActive                      (V: TValue): boolean;
+begin
+    result := (V is TVStreamPointer) and
+        ((V as TVStreamPointer).body.V <> nil);
+end;
+
+
+function vpStringEmpty                              (V: TValue): boolean;
+begin
+    result := (V is TVString) and ((V as TVString).S = '');
+end;
+
+
+function vpSymbol__                                 (V: TValue): boolean;
 begin
     result := vphSymbolName(V, '_');
 end;
@@ -824,137 +941,16 @@ begin
     result := vphSymbolName(V, 'LIST');
 end;
 
+function vpSymbol_OTHERWISE                         (V: TValue): boolean;
+begin
+    result := vphSymbolName(V, 'OTHERWISE');
+end;
+
 function vpSymbol_RANGE                             (V: TValue): boolean;
 begin
     result := vphSymbolName(V, 'RANGE');
 end;
 
-function vpStringEmpty                              (V: TValue): boolean;
-begin
-    result := (V is TVString) and ((V as TVString).S = '');
-end;
 
-function vpStreamPointerActive                      (V: TValue): boolean;
-begin
-    result := (V is TVStreamPointer) and
-        ((V as TVStreamPointer).body.V <> nil);
-end;
-
-function vpSQLPointerActive                         (V: TValue): boolean;
-begin
-    result := (V is TVSQLPointer) and
-        ((V as TVSQLPointer).body.V <> nil);
-end;
-
-function vpListHeaded_INS                           (V: TValue): boolean;
-begin
-    result := (V is TVList)
-        and ((V as TVList).Count>0)
-        and tpSymbol((V as TVList).look[0])
-        and ((V as TVList).uname[0]='INS');
-end;
-
-function vpListHeaded_ELT                           (V: TValue): boolean;
-begin
-    result := vphListHeaded(V, 'ELT');
-end;
-
-function vpListOpCall_ELT                           (V: TValue): boolean;
-begin
-    result := vphListOpCall(V, 'ELT', oeELT);
-end;
-
-function vpListHeaded_THEN                          (V: TValue): boolean;
-begin
-    result := vphListHeaded(V, 'THEN');
-end;
-
-function vpListOpCall_THEN                          (V: TValue): boolean;
-begin
-    result := vphListOpCall(V, 'THEN', oeTHEN);
-end;
-
-function vpListHeaded_ELSE                          (V: TValue): boolean;
-begin
-    result := vphListHeaded(V, 'ELSE');
-end;
-
-function vpListOpCall_ELSE                          (V: TValue): boolean;
-begin
-    result := vphListOpCall(V, 'ELSE', oeELSE);
-end;
-
-function vpListHeaded_EXCEPTION                     (V: TValue): boolean;
-begin
-    result := vphListHeaded(V, 'EXCEPTION');
-end;
-
-function vpListOpCall_EXCEPTION                     (V: TValue): boolean;
-begin
-    result := vphListOpCall(V, 'EXCEPTION', oeEXCEPTION);
-end;
-
-function vpListEvenLength                           (V: TValue): boolean;
-begin
-    result := (V is TVList) and (((V as TVList).count mod 2) = 0);
-end;
-
-function vpListKeywordValue                         (V: TValue): boolean;
-var i: integer;
-begin
-    result := vpListEvenLength(V);
-    if result then
-        for i :=  0 to (V as TVList).Count div 2 - 1 do
-            if not tpKeyword((V as TVList).look[i*2]) then begin
-                result := false;
-                exit;
-            end;
-end;
-
-function vpListSymbolValue                          (V: TValue): boolean;
-var i: integer;
-begin
-    result := vpListEvenLength(V);
-    if result then
-        for i :=  0 to (V as TVList).Count div 2 - 1 do
-            if not tpSymbol((V as TVList).look[i*2]) then begin
-                result := false;
-                exit;
-            end;
-end;
-
-function vpListOfSymbolValuePairs                   (V: TValue): boolean;
-var i: integer; L: TVList;
-begin
-    result := false;
-    if V is TVList then begin
-        L := V as TVList;
-        for i :=  0 to L.high do
-            if not (tpList(L.look[i])
-                and (L.L[i].count=2)
-                and tpOrdinarySymbol(L.L[i].look[0]))
-            then exit;
-    end
-    else exit;
-    result := true;
-end;
-
-function vpListOfByte                               (V: Tvalue): boolean;
-var i: integer;
-begin
-    result := V is TVList;
-    if result then
-        for i := 0 to (V as TVList).High do
-            if ((V as TVList).I[i]<0) or ((V as TVList).I[i]>255) then begin
-                result := false;
-                exit;
-            end;
-end;
-
-function vpRangeNotNegative                         (V: TValue): boolean;
-begin
-    result := (V is TVRange) and ((V as TVRange).high>=(V as TVRange).low);
-end;
-
-end.
+end.  //955
 

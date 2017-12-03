@@ -241,7 +241,13 @@
     (default d 7)
     (assertion (= 7 d) "default nil const"))
 
-
+(log \SORT)
+(block "sort"
+    (var l \(1 9 5 7))
+    (var sorted (sort l))
+    (assertion (= sorted \(1 5 7 9)) "sort default")
+    (var desc (sort l <))
+    (assertion (= desc \(9 7 5 1)) "sort int fun"))
 
 (log \STREAM)
 (block
