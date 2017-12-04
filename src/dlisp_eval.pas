@@ -2994,6 +2994,7 @@ begin
     proc.body.Append(PL.Subseq(2, PL.Count) as TVList);
 //    proc.fsignature := nil;
     //proc.evaluated:=true;
+    proc.sign := TVList.Create;
 
     try
         sl := extract_body_symbols(proc.body);

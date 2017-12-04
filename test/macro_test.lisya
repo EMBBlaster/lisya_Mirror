@@ -6,4 +6,8 @@
 
     (macro plus (:rest args) (list + /args))
     (assertion (= 6 (plus 1 2 3)) "macro eval")
+
+    (macro-symbol tst (list + 1 2))
+    (assertion (= 3 tst) "macro-symbol")
+
     (log "успешно"))
