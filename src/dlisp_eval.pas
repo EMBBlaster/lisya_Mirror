@@ -461,6 +461,9 @@ begin
     if vpKeyword_UTF32LE(V) then result := seUTF32LE else
     if vpKeyword_CP1251(V)  then result := seCP1251 else
     if vpKeyword_CP1252(V)  then result := seCP1252 else
+    if vpKeyword_CP866(V)   then result := seCP866 else
+    if vpKeyword_KOI8R(V)   then result := seKOI8R else
+
     if vpKeyword_BOM(V)     then result := seBOM else
     raise ELE.Create('invalid encoding '+V.AsString, 'invalid parameters');
 end;

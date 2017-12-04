@@ -135,6 +135,8 @@ function vpKeyword_CP1251                           (V: TValue): boolean;
 
 function vpKeyword_CP1252                           (V: TValue): boolean;
 
+function vpKeyword_CP866                            (V: TValue): boolean;
+
 function vpKeyword_DEFLATE                          (V: TValue): boolean;
 
 function vpKeyword_EQUAL                            (V: TValue): boolean;
@@ -144,6 +146,8 @@ function vpKeyword_FIRST                            (V: TValue): boolean;
 function vpKeyword_FLAG                             (V: TValue): boolean;
 
 function vpKeyword_KEY                              (V: TValue): boolean;
+
+function vpKeyword_KOI8R                            (V: TValue): boolean;
 
 function vpKeyword_LAST                             (V: TValue): boolean;
 
@@ -493,6 +497,16 @@ begin
     result := (V is TVKeyword) and ((V as TVKeyword).uname = n);
 end;
 
+function vphKeywordNames(V: TValue; const n: array of unicodestring): boolean;
+var i: integer;
+begin
+    result := true;
+    if V is TVKeyword then for i := 0 to high(n) do
+        if (V as TVKeyword).uname=n[i] then Exit;
+
+    result := false;
+end;
+
 function vphSymbolName(V: TValue; const n: unicodestring): boolean;
 begin
     result := (V is TVSymbol) and ((V as TVSymbol).uname = n);
@@ -597,6 +611,11 @@ begin
         or ((V as TVSymbol).uname = ':WINDOWS-1252'));
 end;
 
+function vpKeyword_CP866(V: TValue): boolean;
+begin
+    result := vphKeywordNames(V, [':CP866',':DOS']);
+end;
+
 function vpKeyword_DEFLATE                          (V: TValue): boolean;
 begin
     result := (V is TVKeyword) and (
@@ -622,6 +641,11 @@ end;
 function vpKeyword_KEY                              (V: TValue): boolean;
 begin
     result := (V is TVKeyword) and ((V as TVSymbol).uname = ':KEY');
+end;
+
+function vpKeyword_KOI8R                            (V: TValue): boolean;
+begin
+    result := vphKeywordNames(V, [':KOI8R',':KOI8-R', ':КОИ8']);
 end;
 
 function vpKeyword_LAST                             (V: TValue): boolean;

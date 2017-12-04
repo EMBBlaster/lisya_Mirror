@@ -612,7 +612,7 @@ type
 
     TFileMode = (fmRead, fmWrite, fmAppend);
     TStreamEncoding = (seBOM, seUTF8, seCP1251, seCP1252, seUTF16BE, seUTF16LE, seUTF32BE,
-                        seUTF32LE);
+                        seUTF32LE, seCP866, seKOI8R);
 
 
     { TVStream }
@@ -1040,6 +1040,8 @@ begin
         end;
         seCP1251: result := read8bit(cp1251_cp);
         seCP1252: result := read8bit(cp1252_cp);
+        seCP866:  result := read8bit(cp866_cp);
+        seKOI8R:  result := read8bit(KOI8_R_cp);
         else begin result := read_byte(b1); ch := unicodechar(b1); end;
     end
 end;
@@ -1085,6 +1087,8 @@ begin
                             and write_byte(cp and $FF);
         seCP1251: result := write8bit(cp1251_cp);
         seCP1252: result := write8bit(cp1252_cp);
+        seCP866:  result := write8bit(cp866_cp);
+        seKOI8R: result := write8bit(KOI8_R_cp);
         else raise ELE.Create('неизвестная кодировка','invalid parameters');
     end
 end;
