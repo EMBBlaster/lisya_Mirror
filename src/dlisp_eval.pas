@@ -13,7 +13,8 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    process, Classes, SysUtils, dlisp_values, dlisp_read, math, lisya_xml, mar,
+    process, Classes, SysUtils, math, crc
+    , dlisp_values, dlisp_read, lisya_xml, mar,
     lisya_packages
     ,lisya_predicates
     ,lisya_ifh
@@ -1257,6 +1258,22 @@ begin
     end;
 end;
 
+function if_crc32               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+var b: TVByteVector;
+begin
+    case params_is(PL, result, [
+        tpByteVector]) of
+        1: begin
+            b := PL.look[0] as TVByteVector;
+            result := TVInteger.Create(
+                crc32(0,
+                    @b.fBytes[0],
+                    Length((PL.look[0] as TVByteVector).fBytes)));
+        end;
+
+    end;
+end;
+
 function if_character           (const PL: TVList; {%H-}call: TEvalProc): TValue;
 begin
     case params_is(PL, result, [
@@ -1989,7 +2006,7 @@ begin
     end;
 end;
 
-const int_fun_count = 92;
+const int_fun_count = 93;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional t)'),
@@ -2056,6 +2073,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'BITWISE-NOT';           f:if_bitwise_not;           s:'(a)'),
 (n:'BITWISE-OR';            f:if_bitwise_or;            s:'(a b)'),
 (n:'BITWISE-XOR';           f:if_bitwise_xor;           s:'(a b)'),
+(n:'CRC32';                 f:if_crc32;                 s:'(b)'),
 (n:'CHARACTER';             f:if_character;             s:'(n)'),
 
 (n:'ASSERTION';             f:if_assertion;             s:'(c m)'),
