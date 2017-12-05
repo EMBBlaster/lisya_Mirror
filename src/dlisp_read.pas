@@ -243,7 +243,7 @@ begin
                     end;
                     accum;
                 end;
-            ';': if not q then r := true;
+            ';': if not q then r := true else accum;
             else accum;
         end;
     end;

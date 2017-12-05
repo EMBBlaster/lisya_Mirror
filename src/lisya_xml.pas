@@ -18,8 +18,33 @@ function xml_read_from_string(s: unicodestring): TValue;
 
 implementation
 
+function decode(s: unicodestring): unicodestring;
+var i, p: integer;
+    function decode_symbol(s: unicodestring): unicodestring;
+    begin
+        if s='amp'  then result := '&' else
+        if s='gt'   then result := '>' else
+        if s='lt'   then result := '<' else
 
+        if s[1]='#' then result := unicodechar(StrToInt(s[2..Length(s)])) else
+        result := s;
+    end;
+begin
+    SetLength(result, Length(s));
+    SetLength(result, 0);
+    i := 0;
+    while i<Length(s) do begin
+        Inc(i);
+        if s[i]='&' then begin
+            p := PosU(';', s, i);
+            if abs(p-i)>6 then raise ELE.Create('invalid symbol '+s[i..i+4],'xml');
+            result := result + decode_symbol(s[i+1..p-1]);
+            i := p;
+        end
+        else result := result + s[i];
 
+    end;
+end;
 
 function word_start(const s: unicodestring; start: integer): integer;
 var i: integer;
@@ -56,7 +81,7 @@ begin
         ws := word_start(s, ep);
         we := word_end(s, ep);
         result.Add(TVSymbol.Create(s[ws..ep-1]));
-        result.add(TVString.Create(s[ep+2..we-1]));
+        result.add(TVString.Create(decode(s[ep+2..we-1])));
         ep := PosU('=', s, ep+1);
     end;
 
@@ -83,7 +108,7 @@ begin
         word_end := PosU(' ', S) - 1;
         if word_end<0 then word_end := PosU('/', S) - 1;
         if word_end<0 then word_end := Length(S) - 1;
-        (result as TVRecord).slot['N'] := TVString.Create(S[2..word_end]);
+        (result as TVRecord).slot['N'] := TVString.Create(decode(S[2..word_end]));
         closed := PosU('/', S)>0;
         if closed then begin
             (result as TVRecord).slot['C'] := TVT.Create;
@@ -95,7 +120,7 @@ begin
         exit;
     end;
     (result as TVRecord).slot['N'] := TVSymbol.Create(':TEXT');
-    (result as TVRecord).slot['C'] := TVString.Create(S);
+    (result as TVRecord).slot['C'] := TVString.Create(decode(S));
 end;
 
 type
