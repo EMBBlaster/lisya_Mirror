@@ -92,7 +92,7 @@ type
         function bind_macro_parameters_to_stack(
                             PL: TVList; sign: TSubprogramSignature;
                             ts: TVSymbolStack): boolean;
-        procedure procedure_complement(V: TValue);
+//        procedure procedure_complement(V: TValue);
         function procedure_call(PL: TVList): TValue;
         function internal_function_call(PL: TVList): TValue;
         function internal_predicate_call(PL: TVList): TValue;
@@ -2341,7 +2341,7 @@ begin
             raise ELE.Create(exception_message, exception_class, exception_stack);
         end;
     end;
-    if (V is TVProcedure) and with_frame then procedure_complement(V);
+   // if (V is TVProcedure) and with_frame then procedure_complement(V);
     result := V;
 
 return:
@@ -2970,7 +2970,7 @@ var se: TVList; i,j: integer;
 begin
     result := nil;
     for i := 1 to PL.High do PL[i] := eval(PL[i]);
-    if PL.look[1] is TVProcedure then procedure_complement(PL.look[1]);
+//    if PL.look[1] is TVProcedure then procedure_complement(PL.look[1]);
 
     if PL.Count<3 then raise ELE.Malformed('MAP');
     if not tpSubprogram(PL.look[1]) then raise ELE.InvalidParameters;
@@ -3011,7 +3011,8 @@ begin
     proc.nN := PL.SYM[1].N;
 
     result := proc;
-    proc.stack_pointer := stack.count;
+    proc.stack_pointer := -1;// := stack.count;
+    proc.home_stack := nil;
     proc.body.Append(PL.Subseq(2, PL.Count) as TVList);
 //    proc.fsignature := nil;
     //proc.evaluated:=true;
@@ -3024,7 +3025,9 @@ begin
         FreeAndNil(sl);
     end;
 
-    procedure_complement(proc);
+    proc.stack.remove_unbound;
+    proc.evaluated := true;
+//    procedure_complement(proc);
 
     //stack.new_var(PL.uname[1],result.Copy, true);
     stack.new_var(PL.SYM[1], result.Copy, true);
@@ -3167,6 +3170,7 @@ begin
 
     result := proc;
     proc.stack_pointer := stack.count;
+    proc.home_stack := stack;
     proc.body.Append(PL.Subseq(sign_pos+1, PL.Count) as TVList);
 //    proc.fsignature := parse_subprogram_signature(PL.look[sign_pos] as TVList);
     proc.evaluated:=false;
@@ -3369,8 +3373,8 @@ var i, j, key_start:integer;
     begin
         CP := eval_link(FP);
 
-        if CP.look is TVProcedure and not (CP.look as TVProcedure).evaluated
-        then procedure_complement(CP.look);
+//        if CP.look is TVProcedure and not (CP.look as TVProcedure).evaluated
+//        then procedure_complement(CP.look);
 
         ts.new_var(n, CP, false);
     end;
@@ -3473,40 +3477,40 @@ begin
 
 end;
 
-procedure TEvaluationFlow.procedure_complement(V: TValue);
-var
-    proc: TVProcedure;
-    i: integer;
-begin
-    //эта процедура вызывается из мест:
-    // 1. bind_procedure_parameters_to_stack - на случай передачи выражения
-    //  (PROCEDURE ...) как параметра процедуры
-    // 2. internal_function_call
-    // 3. при вычислении символа в процедуру - на всякий случай
-    // 4. при вычислении результата блока с фреймом
-    // --5. при экспорте процедуры из модуля
-    // --6. из функции оператора MAP (только первый аргумент, нужно доделать остальные)
-    //TODO: очень сложный механизм определения момента довычисления процедуры
-    //для определения провалов в этом механизме в stack.index_of добавлен
-    //assert падающий при наличии нулевых указателей в стеке.
-    //альтернативный варинант - вообще избавиться от довычислений. А требовать
-    //предварительного описания переменных для рекурсивных функций
-    proc := V as TVProcedure;
-    if not proc.evaluated
-    then try
-        for i := 0 to proc.stack.Count-1 do
-            if proc.stack.stack[i].V=nil
-            then proc.stack.stack[i].V :=
-                    //stack.find_ref_in_frame_or_nil(proc.stack.stack[i].name,
-                    //                                proc.stack_pointer);
-                    stack.find_ref_in_frame_or_nil(proc.stack.stack[i].name,
-                                                    proc.stack_pointer);
-
-        proc.stack.remove_unbound;
-        proc.evaluated:=true;
-    finally
-    end;
-end;
+//procedure TEvaluationFlow.procedure_complement(V: TValue);
+//var
+//    proc: TVProcedure;
+//    i: integer;
+//begin
+//    //эта процедура вызывается из мест:
+//    // 1. bind_procedure_parameters_to_stack - на случай передачи выражения
+//    //  (PROCEDURE ...) как параметра процедуры
+//    // 2. internal_function_call
+//    // 3. при вычислении символа в процедуру - на всякий случай
+//    // 4. при вычислении результата блока с фреймом
+//    // --5. при экспорте процедуры из модуля
+//    // --6. из функции оператора MAP (только первый аргумент, нужно доделать остальные)
+//    //TODO: очень сложный механизм определения момента довычисления процедуры
+//    //для определения провалов в этом механизме в stack.index_of добавлен
+//    //assert падающий при наличии нулевых указателей в стеке.
+//    //альтернативный варинант - вообще избавиться от довычислений. А требовать
+//    //предварительного описания переменных для рекурсивных функций
+//    proc := V as TVProcedure;
+//    if not proc.evaluated
+//    then try
+//        for i := 0 to proc.stack.Count-1 do
+//            if proc.stack.stack[i].V=nil
+//            then proc.stack.stack[i].V :=
+//                    //stack.find_ref_in_frame_or_nil(proc.stack.stack[i].name,
+//                    //                                proc.stack_pointer);
+//                    stack.find_ref_in_frame_or_nil(proc.stack.stack[i].name,
+//                                                    proc.stack_pointer);
+//
+//        proc.stack.remove_unbound;
+//        proc.evaluated:=true;
+//    finally
+//    end;
+//end;
 
 
 function TEvaluationFlow.procedure_call(PL: TVList): TValue;
@@ -3534,6 +3538,7 @@ begin
     params.SetCapacity(PL.Count-1);
     result := nil;
 try
+    proc.Complement;
     linkable := true;
     for i := 1 to PL.high do
         if proc.is_macro
@@ -3597,7 +3602,7 @@ begin
    // print_stdout_ln(PL);
     for i := 1 to PL.High do begin
         PL[i] := eval(PL[i]);
-        if (PL.look[i] is TVProcedure) then procedure_complement(PL.look[i]);
+//        if (PL.look[i] is TVProcedure) then procedure_complement(PL.look[i]);
     end;
    // print_stdout_ln(PL);
 try
@@ -3714,8 +3719,8 @@ begin try
                 PV := nil;
                 PV := //stack.find_ref(uname);
                     stack.find_ref(V as TVSymbol);
-                if tpProcedure(PV.V) and not (PV.V as TVProcedure).evaluated
-                then procedure_complement(PV.V);
+//                if tpProcedure(PV.V) and not (PV.V as TVProcedure).evaluated
+//                then procedure_complement(PV.V);
 
                 if PV.V is TVChainPointer
                 then result := (PV.V as TVChainPointer).value

@@ -153,9 +153,6 @@
 (assertion (= l nil) "l nil")
 
 
-
-;здесь закончил ловлю утечек
-
 (log \BLOCK)
 (block
     (var a 1)
@@ -167,15 +164,15 @@
         :exit)
     (assertion (= a 1) "block outer"))
 
-;(log ">> взаимная рекурсия")
-;(var n 5)
-;(var a (procedure (n &captured b)
-;    (set n (- n 1))
-;    (if (= n 0) nil (b n))))
-;(var b (procedure (n &captured a)
-;    (a n)))
-;(a n)
-;(assertion (= n 0) "взаимная рекурсия")
+(log ">> взаимная рекурсия")
+(var n 5)
+(var a (procedure (n)
+    (set n (- n 1))
+    (if (= n 0) nil (b n))))
+(var b (procedure (n)
+    (a n)))
+(a n)
+(assertion (= n 0) "взаимная рекурсия")
 
 
 

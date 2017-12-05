@@ -466,6 +466,7 @@ type
         function find_ref_or_nil(symbol: TVSymbol): PVariable; overload;
         function find_ref_in_frame_or_nil(name: unicodestring; n: integer): PVariable; overload;
         function find_ref_in_frame_or_nil(symbol: TVSymbol; n: integer): PVariable; overload;
+        function find_ref_in_frame_or_nil(nN: integer; n: integer): PVariable; overload;
         procedure remove_unbound;
     end;
 
@@ -501,12 +502,15 @@ type
         sign: TVList;
         stack_pointer: integer;
         stack: TVSymbolStack;
+        home_stack: TVSymbolStack;
         body: TVList;
         constructor Create;
         constructor CreateEmpty;
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+
+        procedure Complement;
     end;
 
     TVMacro = class (TVProcedure)
@@ -1501,7 +1505,7 @@ destructor TVSymbolStack.Destroy;
 var i: integer;
 begin
     //WriteLn('--------------------> stack -1');
-    for i := 0 to high(stack) do ReleaseVariable(stack[i].V);
+    clear_frame(0);
     inherited Destroy;
 end;
 
@@ -1605,7 +1609,7 @@ end;
 procedure TVSymbolStack.clear_frame(n: integer);
 var i, _n: integer;
 begin
-    Assert(n<=high(stack), 'очистка выше стека');
+    Assert((n<=high(stack)) or (n=0), 'очистка выше стека');
     if n<0
     then begin
         for i := high(stack) downto 0 do
@@ -1616,7 +1620,13 @@ begin
     end
     else _n := n;
 
+    //print(_n);
+    for i := high(stack) downto _n do
+        if (stack[i].V<>nil) and (stack[i].V.ref_count>1) and (stack[i].V.V is TVProcedure)
+        then (stack[i].V.V as TVProcedure).Complement;
+
     for i := high(stack) downto _n do ReleaseVariable(stack[i].V);
+
     SetLength(stack, _n);
 end;
 
@@ -1674,25 +1684,22 @@ end;
 
 function TVSymbolStack.find_ref_in_frame_or_nil(name: unicodestring; n: integer
     ): PVariable;
-var i: integer; uname: unicodestring;
 begin
-    uname := UpperCaseU(name);
-    for i := n to high(stack) do begin
-        if stack[i].name = uname then begin
-            result := RefVariable(stack[i].V);
-            exit;
-        end;
-        if stack[i].name[1]=' ' then break;
-    end;
-    result := nil;
+    result := find_ref_in_frame_or_nil(TVSymbol.symbol_n(name), n);
 end;
 
 function TVSymbolStack.find_ref_in_frame_or_nil(symbol: TVSymbol; n: integer
     ): PVariable;
+begin
+    result := find_ref_in_frame_or_nil(symbol.N, n);
+end;
+
+function TVSymbolStack.find_ref_in_frame_or_nil(nN: integer; n: integer
+    ): PVariable;
 var i: integer;
 begin
     for i := n to high(stack) do begin
-        if stack[i].N = symbol.N then begin
+        if stack[i].N = nN then begin
             result := RefVariable(stack[i].V);
             exit;
         end;
@@ -1968,7 +1975,7 @@ begin
     inherited;
     body:= TVList.Create;
     stack := TVSymbolStack.Create(nil);
-
+    home_stack := nil;
 //    fsignature := nil;
     sign := nil;
     evaluated := false;
@@ -1982,6 +1989,7 @@ begin
     inherited;
     body := nil;
     stack := nil;
+    home_stack := nil;
 
 //    fsignature := nil;
     sign := nil;
@@ -2011,6 +2019,8 @@ begin
     result := TVProcedure.CreateEmpty;
     (result as TVProcedure).body := body.Copy() as TVList;
     (result as TVProcedure).stack := stack.Copy as TVSymbolStack;
+
+    (result as TVProcedure).home_stack := home_stack;
 
     (result as TVProcedure).evaluated := evaluated;
     //setLength((result as TVProcedure).fsignature, Length(fsignature));
@@ -2049,6 +2059,24 @@ begin
     if nN<0
     then result := '#<PROCEDURE'+sign.AsString+'>'
     else result := '#<PROCEDURE '+symbols[nN]+'>';
+end;
+
+procedure TVProcedure.Complement;
+var i: integer;
+begin
+    if home_stack<>nil
+    then try
+        for i := 0 to stack.Count-1 do
+            if stack.stack[i].V=nil
+            then stack.stack[i].V :=
+                    home_stack.find_ref_in_frame_or_nil(stack.stack[i].N,
+                                                    stack_pointer);
+
+        stack.remove_unbound;
+        evaluated:=true;
+        home_stack := nil;
+    finally
+    end;
 end;
 
 { TVGoto }
