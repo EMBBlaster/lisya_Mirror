@@ -766,6 +766,8 @@ begin
         or vpKeyword_UTF8(V)
         or vpKeyword_CP1251(V)
         or vpKeyword_CP1252(V)
+        or vpKeyword_CP866(V)
+        or vpKeyword_KOI8R(V)
         or vpKeyword_UTF16LE(V)
         or vpKeyword_UTF16BE(V)
         or vpKeyword_UTF32LE(V)

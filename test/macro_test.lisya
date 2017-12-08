@@ -4,7 +4,7 @@
     (m v "var")
     (assertion (= "var" v) "macro var")
 
-    (macro plus (:rest args) (list + /args))
+    (macro plus (:rest args) (concatenate (list +) args))
     (assertion (= 6 (plus 1 2 3)) "macro eval")
 
     (macro-symbol tst (list + 1 2))

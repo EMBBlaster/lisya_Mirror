@@ -415,6 +415,8 @@ type
         function AsString: unicodestring; override;
 
         property slot[index: unicodestring]:TValue read fGetSlot write fSetSlot;
+        property Items[index: integer]: TValue read GetItem write SetItem; default;
+        property look[index: integer]: TValue read LookItem;
         property look_name[n: unicodestring]: TValue read flook;
         function is_class(cl: TVRecord): boolean;
         procedure AddSlot(name: unicodestring; V: TValue);
