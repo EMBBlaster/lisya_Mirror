@@ -1,8 +1,4 @@
-﻿(var a 1)
-
-
-
-(log \test.dlisp)
+﻿(log \test.dlisp)
 (log "русский")
 
 (assertion T "assert T")
@@ -166,14 +162,13 @@
 
 (log ">> взаимная рекурсия")
 (var n 5)
-(var a (procedure (n)
-    (set n (- n 1))
-    (if (= n 0) nil (b n))))
-(var b (procedure (n)
-    (a n)))
-(a n)
-(assertion (= n 0) "взаимная рекурсия")
-
+;(var a (procedure (n)
+;    (set n (- n 1))
+;    (if (= n 0) nil (b n))))
+;(var b (procedure (n)
+;    (a n)))
+;(a n)
+;(assertion (= n 0) "взаимная рекурсия")
 
 
 (block
@@ -213,7 +208,7 @@
     (assertion (= L \(1 2 9)) "set last"))
 
 (log \RECORD)
-(block
+(block "record"
     (var s0 (record :x 0 :y 0))
     (var s1 (record :name "s1" :value 1))
     (var s2 (record-as s1 :name "s2"))

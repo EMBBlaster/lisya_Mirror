@@ -330,13 +330,16 @@ type
     public
         constructor Create; overload;
         constructor Create(VL: array of TValue); overload;
+        constructor CreatePhantom;
         destructor Destroy; override;
         function Copy(): TValue; override;
+        function Phantom_Copy: TVList;
         function AsString(): unicodestring; override;
 
         function Count: integer; override;
 
         function subseq(istart: integer; iend: integer = -1): TValue; override;
+        function phantom_subseq(istart: integer; iend: integer = -1): TVList;
 
 
         procedure Add(V: TValue);
@@ -358,6 +361,7 @@ type
         function CdrValueList: TValueList;
         function CAR: TValue;
         function CDR: TVList;
+        function Phantom_CDR: TVList;
     end;
 
 
@@ -2357,6 +2361,15 @@ begin
     (result as TVList).fL.Add((fL[i] as TValue).Copy);
 end;
 
+function TVList.Phantom_Copy: TVList;
+var i: integer;
+begin
+  result := TVList.CreatePhantom;
+  result.fL.Capacity := fL.Capacity;
+  for i := 0 to fL.Count - 1 do
+    result.fL.Add(fL[i]);
+end;
+
 function TVList.AsString: unicodestring;
 var i: integer;
 begin  // try
@@ -2381,6 +2394,11 @@ begin
     fL := TObjectList.Create(true);
     fL.Capacity:=length(VL);
     for i:=0 to length(VL)-1 do fL.Add(VL[i]);
+end;
+
+constructor TVList.CreatePhantom;
+begin
+    fL := TObjectList.create(false);
 end;
 
 destructor TVList.Destroy;
@@ -2412,6 +2430,16 @@ begin
     (result as TVList).fL.Capacity := iend - istart;
     for i := istart to iend - 1 do
         (result as TVList).fL.Add((fL[i] as TValue).Copy);
+end;
+
+function TVList.phantom_subseq(istart: integer; iend: integer): TVList;
+var i: integer;
+begin
+    if iend<0 then iend := fL.Count;
+    result := TVList.CreatePhantom;
+    result.fL.Capacity := iend - istart;
+    for i := istart to iend - 1 do
+        result.fL.Add(fL[i]);
 end;
 
 function TVList.POP: TValue;
@@ -2452,6 +2480,14 @@ begin
     result := TVList.Create;
     result.fL.Capacity:= fL.Count - 1;
     for i:=1 to fL.Count-1 do result.Add((fL[i] as TValue).Copy());
+end;
+
+function TVList.Phantom_CDR: TVList;
+var i: integer;
+begin
+    result := TVList.CreatePhantom;
+    result.fL.Capacity:= fL.Count - 1;
+    for i:=1 to fL.Count-1 do result.fL.Add(fL[i]);
 end;
 
 end.

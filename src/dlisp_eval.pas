@@ -41,6 +41,7 @@ type
 
         function oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
         procedure oph_bind(s, P: TValue; constant: boolean; st: TVSymbolStack=nil);
+        function oph_bind_to_list(s, P: TVList): TVList;
         procedure oph_execute_file(fn: unicodestring);
 
         function opl_elt(PL: TVList): TVChainPointer;
@@ -93,6 +94,8 @@ type
         //                    PL: TVList; sign: TSubprogramSignature;
         //                    ts: TVSymbolStack): boolean;
 //        procedure procedure_complement(V: TValue);
+
+        function call(PL: TVList): TValue;
         function procedure_call(PL: TVList): TValue;
         function internal_function_call(PL: TVList): TValue;
         function internal_predicate_call(PL: TVList): TValue;
@@ -112,6 +115,8 @@ implementation
 var root_evaluation_flow: TEvaluationFlow = nil;
     base_stack: TVSymbolStack = nil;
     quote_operator: TVOperator = nil;
+    T: TVT;
+    NULL: TVList;
 
 function value_by_key(L: TVList; key: unicodestring): TValue; //PURE
 var i: integer;
@@ -130,16 +135,28 @@ begin
     result := TVList.Create;
 end;
 
-function key_exists(L :TVList; key: unicodestring): TValue; //PURE
+function key_pos(L: TVList; key: unicodestring; start: integer;
+    out p: integer): boolean; //PURE
+begin
+    result := true;
+    p := L.High - 1;
+    while p>=start do begin
+        if (tpKeyword(L.look[p]) and (key=L.uname[p])) then exit;
+        Dec(p, 2);
+    end;
+    result := false;
+end;
+
+function flag_exists(L :TVList; key: unicodestring; start: integer): boolean; //PURE
 var i: integer;
 begin
-    for i := 0 to L.high do
+    for i := start to L.high do
         if tpKeyword(L.look[i]) and (key=L.uname[i])
         then begin
-            result := TVT.Create;
+            result := true;
             exit;
         end;
-    result := TVList.Create;
+    result := false;
 end;
 
 function min_list_length(L: TVList; from: integer = 0): integer; //PURE
@@ -155,11 +172,12 @@ begin
 end;
 
 function bind_parameters_list(PL: TVList; sign: TVList): TVList; //PURE
-var i: integer;
+var i, opt_start, p: integer;
     mode: TSubprogramParmeterMode;
 const offset = 0;  //передаваемый список параметров первым пунктом будет
                     //содержать имя функции и его надо проигнорировать
                     //уже не надо
+
 begin
     //TODO: bind_parameters_list не проверяет переданный список на наличие лишнего
     //print_stdout_ln(PL);
@@ -175,6 +193,7 @@ begin
             if vpKeyword_OPTIONAL(sign.look[i]) then mode := spmOpt;
             if vpKeyword_REST(sign.look[i]) then mode := spmRest;
             if vpKeyword_FLAG(sign.look[i]) then mode := spmFlag;
+            opt_start := i;
         end
         else
             case mode of
@@ -186,12 +205,14 @@ begin
                     if (i-1+offset)<PL.Count
                     then result.Add(PL[i-1+offset])
                     else result.Add(TVList.Create);
-                spmKey:
-                    result.Add(value_by_key(PL, ':'+sign.uname[i]));
+                spmKey: if key_pos(PL, ':'+sign.uname[i], opt_start, p)
+                    then result.Add(PL[p+1])
+                    else result.Add(TVList.Create);
                 spmRest:
-                    result.Add(PL.Subseq(i-1+offset, PL.Count));
-                spmFlag:
-                    result.add(key_exists(PL, ':'+sign.uname[i]));
+                    result.Add(PL.phantom_subseq(i-1+offset, PL.Count));
+                spmFlag: if flag_exists(PL, ':'+sign.uname[i], opt_start)
+                    then result.add(TVT.Create)
+                    else result.add(TVList.Create);
             end;
 end;
 
@@ -1999,7 +2020,7 @@ end;
 const int_fun_count = 93;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
-(n:'RECORD?';               f:if_structure_p;           s:'(s :optional t)'),
+(n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
 
 (n:'+';                     f:if_add;                   s:'(:rest n)'),
 (n:'-';                     f:if_sub;                   s:'(a :optional b)'),
@@ -2094,7 +2115,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'WRITE';                 f:if_write;                 s:'(s a)'),
 (n:'PRINT';                 f:if_print;                 s:'(s a)'),
 
-(n:'FMT';                   f:if_fmt;                   s:'(t :rest s)'),
+(n:'FMT';                   f:if_fmt;                   s:'(stream :rest s)'),
 (n:'LOG';                   f:if_log;                   s:'(:rest s)'),
 (n:'HEX';                   f:if_hex;                   s:'(i :optional d)'),
 (n:'FIXED';                 f:if_fixed;                 s:'(f :optional d)'),
@@ -2350,6 +2371,18 @@ begin
     end;
 end;
 
+//PURE
+function TEvaluationFlow.oph_bind_to_list(s, P: TVList): TVList;
+var bind: TBindings; i: integer;
+    params: TVList;
+begin
+    params := P.Phantom_CDR;
+    //WriteLn('params>> ', params.asString);
+    result := TVList.Create;
+    bind := ifh_bind(s, params);
+    for i := 0 to high(bind) do result.Add(bind[i].V);
+    params.Free;
+end;
 
 procedure TEvaluationFlow.oph_execute_file(fn: unicodestring); //PURE
 var prog_file: TVStreamPointer; expr, res: TValue;
@@ -3376,6 +3409,56 @@ begin
     end;
 end;
 
+function TEvaluationFlow.call(PL: TVList): TValue;
+var sp : (spI, spP, spO);
+    tmp: TValue;
+    proc: TVProcedure;
+    internal: TVInternalFunction;
+    params, binded_PL: TVList;
+    tmp_stack: TVSymbolStack;
+begin
+    if tpNIL(PL) then raise ELE.Create('NIL call', 'internal');
+    if PL.look[0] is TVInternalFunction then sp := spI
+    else
+        if PL.look[0] is TVOperator then sp := spO
+        else
+            if PL.look[0] is TVProcedure then sp := spP
+            else
+                raise ELE.Create(PL.look[0].AsString+' is not subprogram', 'internal');
+
+    case sp of
+        spP: try
+            proc := PL[0] as TVProcedure;
+            params := PL.CDR;
+            oph_bind(proc.sign, params, false, proc.stack);
+            tmp_stack := stack;
+            stack := proc.stack;
+            result := oph_block(proc.body,0,false);
+            if tpReturn(result) then begin
+                tmp := (result as TVReturn).value.Copy;
+                result.Free;
+                result := tmp;
+            end;
+        finally
+            stack := tmp_stack;
+            params.Free;
+            proc.Free;
+        end;
+        spI: try
+            internal := PL.look[0] as TVInternalFunction;
+            binded_PL := nil;
+            params := PL.CDR;
+            binded_PL := bind_parameters_list(params, internal.signature);
+            result := nil;
+            result := internal.body(binded_PL, eval);
+        finally
+            FreeAndNil(binded_PL);
+            params.Free;
+        end;
+        else raise ELE.Create('call not implemented for '+PL.look[0].AsString,'internal');
+    end;
+end;
+
 //function TEvaluationFlow.bind_procedure_parameters_to_stack(PL: TVList;
 //    sign: TSubprogramSignature; ts: TVSymbolStack): boolean;
 //var i, j, key_start:integer;
@@ -3580,28 +3663,6 @@ finally
     params.Free;
     first.Free;
 end;
-    exit;
-
-
-    //TODO: переделать привязку параметров процедур на ifh_bind
-    //proc := first as TVProcedure;
-    //if proc.is_macro
-    //then bind_macro_parameters_to_stack(PL, proc.fsignature, proc.stack)
-    //else bind_procedure_parameters_to_stack(PL, proc.fsignature, proc.stack);
-    //try
-    //    tmp_stack := stack;
-    //    stack := proc.stack;
-    //    result := oph_block(proc.body, 0, false);
-    //    if tpReturn(result) then begin
-    //        tmp := (result as TVReturn).value.Copy;
-    //        result.Free;
-    //        result := tmp;
-    //    end;
-    //finally
-    //    stack := tmp_stack;
-    //    proc.Free;
-    //end;
-
     //TODO: при очистке стэка, рекурсивные процедуры не освобождаются
 end;
 
@@ -3614,6 +3675,9 @@ begin try
     for i := 1 to PL.high do PLI.Add(eval(PL[i]));
     binded_PL := bind_parameters_list(PLI,
                         (PL.look[0] as TVInternalFunction).signature);
+    //эта функция может делать деструктурирующую привязку, но работает медленнее
+    //binded_PL := oph_bind_to_list((PL.look[0] as TVInternalFunction).signature,
+    //                        PLI);
     result := nil;
     result := (PL.look[0] as TVInternalFunction).body(binded_PL, eval);
 finally
@@ -3732,18 +3796,15 @@ begin try
             try
                 //WriteLn('eval symbol>> ',uname);
                 PV := nil;
-                PV := //stack.find_ref(uname);
-                    stack.find_ref(V as TVSymbol);
-//                if tpProcedure(PV.V) and not (PV.V as TVProcedure).evaluated
-//                then procedure_complement(PV.V);
+                PV := stack.find_ref(V as TVSymbol);
 
                 if PV.V is TVChainPointer
                 then result := (PV.V as TVChainPointer).value
                 else result := PV.V.Copy;
 
-                if tpProcedure(PV.V) and (PV.V as TVProcedure).is_macro_symbol
+                if tpProcedure(result) and (result as TVProcedure).is_macro_symbol
                 then try
-                    PL := TVList.Create([PV.V.Copy]);
+                    PL := TVList.Create([result]);
                     result := eval(procedure_call(PL));
                     //goto return;
                 finally
@@ -3868,8 +3929,12 @@ initialization
     root_evaluation_flow := TEvaluationFlow.Create(base_stack.Copy as TVSymbolStack);
     fill_ops_array;
     quote_operator := root_evaluation_flow.eval(TVSymbol.Create('QUOTE')) as TVOperator;
+    T := TVT.Create;
+    NULL := TVList.Create;
 
 finalization
+    NULL.Free;
+    T.Free;
     quote_operator.Free;
     root_evaluation_flow.Free;
     base_stack.Free;

@@ -19,6 +19,7 @@ function ifh_bind(sign, PL: TValue): TBindings;
 implementation
 
 
+
 function ifh_bind(sign, PL: TValue): TBindings;  //PURE
 
     procedure add_bind(_n: integer; _v: TValue; _c: boolean = false; _r: boolean = false);
@@ -146,11 +147,11 @@ function ifh_bind(sign, PL: TValue): TBindings;  //PURE
     end;
 var i: integer;
 begin
-
+   // WriteLn('bind_PL>> ',PL.AsString);
     bind(sign, PL);
-    //for i := 0 to high(result) do begin
-    //    WriteLn(symbols[result[i].nN],'  =>  ', result[i].V.AsString);
-    //end;
+   // for i := 0 to high(result) do begin
+   //     WriteLn(symbols[result[i].nN],'  =>  ', result[i].V.AsString);
+   // end;
 
 end;
 
