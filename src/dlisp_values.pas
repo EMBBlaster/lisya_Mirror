@@ -503,8 +503,8 @@ type
     { TVProcedure }
 
     TVProcedure = class (TVSubprogram)
-        is_macro: boolean;
-        is_macro_symbol: boolean;
+        //is_macro: boolean;
+        //is_macro_symbol: boolean;
         evaluated: boolean;
         //fsignature: TSubprogramSignature;
         sign: TVList;
@@ -513,7 +513,6 @@ type
         home_stack: TVSymbolStack;
         body: TVList;
         constructor Create;
-        constructor CreateEmpty;
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
@@ -528,6 +527,10 @@ type
         //от процедуры
 
         //неправда это всё надо переделать
+    end;
+
+    TVMacroSymbol = class (TVProcedure)
+
     end;
 
     type TEvalProc = function (V: TValue): TValue of Object;
@@ -1981,30 +1984,13 @@ end;
 constructor TVProcedure.Create;
 begin
     inherited;
-    body:= TVList.Create;
-    stack := TVSymbolStack.Create(nil);
-    home_stack := nil;
-//    fsignature := nil;
-    sign := nil;
-    evaluated := false;
-    stack_pointer := -1;
-    is_macro := false;
-    is_macro_symbol := false;
-end;
-
-constructor TVProcedure.CreateEmpty;
-begin
-    inherited;
     body := nil;
     stack := nil;
     home_stack := nil;
 
-//    fsignature := nil;
     sign := nil;
     evaluated := false;
     stack_pointer := -1;
-    is_macro := false;
-    is_macro_symbol := false;
 end;
 
 destructor TVProcedure.Destroy;
@@ -2024,7 +2010,21 @@ function TVProcedure.Copy: TValue;
 var i: integer;
 begin
     //TODO: копирование процедуры ненадёжно может приводить к утечкам
-    result := TVProcedure.CreateEmpty;
+    //case self.CreateEmpty of
+    //if self.ClassType = TVProcedure then result := TVProcedure.CreateEmpty
+    //else
+    //    if self.ClassType = TVMacro then result := TVMacro.CreateEmpty
+    //    else
+    //        if self.ClassType = TVMacroSymbol then result := TVMacroSymbol.CreateEmpty;
+    //
+    result := self.ClassType.Create as TValue;
+
+    //    TVProcedure: result := TVProcedure.CreateEmpty;
+    //    TVMacro: result := TVMacro.CreateEmpty;
+    //    TVMacroSymbol: result := TVMacroSymbol.CreateEmpty;
+    //end;
+
+//    result := TVProcedure.CreateEmpty;
     (result as TVProcedure).body := body.Copy() as TVList;
     (result as TVProcedure).stack := stack.Copy as TVSymbolStack;
 
@@ -2039,8 +2039,8 @@ begin
 
     (result as TVProcedure).stack_pointer := stack_pointer;
 
-    (result as tVProcedure).is_macro:=is_macro;
-    (result as tVProcedure).is_macro_symbol:=is_macro_symbol;
+    //(result as tVProcedure).is_macro:=is_macro;
+    //(result as tVProcedure).is_macro_symbol:=is_macro_symbol;
     (result as tVProcedure).nN := nN;
 end;
 
@@ -2364,10 +2364,10 @@ end;
 function TVList.Copy: TValue;
 var i: integer;
 begin
-  result := TVList.Create;
-  (result as TVList).fL.Capacity := fL.Capacity;
-  for i := 0 to fL.Count - 1 do
-    (result as TVList).fL.Add((fL[i] as TValue).Copy);
+    result := TVList.Create;
+    (result as TVList).fL.Capacity := fL.Capacity;
+    for i := 0 to fL.Count - 1 do
+        (result as TVList).fL.Add((fL[i] as TValue).Copy);
 end;
 
 function TVList.Phantom_Copy: TVList;
