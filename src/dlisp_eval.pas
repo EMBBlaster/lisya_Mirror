@@ -199,14 +199,14 @@ begin
             case mode of
                 spmNec:
                     if (i+offset)<PL.Count
-                    then result.Add(PL[i+offset])
+                    then result.Add_phantom(PL.look[i+offset])
                     else raise ELE.Create('insufficient parameters count', 'invalid parameters');
                 spmOpt:
                     if (i-1+offset)<PL.Count
-                    then result.Add(PL[i-1+offset])
+                    then result.Add_phantom(PL.look[i-1+offset])
                     else result.Add(TVList.Create);
                 spmKey: if key_pos(PL, ':'+sign.uname[i], opt_start, p)
-                    then result.Add(PL[p+1])
+                    then result.Add_phantom(PL.look[p+1])
                     else result.Add(TVList.Create);
                 spmRest:
                     result.Add(PL.phantom_subseq(i-1+offset, PL.Count));

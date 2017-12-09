@@ -345,6 +345,8 @@ type
         procedure Add(V: TValue);
         procedure Append(VL: TVList);
 
+        procedure Add_phantom(V: TValue);
+
         property name[index: integer]: unicodestring read GetElementName;
         property uname[index: integer]: unicodestring read GetElementUName;
         property I[index: integer]: Int64 read GetElementI;
@@ -2297,6 +2299,13 @@ begin
     fL.Add((VL.fL[i] as TValue).Copy);
   end;
   VL.Free;
+end;
+
+procedure TVList.Add_phantom(V: TValue);
+begin
+    if V is TVList
+    then fl.Add((V as TVList).Phantom_Copy)
+    else fL.Add(V.Copy)
 end;
 
 function TVList.GetElementName(index: integer): unicodestring;
