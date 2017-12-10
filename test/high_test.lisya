@@ -1,0 +1,12 @@
+﻿(fmt nil "высшие функции... ")
+
+(block "group"
+    (var l \(-2 -1 0 1 2))
+    (procedure not-neg (x) (>= x 0))
+    (procedure not-pos (x) (<= x 0))
+    (assertion (= \((2 1 0) (-1 -2) NIL) (group l not-neg not-pos)) "group int")
+    (assertion (= \((2 1) (-1 -2) (0)) (group l positive? negative?)) "group"))
+
+(log " успешно")
+
+

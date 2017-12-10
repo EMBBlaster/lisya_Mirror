@@ -10,7 +10,7 @@ uses
 type TBindings = array of record
         nN: integer;
         V: TValue;
-        c: boolean;
+       // c: boolean;
         rest: boolean
     end;
 
@@ -20,15 +20,15 @@ implementation
 
 
 
-function ifh_bind(sign, PL: TValue): TBindings;  //PURE
+function ifh_bind(sign, PL: TValue): TBindings;
 
-    procedure add_bind(_n: integer; _v: TValue; _c: boolean = false; _r: boolean = false);
+    procedure add_bind(_n: integer; _v: TValue; {_c: boolean = false;} _r: boolean = false);
     begin
         SetLength(result, Length(result)+1);
         with result[high(result)] do begin
             nN := _n;
             V := _v;
-            c := _c;
+            //c := _c;
             rest := _r;
         end;
     end;
@@ -108,7 +108,7 @@ function ifh_bind(sign, PL: TValue): TBindings;  //PURE
         begin
             L := TVList.Create;
             for i := key_start to PL.high do L.Add(pl[i]);
-            add_bind(V.N, L, false, true);
+            add_bind(V.N, L, {false,} true);
         end;
 
     begin

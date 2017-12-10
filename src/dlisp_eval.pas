@@ -96,11 +96,11 @@ type
 //        procedure procedure_complement(V: TValue);
 
         function call(PL: TVList): TValue;
-        function call_procedure(PL: TVList): TValue;
+        function call_procedure(PL: TVList): TValue; inline;
         function call_macro(PL: TVList): TValue;
-        function call_internal(PL: TVList): TValue;
+        function call_internal(PL: TVList): TValue; inline;
         function call_operator(PL: TVList): TValue;
-        function call_preducate(PL: TVList): TValue;
+        function call_predicate(PL: TVList): TValue;
 
         function procedure_call(PL: TVList): TValue;
         function internal_function_call(PL: TVList): TValue;
@@ -109,7 +109,6 @@ type
 
         function eval_link(P: TValue): TVChainPointer;
 
-        function eval_list(VL: TVList): TValue;
         function eval(V: TValue): TValue;
     end;
 
@@ -124,7 +123,7 @@ var root_evaluation_flow: TEvaluationFlow = nil;
     T: TVT;
     NULL: TVList;
 
-function value_by_key(L: TVList; key: unicodestring): TValue; //PURE
+function value_by_key(L: TVList; key: unicodestring): TValue;
 var i: integer;
 begin
     i := L.High - 1;
@@ -142,7 +141,7 @@ begin
 end;
 
 function key_pos(L: TVList; key: unicodestring; start: integer;
-    out p: integer): boolean; //PURE
+    out p: integer): boolean;
 begin
     result := true;
     p := L.High - 1;
@@ -153,7 +152,7 @@ begin
     result := false;
 end;
 
-function flag_exists(L :TVList; key: unicodestring; start: integer): boolean; //PURE
+function flag_exists(L :TVList; key: unicodestring; start: integer): boolean;
 var i: integer;
 begin
     for i := start to L.high do
@@ -165,7 +164,7 @@ begin
     result := false;
 end;
 
-function min_list_length(L: TVList; from: integer = 0): integer; //PURE
+function min_list_length(L: TVList; from: integer = 0): integer;
 var i: integer;
 begin
    // WriteLn('>> ',L.AsString());
@@ -177,7 +176,7 @@ begin
             if L.L[i].Count < result then result := L.L[i].Count;
 end;
 
-function bind_parameters_list(PL: TVList; sign: TVList): TVList; //PURE
+function bind_parameters_list(PL: TVList; sign: TVList): TVList;
 var i, opt_start, p: integer;
     mode: TSubprogramParmeterMode;
 const offset = 0;  //передаваемый список параметров первым пунктом будет
@@ -243,7 +242,7 @@ begin
                         result := etInvalid;
 end;
 
-function valid_sign(const PL: TVList; out E: TValue; tp: array of const): integer; //PURE
+function valid_sign(const PL: TVList; out E: TValue; tp: array of const): integer;
 var i,l, p: integer;
     case_n, cmax, cmin, tpc, Pcount: integer;
 label return, next;
@@ -303,7 +302,7 @@ return:
     result := case_n;
 end;
 //------------------------------------------------------------------------------
-function params_is(PL: TVList;                                     //PURE
+function params_is(PL: TVList;
                     out E: TValue;
                     const tp: array of TTypePredicate): integer;
     function pr_confirm(case_n: integer): boolean; inline;
@@ -382,7 +381,7 @@ type TInternalFunctionRec = record
         s: unicodestring;
     end;
 
-procedure bool_to_TV(b: boolean; out E: TValue); //PURE
+procedure bool_to_TV(b: boolean; out E: TValue);
 begin
     // Это вспомогательная функция.
     // Используется операторами сравнения, чтобы преобразовать
@@ -391,7 +390,7 @@ begin
     if b then E := TVT.Create else E := TVList.Create;
 end;
 
-function DirSep(s: unicodestring): unicodestring; //PURE
+function DirSep(s: unicodestring): unicodestring;
 var buf: string;
 begin
     buf := s;
@@ -399,7 +398,7 @@ begin
     result := buf;
 end;
 
-function ifh_equal(const A,B: TValue): boolean;  //PURE
+function ifh_equal(const A,B: TValue): boolean;
 var type_v: (int, num, str, sym, t, lst, struct, any, bytevec); i: integer;
 begin
     if tpInteger(A) and tpInteger(B)
@@ -460,7 +459,7 @@ begin
 
 end;
 
-function ifh_member(const L: TVList; const E: TValue): boolean;  //PURE
+function ifh_member(const L: TVList; const E: TValue): boolean;
 var i: integer;
 begin
     result := false;
@@ -471,7 +470,7 @@ begin
         end;
 end;
 
-function ifh_format(const L: TVList): unicodestring;  //PURE
+function ifh_format(const L: TVList): unicodestring;
 var i: integer;
 begin
     result := '';
@@ -481,19 +480,19 @@ begin
         else result := result + L.look[i].AsString();
 end;
 
-function ifh_write_string(stream: TVStreamPointer; s: unicodestring): boolean; //PURE
+function ifh_write_string(stream: TVStreamPointer; s: unicodestring): boolean;
 var i: integer;
 begin
     result := true;
     for i := 1 to Length(s) do result := stream.stream.write_char(s[i]);
 end;
 
-function ifh_quote(const V: TValue): TVList; //PURE
+function ifh_quote(const V: TValue): TVList;
 begin
     result := TVList.Create([quote_operator.Copy, V.Copy]);
 end;
 
-function ifh_keyword_to_encoding(const V: TValue): TStreamEncoding; //PURE
+function ifh_keyword_to_encoding(const V: TValue): TStreamEncoding;
 begin
     if tpNIL(V)             then result := seUTF8 else
     if vpKeyword_UTF8(V)    then result := seUTF8 else
@@ -512,7 +511,7 @@ end;
 
 
 
-function if_structure_p         (const PL: TVList; call: TEvalProc): TValue; //PURE
+function if_structure_p         (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpRecord, tpNIL,
@@ -527,7 +526,7 @@ begin
     end;
 end;
 
-function if_add                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_add                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; fres: double; ires: Int64;
 begin
         ires := 0;
@@ -548,7 +547,7 @@ begin
         end;
 end;
 
-function if_sub                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_sub                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
     {1} tpInteger,  tpNIL,
@@ -569,7 +568,7 @@ begin
     end;
 end;
 
-function if_mul                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_mul                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; fres: double; ires: Int64; A: TVList;
 begin
     ires := 1;
@@ -589,7 +588,7 @@ begin
     end;
 end;
 
-function if_div                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_div                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpIntegerAbsOne,    tpNIL,
@@ -605,7 +604,7 @@ begin
     end;
 end;
 
-function if_div_int             (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_div_int             (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpInteger, vpIntegerNotZero]) of
@@ -613,7 +612,7 @@ begin
     end;
 end;
 
-function if_mod                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_mod                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpInteger, vpIntegerNotZero]) of
@@ -621,7 +620,7 @@ begin
     end;
 end;
 
-function if_abs                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_abs                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpInteger,
@@ -631,7 +630,7 @@ begin
     end;
 end;
 
-function if_power               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_power               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpInteger,            vpIntegerNotNegative,
@@ -642,7 +641,7 @@ begin
     end;
 end;
 
-function if_sqrt                (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_sqrt                (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpNumberNotNegative]) of
@@ -650,7 +649,7 @@ begin
     end;
 end;
 
-function if_round               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_round               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpNumber,   tpNIL,
@@ -660,7 +659,7 @@ begin
     end;
 end;
 
-function if_range               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_range               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpInteger,  tpInteger,
@@ -672,7 +671,7 @@ begin
     end;
 end;
 
-function if_symbol              (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_symbol              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString]) of
@@ -686,7 +685,7 @@ begin
     end;
 end;
 
-function if_random              (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_random              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpIntegerNotNegative,
@@ -696,7 +695,7 @@ begin
     end;
 end;
 
-function if_equal               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_equal               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [tpAny, tpAny]) of
         1: if ifh_equal(PL.look[0], PL.look[1])
@@ -705,7 +704,7 @@ begin
     end;
 end;
 
-function if_more                (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_more                (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
@@ -717,7 +716,7 @@ begin
     end;
 end;
 
-function if_less                (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_less                (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
@@ -729,7 +728,7 @@ begin
     end;
 end;
 
-function if_more_or_equal       (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_more_or_equal       (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
@@ -741,7 +740,7 @@ begin
     end;
 end;
 
-function if_less_or_equal       (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_less_or_equal       (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
@@ -753,7 +752,7 @@ begin
     end;
 end;
 
-function if_not_equal           (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_not_equal           (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
@@ -769,7 +768,7 @@ begin
     end;
 end;
 
-function if_not                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_not                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpNIL,
@@ -779,7 +778,7 @@ begin
     end;
 end;
 
-function if_equal_case_insensitive(const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_equal_case_insensitive(const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString, tpString]) of
@@ -790,14 +789,14 @@ begin
 end;
 
 
-function if_test_dyn            (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_test_dyn            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     ifh_bind(PL.look[0] as TVList, PL.look[1] as TVList);
 
     result := TVT.Create;
 end;
 
-function if_error               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_error               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is (PL, result, [
         tpString, tpList]) of
@@ -805,7 +804,7 @@ begin
     end;
 end;
 
-function if_extract_file_ext    (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_extract_file_ext    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString]) of
@@ -813,7 +812,7 @@ begin
     end;
 end;
 
-function if_extract_file_name   (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_extract_file_name   (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString]) of
@@ -821,7 +820,7 @@ begin
     end;
 end;
 
-function if_extract_file_path   (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_extract_file_path   (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString]) of
@@ -829,7 +828,7 @@ begin
     end;
 end;
 
-function if_file_exists         (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_file_exists         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var fn: unicodestring;
 begin
     case params_is (PL, result, [
@@ -847,7 +846,7 @@ begin
     end;
 end;
 
-function if_directory_exists    (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_directory_exists    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is (PL, result, [
         tpString]) of
@@ -857,7 +856,7 @@ begin
     end;
 end;
 
-function if_command_line        (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_command_line        (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
     Assert(PL.Count=0, 'command-line не нуждается в параметрах');
@@ -866,7 +865,7 @@ begin
         (result as TVList).Add(TVString.Create(paramStr(i)));
 end;
 
-function if_change_directory    (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_change_directory    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is (PL, result, [
         tpString]) of
@@ -876,7 +875,7 @@ begin
     end;
 end;
 
-function if_delete_file         (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_delete_file         (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is (PL, result, [
         tpString]) of
@@ -886,7 +885,7 @@ begin
     end;
 end;
 
-function if_rename_file         (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_rename_file         (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is (PL, result, [
         tpString, tpString]) of
@@ -896,7 +895,7 @@ begin
     end;
 end;
 
-function if_create_directory    (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_create_directory    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is (PL, result, [
         tpString]) of
@@ -906,7 +905,7 @@ begin
     end;
 end;
 
-function if_remove_directory    (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_remove_directory    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is (PL, result, [
         tpString]) of
@@ -916,7 +915,7 @@ begin
     end;
 end;
 
-function if_guid                (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_guid                (const PL: TVList; {%H-}call: TCallProc): TValue;
 var g: TGUID;
 begin
     Assert(PL.Count=0, 'GUID не нуждается в параметрах');
@@ -926,8 +925,8 @@ begin
 end;
 
 
-function if_every               (const PL: TVList; ep: TEvalProc): TValue;  //HIGH
-var i, j, count: integer;
+function if_every               (const PL: TVList; call: TCallProc): TValue;  //HIGH
+var i, j, count: integer; tmp: TVList;
 begin
     case params_is(PL, result, [
         tpSubprogram, tpListOfLists]) of
@@ -938,7 +937,9 @@ begin
                 (result as TVList).SetCapacity(1+PL.L[1].Count);
                 for j := 0 to PL.L[1].High do
                     (result as TVList).Add(PL.L[1].L[j][i]);
-                result := ep(result);
+                tmp := result as TVList;
+                result := call(tmp);
+                tmp.Free;
                 if tpNil(result) then exit;
                 result.Free;
             end;
@@ -947,8 +948,8 @@ begin
     end;
 end;
 
-function if_some                (const PL: TVList; ep: TEvalProc): TValue;  //HIGH
-var i, j, count: integer;
+function if_some                (const PL: TVList; call: TCallProc): TValue;  //HIGH
+var i, j, count: integer; tmp: TVList;
 begin
     case params_is(PL, result, [
         tpSubprogram, tpListOfLists]) of
@@ -959,7 +960,9 @@ begin
                 (result as TVList).SetCapacity(1+PL.L[1].Count);
                 for j := 0 to PL.L[1].High do
                     (result as TVList).Add(PL.L[1].L[j][i]);
-                result := ep(result);
+                tmp := result as TVList;
+                result := call(tmp);
+                tmp.Free;
                 if not tpNil(result) then exit;
                 result.Free;
             end;
@@ -968,7 +971,7 @@ begin
     end;
 end;
 
-function if_car                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_car                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     //print_stdout_ln(pl);
     case params_is(PL, result, [
@@ -981,7 +984,7 @@ begin
     end;
 end;
 
-function if_subseq              (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_subseq              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     //print_stdout_ln(pl);
     case params_is(PL, result, [
@@ -992,7 +995,7 @@ begin
     end;
 end;
 
-function if_sort                (const PL: TVList; ep: TEvalProc): TValue; //HIGH
+function if_sort                (const PL: TVList; call: TCallProc): TValue; //HIGH
 type Tvalues = array of TValue;
 var list: TValues; expr: TVlist; i: integer;
     function compare(a, b: TValue): integer;
@@ -1000,10 +1003,11 @@ var list: TValues; expr: TVlist; i: integer;
     begin
         expr[1] := a.copy;
         expr[2] := b.copy;
+        //TODO: тут нужно переделать на использование фантомного списка
 
         try
             tmp := nil;
-            tmp := ep(expr.copy);
+            tmp := call(expr);
             //Write(a.AsString(),'  -  ',b.AsString(),' = ', tmp.AsString());
 
             if tpNIL(tmp) or vpNumberNegative(tmp) or vpKeyword_LESS(tmp)
@@ -1061,7 +1065,7 @@ end;
 
 end;
 
-function if_slots               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_slots               (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
     case params_is(PL, result, [
@@ -1075,7 +1079,7 @@ begin
     end;
 end;
 
-function if_union               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_union               (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i, j: integer;
 begin
     //WriteLn('union>>',PL.AsString);
@@ -1090,7 +1094,7 @@ begin
     end;
 end;
 
-function if_intersection        (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_intersection        (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i, j: integer; m: boolean; A: TVList;
 begin
     case params_is(PL, result, [tpNIL, tpListOfLists]) of
@@ -1110,7 +1114,7 @@ begin
     end;
 end;
 
-function if_difference          (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_difference          (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; A, B: TVList;
 begin
     case params_is(PL, result, [tpList, tpList]) of
@@ -1125,7 +1129,7 @@ begin
     end;
 end;
 
-function if_member              (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_member              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [tpList, tpAny]) of
         1: if ifh_member(PL.L[0], PL.look[1])
@@ -1134,7 +1138,7 @@ begin
     end;
 end;
 
-function if_position            (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_position            (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i, p: integer;
 begin
     //print_stdout_ln(PL);
@@ -1150,7 +1154,7 @@ begin
     if p>=0 then result := TVInteger.Create(p) else result := TVList.Create;
 end;
 
-function if_length              (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_length              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpCompoundIndexed]) of
@@ -1158,7 +1162,7 @@ begin
     end;
 end;
 
-function if_list                (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_list                (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpList]) of
@@ -1166,7 +1170,7 @@ begin
     end;
 end;
 
-function if_concatenate         (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_concatenate         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var sres: unicodestring; i,j: integer;
 begin
     case params_is(PL, result, [
@@ -1196,7 +1200,7 @@ begin
     end;
 end;
 
-function if_key                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_key                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpList, tpSymbol]) of
@@ -1204,8 +1208,49 @@ begin
     end;
 end;
 
+function if_group               (const PL: TVList; call: TCallProc): TValue;
+var i, p: integer; cnd: TValue;
+    source, predicates, groups, group, expr: TVList;
+begin
+    cnd := nil;
+    expr := nil;
+    //функция группировки. Разбивает переданный список на группы в соответствии
+    //с переданными предикатами. Элементы, соответствующие более чем одному
+    //предикату попадают в первую подходящую группу, не подошедшие никуда
+    // попадают в последнюю
+    case params_is(PL, result, [
+        tpList, tpListOfSubprograms]) of
+        1: try
+            source := PL.L[0].Phantom_Copy;
+            predicates := PL.L[1];
+            expr := TVList.CreatePhantom; expr.Add(nil); expr.Add(nil);
+            result := TVList.Create;
+            groups := result as TVList;
+            groups.SetCapacity(predicates.Count+1);
+            for p := 0 to predicates.high do begin
+                expr[0] := predicates.look[p];
+                group := TVList.Create;
+                for i := source.high downto 0 do begin
+                    expr[1] := source.look[i];
+                    FreeAndNil(cnd);
+                    cnd := call(expr);
+                    if tpTRUE(cnd) then begin
+                        group.Add(source[i]);
+                        source.delete(i);
+                    end;
+                end;
+                groups.Add(group);
+            end;
+            groups.Add(source.Copy);
+        finally
+            source.Free;
+            cnd.Free;
+            expr.Free;
+        end;
+    end;
+end;
 
-function if_byte_vector         (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_byte_vector         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
     case params_is(PL, result, [
@@ -1220,7 +1265,7 @@ begin
     end;
 end;
 
-function if_bitwise_or          (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_bitwise_or          (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; a, b: TVByteVector;
 begin
     //TODO: побитовые операторы имеют много общего кода нужно разделить
@@ -1240,7 +1285,7 @@ begin
     end;
 end;
 
-function if_bitwise_not         (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_bitwise_not         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; a: TVByteVector;
 begin
     case params_is(PL, result, [
@@ -1257,7 +1302,7 @@ begin
     end;
 end;
 
-function if_bitwise_and         (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_bitwise_and         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; a, b: TVByteVector;
 begin
     case params_is(PL, result, [
@@ -1276,7 +1321,7 @@ begin
     end;
 end;
 
-function if_bitwise_xor         (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_bitwise_xor         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; a, b: TVByteVector;
 begin
     case params_is(PL, result, [
@@ -1295,7 +1340,7 @@ begin
     end;
 end;
 
-function if_crc32               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_crc32               (const PL: TVList; {%H-}call: TCallProc): TValue;
 var b: TVByteVector;
 begin
     case params_is(PL, result, [
@@ -1311,7 +1356,7 @@ begin
     end;
 end;
 
-function if_character           (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_character           (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpIntegerNotNegative]) of
@@ -1319,7 +1364,7 @@ begin
     end;
 end;
 
-function if_assertion           (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_assertion           (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpTrue, tpString,
@@ -1329,7 +1374,7 @@ begin
     end;
 end;
 
-function if_directory           (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_directory           (const PL: TVList; {%H-}call: TCallProc): TValue;
 var sr: TSearchRec; found: boolean; dir, fn, wc: unicodestring;
     exclude_files: boolean;
 label next;
@@ -1372,7 +1417,7 @@ begin
     end;
 end;
 
-function if_sleep               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_sleep               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpIntegerNotNegative]) of
@@ -1383,7 +1428,7 @@ begin
     end;
 end;
 
-//function if_execute_file        (const PL: TVList; ep: TEvalProc): TValue;
+//function if_execute_file        (const PL: TVList; ep: TCallProc): TValue;
 //var prog_file: TVStreamPointer; expr, res: TValue;
 //begin
 //    case params_is(PL, result, [
@@ -1439,7 +1484,7 @@ finally
     res.Free;
 end; end;
 
-function if_run_command         (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_run_command         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var output: string;
 begin
     result := nil;
@@ -1452,13 +1497,13 @@ begin
     result := TVString.Create(output);
 end;
 
-function if_now                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_now                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     Assert(PL.Count=0, 'NOW не нуждается в параметрах');
     result := TVDateTime.Create(now);
 end;
 
-function if_open_file           (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_open_file           (const PL: TVList; {%H-}call: TCallProc): TValue;
 var mode: TFileMode; enc: TStreamEncoding;
 begin
     case params_is(PL, result, [
@@ -1480,7 +1525,7 @@ begin
     end;
 end;
 
-function if_set_encoding        (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_set_encoding        (const PL: TVList; {%H-}call: TCallProc): TValue;
 var enc: TStreamEncoding;
 begin
     case params_is(PL, result, [
@@ -1495,7 +1540,7 @@ begin
     end;
 end;
 
-function if_close_stream        (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_close_stream        (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpStreamPointer]) of
@@ -1506,7 +1551,7 @@ begin
     end;
 end;
 
-function if_inflate             (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_inflate             (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpKeywordOrNIL, tpAny,
@@ -1523,7 +1568,7 @@ begin
     end;
 end;
 
-function if_stream_position     (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_stream_position     (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpStreamPointer, vpIntegerNotNegative,
@@ -1537,7 +1582,7 @@ begin
     end;
 end;
 
-function if_stream_length       (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_stream_length       (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive]) of
@@ -1546,7 +1591,7 @@ begin
     end;
 end;
 
-function if_read_byte           (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_read_byte           (const PL: TVList; {%H-}call: TCallProc): TValue;
 var b: byte;
 begin
     case params_is(PL, result, [
@@ -1557,7 +1602,7 @@ begin
     end;
 end;
 
-function if_read_bytes          (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_read_bytes          (const PL: TVList; {%H-}call: TCallProc): TValue;
 var res: TVByteVector;
 begin
     case params_is(PL, result, [
@@ -1581,7 +1626,7 @@ begin
     end;
 end;
 
-function if_write_byte          (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_write_byte          (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, vpIntegerByte,
@@ -1598,7 +1643,7 @@ begin
     end;
 end;
 
-function if_read_character      (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_read_character      (const PL: TVList; {%H-}call: TCallProc): TValue;
 var ch: unicodechar;
 begin
     case params_is(PL, result, [
@@ -1614,7 +1659,7 @@ begin
     end;
 end;
 
-function if_write_string        (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_write_string        (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpString,
@@ -1625,7 +1670,7 @@ begin
     result := TVT.Create;
 end;
 
-function if_read_line           (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_read_line           (const PL: TVList; {%H-}call: TCallProc): TValue;
 var ch: unicodechar; s: unicodestring;
 begin
     case params_is(PL, result, [
@@ -1649,7 +1694,7 @@ begin
     end;
 end;
 
-function if_write_line          (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_write_line          (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpString,
@@ -1660,7 +1705,7 @@ begin
     result := TVT.Create
 end;
 
-function if_read_bom            (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_read_bom            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive]) of
@@ -1669,7 +1714,7 @@ begin
     result := TVT.Create;
 end;
 
-function if_write_bom           (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_write_bom           (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive]) of
@@ -1679,7 +1724,7 @@ begin
 end;
 
 
-function if_read                (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_read                (const PL: TVList; {%H-}call: TCallProc): TValue;
 var s: unicodestring;
 begin
     case params_is(PL, result, [
@@ -1702,7 +1747,7 @@ begin
     end;
 end;
 
-function if_write               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_write               (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
     case params_is(PL, result, [
@@ -1724,7 +1769,7 @@ begin
     end;
 end;
 
-function if_print               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_print               (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
         case params_is(PL, result, [
@@ -1747,7 +1792,7 @@ begin
 end;
 
 
-function if_fmt                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_fmt                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive,   tpList,
@@ -1766,7 +1811,7 @@ begin
     end;
 end;
 
-function if_log                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_log                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpList]) of
@@ -1777,7 +1822,7 @@ begin
     end;
 end;
 
-function if_hex                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_hex                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpIntegerNotNegative,  tpNIL,
@@ -1788,7 +1833,7 @@ begin
     end;
 end;
 
-function if_fixed               (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_fixed               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpNumber,  vpIntegerNotNegative]) of
@@ -1796,7 +1841,7 @@ begin
     end;
 end;
 
-function if_col                 (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_col                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 var s: unicodestring; w,i: integer; lr: boolean;
 begin
     case params_is(PL, result, [
@@ -1826,7 +1871,7 @@ begin
     end;
 end;
 
-function if_fmt_list            (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_fmt_list            (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; res, s, b, e: unicodestring;
 begin
     case params_is(PL, result, [
@@ -1853,7 +1898,7 @@ begin
     end;
 end;
 
-function if_upper_case          (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_upper_case          (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString]) of
@@ -1861,7 +1906,7 @@ begin
     end;
 end;
 
-function if_lower_case          (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_lower_case          (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString]) of
@@ -1873,7 +1918,7 @@ end;
 
 
 
-function if_xml_read_from_string(const PL: TVList; {%H-}call: TEvalProc): TValue; //PURE
+function if_xml_read_from_string(const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString, tpNIL,
@@ -1884,7 +1929,7 @@ begin
 end;
 
 
-function if_sql_mysql_connection(const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_sql_mysql_connection(const PL: TVList; {%H-}call: TCallProc): TValue;
 var database, username, host, password: unicodestring; port: integer;
 const
     P_database = 0;
@@ -1910,7 +1955,7 @@ begin
     end;
 end;
 
-function if_sql_query           (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_sql_query           (const PL: TVList; {%H-}call: TCallProc): TValue;
 var rec: TVRecord; i,j: integer;
     ucommand: unicodestring;
 begin
@@ -1980,7 +2025,7 @@ begin
     end;
 end;
 
-function if_sql_query_list      (const PL: TVList; {%H-}call: TEvalProc): TValue;
+function if_sql_query_list      (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
     ucommand: unicodestring;
 begin
@@ -2043,7 +2088,7 @@ begin
     end;
 end;
 
-const int_fun_count = 93;
+const int_fun_count = 94;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2104,6 +2149,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'LIST';                  f:if_list;                  s:'(:rest e)'),
 (n:'CONCATENATE';           f:if_concatenate;           s:'(:rest a)'),
 (n:'KEY';                   f:if_key;                   s:'(l k)'),
+(n:'GROUP';                 f:if_group;                 s:'(s :rest p)'),
 
 (n:'BYTE-VECTOR';           f:if_byte_vector;           s:'(:rest b)'),
 (n:'BITWISE-AND';           f:if_bitwise_and;           s:'(a b)'),
@@ -2158,7 +2204,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 );
 
 
-const predicates: array[1..12] of record n: unicodestring; f: TTypePredicate; end = (
+const predicates: array[1..14] of record n: unicodestring; f: TTypePredicate; end = (
 (n:'T?';                    f:tpT),
 (n:'NIL?';                  f:tpNIL),
 (n:'TRUE?';                 f:tpTRUE),
@@ -2170,7 +2216,10 @@ const predicates: array[1..12] of record n: unicodestring; f: TTypePredicate; en
 (n:'LIST?';                 f:tpList),
 (n:'SYMBOL?';               f:tpSymbol),
 (n:'KEYWORD?';              f:tpKeyword),
-(n:'STRING?';               f:tpString)
+(n:'STRING?';               f:tpString),
+(n:'POSITIVE?';             f:vpNumberPositive),
+(n:'NEGATIVE?';             f:vpNumberNegative)
+
 );
 
 
@@ -2288,7 +2337,7 @@ begin
     inherited Destroy;
 end;
 
-//PURE
+
 function TEvaluationFlow.oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
 var frame_start, exception_frame_start: integer; pc, i: integer; V: TValue;
     exception_message, exception_class, exception_stack: unicodestring;
@@ -2382,7 +2431,7 @@ return:
     if with_frame then stack.clear_frame(frame_start);
 end;
 
-//PURE
+
 procedure TEvaluationFlow.oph_bind(s, P: TValue; constant: boolean;
     st: TVSymbolStack);
 var bind: TBindings; i: integer; _: integer;
@@ -2392,12 +2441,12 @@ begin
     _ := TVSymbol.symbol_n('_');
     for i := 0 to high(bind) do begin
         if not (_ = bind[i].nN)
-        then st.new_var(bind[i].nN, bind[i].V, bind[i].c)
+        then st.new_var(bind[i].nN, bind[i].V, constant)//bind[i].c)
         else bind[i].V.Free;
     end;
 end;
 
-//PURE
+
 function TEvaluationFlow.oph_bind_to_list(s, P: TVList): TVList;
 var bind: TBindings; i: integer;
     params: TVList;
@@ -2410,7 +2459,7 @@ begin
     params.Free;
 end;
 
-procedure TEvaluationFlow.oph_execute_file(fn: unicodestring); //PURE
+procedure TEvaluationFlow.oph_execute_file(fn: unicodestring);
 var prog_file: TVStreamPointer; expr, res: TValue;
 begin
      try
@@ -2438,7 +2487,7 @@ begin
         end;
 end;
 
-function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer; //PURE
+function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
 var i: integer; tmp: TValue; ind: TValue;
 begin
     //  Эта процедура должна вернуть указатель на компонент составного типа
@@ -2482,7 +2531,7 @@ finally
 end;
 end;
 
-function TEvaluationFlow.opl_last(PL: TVList): TVChainPointer; //PURE
+function TEvaluationFlow.opl_last(PL: TVList): TVChainPointer;
 begin
     result := nil;
     result := eval_link(PL.look[1]);
@@ -2494,7 +2543,7 @@ begin
 end;
 
 
-function TEvaluationFlow.eval_link(P: TValue): TVChainPointer;  //PURE
+function TEvaluationFlow.eval_link(P: TValue): TVChainPointer;
 var i: integer; head: TValue;
 begin try
     //эта функция должна попытаться вычислить указатель на место
@@ -2547,7 +2596,7 @@ end;
 end;
 
 
-function TEvaluationFlow.op_and                     (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_and                     (PL: TVList): TValue;
 var pc: integer;
 begin
     result := TVT.Create;
@@ -2558,12 +2607,12 @@ begin
     end;
 end;
 
-function TEvaluationFlow.op_block                   (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_block                   (PL: TVList): TValue;
 begin
     result := oph_block(PL, 1, true);
 end;
 
-function TEvaluationFlow.op_case                    (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_case                    (PL: TVList): TValue;
 var i: integer; expr: TValue;
 begin
     if Pl.Count<2 then raise ELE.Malformed('CASE');
@@ -2592,7 +2641,7 @@ finally
 end;
 end;
 
-function TEvaluationFlow.op_push                    (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_push                    (PL: TVList): TValue;
 var i: integer; CP: TVChainPointer;
 begin
     CP := eval_link(PL.look[1]);
@@ -2606,7 +2655,7 @@ finally
 end;
 end;
 
-function TEvaluationFlow.op_secondary_error(PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_secondary_error(PL: TVList): TValue;
 begin
     case (PL.look[0] as TVOperator).op_enum of
         oeTHEN : raise ELE.Create('THEN not inside IF', 'syntax');
@@ -2617,7 +2666,7 @@ begin
     result := TVT.Create;
 end;
 
-function TEvaluationFlow.op_pop                     (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_pop                     (PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
     CP := nil;
@@ -2631,7 +2680,7 @@ finally
 end;
 end;
 
-function TEvaluationFlow.op_const                   (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_const                   (PL: TVList): TValue;
 var tmp: TValue;
 begin
     if (PL.Count<>3) or not (tpOrdinarySymbol(PL.look[1]) or tpList(PL.look[1]))
@@ -2648,7 +2697,7 @@ begin
     result := TVT.Create;
 end;
 
-function TEvaluationFlow.op_debug(PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_debug(PL: TVList): TValue;
 begin
     result := TVT.Create;
 
@@ -2667,7 +2716,7 @@ begin
     end;
 end;
 
-function TEvaluationFlow.op_default                 (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_default                 (PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
     if (PL.Count<>3) or not tpOrdinarySymbol(PL.look[1])
@@ -2688,7 +2737,7 @@ finally
 end;
 end;
 
-function TEvaluationFlow.op_elt                     (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_elt                     (PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
     if PL.Count<2 then raise ELE.malformed('ELT');
@@ -2698,7 +2747,7 @@ begin
     CP.Free;
 end;
 
-function TEvaluationFlow.op_execute_file(PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_execute_file(PL: TVList): TValue;
 var fn: TValue;
 begin
     if PL.Count<>2 then raise ELE.Malformed('EXECUTE-FILE');
@@ -2717,8 +2766,8 @@ end;
 
 end;
 
-function TEvaluationFlow.op_filter                  (PL: TVList): TValue; //PURE
-var i: integer; res: TVList; PLI: TVList;
+function TEvaluationFlow.op_filter                  (PL: TVList): TValue;
+var i: integer; res: TVList; PLI: TVList; tmp: TVList;
 begin
     //TODO: FILTER должен быть переделан во внутреннюю функцию
     if PL.Count<>3 then raise ELE.Malformed('FILTER');
@@ -2731,7 +2780,9 @@ try
         1: begin
             res := TVList.Create();
             for i := 0 to PLI.L[1].high do begin
-                result := eval(TVList.Create([PLI[0], PLI.L[1][i]]));
+                tmp := TVList.Create([PLI[0], PLI.L[1][i]]);
+                result := call(tmp);
+                tmp.Free;
                 if not tpNIL(result)
                 then res.Add(PLI.L[1][i]);
                 FreeAndNil(result);
@@ -2744,14 +2795,14 @@ finally
 end;
 end;
 
-function TEvaluationFlow.op_val                     (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_val                     (PL: TVList): TValue;
 begin
     if PL.Count<>2 then raise ELE.malformed('VAL');
 
     result := eval(PL[1]);
 end;
 
-function TEvaluationFlow.op_set                     (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_set                     (PL: TVList): TValue;
 var CP :TVChainPointer;
 begin try
     //TODO: set не падает если устанавливает параметр функции переданный по значению
@@ -2767,7 +2818,7 @@ finally
 end end;
 
 
-function TEvaluationFlow.op_record               (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_record               (PL: TVList): TValue;
 var i: integer; tmp: TVRecord;
 begin
     if (PL.Count mod 2)<>1 then raise ELE.Malformed('RECORD');
@@ -2785,7 +2836,7 @@ except
 end;
 end;
 
-function TEvaluationFlow.op_record_as            (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_record_as            (PL: TVList): TValue;
 var i: integer; rec: TVRecord; tmp: TValue;
 begin
     //TODO: очень запутанный алгоритм проверки параметров
@@ -2814,7 +2865,7 @@ except
 end;
 end;
 
-function TEvaluationFlow.op_return(PL: TVList): TValue;  //PURE
+function TEvaluationFlow.op_return(PL: TVList): TValue;
 begin
     if PL.Count>2 then raise ELE.Malformed('RETURN');
 
@@ -2825,7 +2876,7 @@ begin
     end;
 end;
 
-function TEvaluationFlow.op_cond                    (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_cond                    (PL: TVList): TValue;
 var i: integer; tmp: TValue;
 begin try
     case valid_sign(PL, result, [@tpOperator,
@@ -2850,7 +2901,7 @@ except
     tmp.Free; raise;
 end; end;
 
-function TEvaluationFlow.op_for                     (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_for                     (PL: TVList): TValue;
 var i, frame_start, high_i, low_i: integer;
     V: TValue;
     CP: TVChainPointer;
@@ -2938,7 +2989,7 @@ finally
 end;
 end;
 
-function TEvaluationFlow.op_goto                    (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_goto                    (PL: TVList): TValue;
 begin
     if (PL.Count<>2) or not tpSymbol(PL.look[1])
     then raise ELE.malformed('GOTO');
@@ -2946,7 +2997,7 @@ begin
     result := TVGoto.Create(PL.SYM[1]);
 end;
 
-function TEvaluationFlow.op_if                      (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_if                      (PL: TVList): TValue;
 var condition: TValue;
 begin
     if (PL.Count<3) or (PL.Count>4)
@@ -2979,7 +3030,7 @@ finally
 end;
 end;
 
-function TEvaluationFlow.op_if_nil                  (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_if_nil                  (PL: TVList): TValue;
 begin
     if PL.Count<>3 then raise ELE.malformed('IF-NIL');
 
@@ -2991,7 +3042,7 @@ begin
     end;
 end;
 
-function TEvaluationFlow.op_last                    (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_last                    (PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
     if PL.Count<>2 then raise ELE.malformed('LAST');
@@ -3001,7 +3052,7 @@ begin
     CP.Free;
 end;
 
-function TEvaluationFlow.op_let(PL: TVList): TValue;   //PURE
+function TEvaluationFlow.op_let(PL: TVList): TValue;
 var old_v, VPL: TVList; i, j, count: integer;
 begin
     //временно изменяет значение переменной, по завершении возвращает исходное
@@ -3032,12 +3083,13 @@ begin
     end;
 end;
 
-function TEvaluationFlow.op_map                     (PL: TVList): TValue; //PURE
-var se: TVList; i,j: integer;
+function TEvaluationFlow.op_map                     (PL: TVList): TValue;
+var expr: TVList; i,j: integer;
     min_count: integer; PLI: TVList;
 begin
     if PL.Count<3 then raise ELE.Malformed('MAP');
     result := nil;
+    expr := nil;
     PLI := TVList.Create;
     PLI.SetCapacity(PL.Count-1);
 try
@@ -3049,12 +3101,11 @@ try
 
     min_count := min_list_length(PLI, 1);
 try
+    expr := PLI.Phantom_Copy;
     result := TVList.Create;
     for i := 0 to min_count - 1 do begin
-        se := TVList.Create([PLI[0]]);
-        se.SetCapacity(PLI.Count);
-        for j := 1 to PLI.High do se.Add(ifh_quote(PLI.L[j].look[i]));
-        (result as TVList).Add(eval(se));
+        for j := 1 to PLI.High do expr[j] := PLI.L[j].look[i];
+        (result as TVList).Add(call(expr));
     end;
 except
     //удалить результаты предыдущих итераций если текущая завершилась
@@ -3064,11 +3115,12 @@ except
 end;
 finally
     PLI.Free;
+    expr.Free;
 end;
 end;
 
 
-function TEvaluationFlow.op_macro_symbol(PL: TVList): TValue;  //PURE
+function TEvaluationFlow.op_macro_symbol(PL: TVList): TValue;
 var proc: TVProcedure; sl: TVList;
 begin
     //TODO: макросимвол не поддерживает чистый лямбда режим
@@ -3106,7 +3158,7 @@ begin
     stack.new_var(PL.SYM[1], result.Copy, true);
 end;
 
-function TEvaluationFlow.op_or                      (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_or                      (PL: TVList): TValue;
 var pc: integer;
 begin
     result := TVList.Create;
@@ -3117,7 +3169,7 @@ begin
     end;
 end;
 
-function TEvaluationFlow.op_package(PL: TVList): TValue;   //PURE
+function TEvaluationFlow.op_package(PL: TVList): TValue;
 var external_stack, package_stack: TVSymbolStack;
     P: PVariable;
     i: integer;
@@ -3161,7 +3213,7 @@ end;
 
 
 
-function TEvaluationFlow.op_append(PL: TVList): TValue;  //PURE
+function TEvaluationFlow.op_append(PL: TVList): TValue;
 var CP: TVChainPointer; i: integer;
 begin try
 
@@ -3196,7 +3248,7 @@ finally
     FreeAndNil(CP);
 end end;
 
-function TEvaluationFlow.op_apply(PL: TVList): TValue;  //PURE
+function TEvaluationFlow.op_apply(PL: TVList): TValue;
 var expr: TVList; i: integer; tmp: TValue; list: TVList;
 begin
     result := nil;
@@ -3205,24 +3257,25 @@ try
     tmp := nil;
     expr := TVList.Create;
     expr.Add(eval(PL[1]));
-    for i := 2 to PL.high-1 do expr.Add(PL[i]);
+    for i := 2 to PL.high-1 do expr.Add(eval(PL[i]));
     if (PL.Count>=3) then begin
         tmp := eval(PL[PL.high]);
         if tpList(tmp) then begin
             list := tmp as TVList;
-            for i := 0 to list.high do expr.Add(ifh_quote(list.look[i]));
-            result := eval(expr.Copy);
+            expr.Append(list);
+            //for i := 0 to list.high do expr.Add(ifh_quote(list.look[i]));
+            result := call(expr);
         end
         else raise ELE.InvalidParameters;
 
     end;
 finally
     expr.Free;
-    tmp.Free;
+    //tmp.Free;
 end;
 end;
 
-function TEvaluationFlow.op_procedure               (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
 var proc: TVProcedure; sl: TVList;
     sign_pos: integer;
 begin
@@ -3266,7 +3319,7 @@ begin
 
 end;
 
-function TEvaluationFlow.op_var                     (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_var                     (PL: TVList): TValue;
 var tmp: TValue;
 begin
     if (PL.Count<2) or (PL.Count>3)
@@ -3289,19 +3342,20 @@ begin
     result := TVT.Create;
 end;
 
-function TEvaluationFlow.op_when(PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_when(PL: TVList): TValue;
 begin
     if PL.Count<2 then raise ELE.malformed('WHEN');
 
     result := eval(PL[1]);
-    if not tpNIL(PL.look[1])
+    //WriteLn('when cond>> ', result.asstring);
+    if not tpNIL(result)
     then begin
         FreeAndNil(result);
         result := oph_block(PL, 2, false)
     end;
 end;
 
-function TEvaluationFlow.op_while                   (PL: TVList): TValue; //PURE
+function TEvaluationFlow.op_while                   (PL: TVList): TValue;
 var cond, V: TValue;
 begin
     if PL.Count<2 then raise ELE.malformed('WHILE');
@@ -3329,7 +3383,7 @@ end;
 
 end;
 
-function TEvaluationFlow.op_with(PL: TVList): TValue;  //PURE
+function TEvaluationFlow.op_with(PL: TVList): TValue;
 var i, j: integer;
     pack: TPackage;
     fn: unicodestring;
@@ -3382,7 +3436,7 @@ begin
     result := TVT.Create;
 end;
 
-function TEvaluationFlow.extract_body_symbols(body: TVList): TVList;  //PURE
+function TEvaluationFlow.extract_body_symbols(body: TVList): TVList;
 var i: integer; tmp: TVList;
     function is_op_name(name: unicodestring): boolean;
     var i: TOperatorEnum;
@@ -3411,14 +3465,14 @@ begin
         //здесь if_union используется для удаления дубликатов
         tmp := TVList.Create([TVList.Create([result])]);
         //TODO: переделать if_union в ifh_union, поскольку функция используется для собственных нужд
-        result := if_union(tmp, eval) as TVList;
+        result := if_union(tmp, call) as TVList;
     finally
         FreeAndNil(tmp);
     end;
 
 end;
 
-procedure TEvaluationFlow.fill_subprogram_stack(sp: TVProcedure;  //PURE
+procedure TEvaluationFlow.fill_subprogram_stack(sp: TVProcedure;
     symbols: TVList);
 var i: integer;
 begin
@@ -3440,58 +3494,34 @@ begin
 end;
 
 function TEvaluationFlow.call(PL: TVList): TValue;
-var sp : (spI, spP, spO);
-    tmp: TValue;
-    proc: TVProcedure;
-    internal: TVInternalFunction;
-    params, binded_PL: TVList;
-    tmp_stack: TVSymbolStack;
+var head: TValue;
 begin
-
-    //case expression_type of
-    //    etProcedure: try
-    //        proc := PL[0] as TVProcedure;
-    //        params := PL.CDR;
-    //        oph_bind(proc.sign, params, false, proc.stack);
-    //        tmp_stack := stack;
-    //        stack := proc.stack;
-    //        result := oph_block(proc.body,0,false);
-    //        if tpReturn(result) then begin
-    //            tmp := (result as TVReturn).value.Copy;
-    //            result.Free;
-    //            result := tmp;
-    //        end;
-    //    finally
-    //        stack := tmp_stack;
-    //        params.Free;
-    //        proc.Free;
-    //    end;
-    //    etInternal: try
-    //        internal := PL.look[0] as TVInternalFunction;
-    //        binded_PL := nil;
-    //        params := PL.CDR;
-    //        binded_PL := bind_parameters_list(params, internal.signature);
-    //        result := nil;
-    //        result := internal.body(binded_PL, eval);
-    //    finally
-    //        FreeAndNil(binded_PL);
-    //        params.Free;
-    //    end;
-    //    else raise ELE.Create('call not implemented for '+PL.look[0].AsString,'internal');
-    //end;
+   // WriteLn('CALL>> ', PL.AsString);
+   head := PL.look[0];
+   if head.ClassType = TVProcedure then result := call_procedure(PL)
+   else
+   if head.ClassType = TVInternalFunction then result := call_internal(PL)
+   else
+   if head.ClassType = TVPredicate then result := call_predicate(PL)
+   else
+   if head.ClassType = TVOperator then result := call_operator(PL)
+   else
+   result := eval(PL.Copy);
+   //WriteLn('= ', result.AsString);
 end;
 
 function TEvaluationFlow.call_procedure(PL: TVList): TValue;
 var proc: TVProcedure; params: TVList; tmp_stack, proc_stack: TVSymbolStack;
     tmp: TValue;
 begin try
+    //WriteLn('call\-proc');
     params := nil;
     proc_stack := nil;
     proc := PL.look[0] as TVProcedure;
     proc.Complement;
     proc_stack := proc.stack.Copy as TVSymbolStack;
     params := PL.Phantom_CDR;
-    oph_bind(proc.sign, params, false, proc_stack);
+    oph_bind(proc.sign, params, true, proc_stack);
 
     tmp_stack := stack;
     stack := proc_stack;
@@ -3501,6 +3531,7 @@ begin try
             result.Free;
             result := tmp;
         end;
+//    if PL.look[0] is
 finally
     stack := tmp_stack;
     params.Free;
@@ -3515,18 +3546,75 @@ begin
 end;
 
 function TEvaluationFlow.call_internal(PL: TVList): TValue;
-begin
-
+var binded_PL, params: TVList;
+begin try
+    binded_PL := nil;
+    params := PL.Phantom_CDR;
+    binded_PL := bind_parameters_list(params,
+                        (PL.look[0] as TVInternalFunction).signature);
+    result := nil;
+    result := (PL.look[0] as TVInternalFunction).body(binded_PL, call);
+finally
+    FreeAndNil(binded_PL);
+    params.Free;
+end;
 end;
 
 function TEvaluationFlow.call_operator(PL: TVList): TValue;
 begin
-
+    case (PL.look[0] as TVOperator).op_enum of
+        oeAND       : result := op_and(PL);
+        oeAPPEND    : result := op_append(PL);
+        oeAPPLY     : result := op_apply(PL);
+        oeBLOCK     : result := op_block(PL);
+        oeBREAK     : result := TVBreak.Create;
+        oeCASE      : result := op_case(PL);
+        oeCOND      : result := op_cond(PL);
+        oeCONST     : result := op_const(PL);
+        oeCONTINUE  : result := TVContinue.Create;
+        oeDEBUG     : result := op_debug(PL);
+        oeDEFAULT   : result := op_default(PL);
+        oeELT       : result := op_elt(PL);
+        oeELSE      : result := op_secondary_error(PL);
+        oeEXCEPTION : result := op_secondary_error(PL);
+        oeEXECUTE_FILE: result := op_execute_file(PL);
+        oeFILTER    : result := op_filter(PL);
+        oeFOR       : result := op_for(PL);
+        oeGOTO      : result := op_goto(PL);
+        oeIF        : result := op_if(PL);
+        oeIF_NIL    : result := op_if_nil(PL);
+        oeLAST      : result := op_last(PL);
+        oeLET       : result := op_let(PL);
+        oeMACRO     : result := op_procedure(PL);
+        oeMACRO_SYMBOL: result := op_macro_symbol(PL);
+        oeMAP       : result := op_map(PL);
+        oeOR        : result := op_OR(PL);
+        oePACKAGE   : result := op_package(PL);
+        oePOP       : result := op_pop(PL);
+        oePROCEDURE : result := op_procedure(PL);
+        oePUSH      : result := op_push(PL);
+        oeQUOTE     : result := PL[1];
+        //TODO: QUOTE не проверяет количество аргументов
+        oeRECORD    : result := op_record(PL);
+        oeRECORD_AS : result := op_record_as(PL);
+        oeRETURN    : result := op_return(PL);
+        oeSET       : result := op_set(PL);
+        oeTHEN      : result := op_secondary_error(PL);
+        oeVAL       : result := op_val(PL);
+        oeVAR       : result := op_var(PL);
+        oeWHEN      : result := op_when(PL);
+        oeWHILE     : result := op_while(PL);
+        oeWITH      : result := op_with(PL);
+        else raise ELE.Create('неизвестный оператор');
+    end;
 end;
 
-function TEvaluationFlow.call_preducate(PL: TVList): TValue;
+function TEvaluationFlow.call_predicate(PL: TVList): TValue;
 begin
-
+    if PL.Count<>2 then ELE.Malformed(PL.AsString);
+    if (PL.look[0] as TVPredicate).body(PL.look[1])
+    then result := TVT.Create
+    else result := TVList.Create;
 end;
 
 //function TEvaluationFlow.bind_procedure_parameters_to_stack(PL: TVList;
@@ -3675,11 +3763,9 @@ end;
 //end;
 
 
-function TEvaluationFlow.procedure_call(PL: TVList): TValue;   //PURE
+function TEvaluationFlow.procedure_call(PL: TVList): TValue;
 var first: TValue; proc: TVProcedure; params: TVList;
     error_message: unicodestring;
-    tmp_stack: TVSymbolStack;
-    tmp: TValue;
     i: integer;
     linkable: boolean;
 begin
@@ -3725,26 +3811,18 @@ end;
 
 end;
 
-function TEvaluationFlow.internal_function_call(PL: TVList): TValue; //PURE
-var i: integer; binded_PL, PLI: TVList;
+function TEvaluationFlow.internal_function_call(PL: TVList): TValue;
+var i: integer; PLI: TVList;
 begin try
-    binded_PL := nil;
-    PLI := TVList.Create;
-    PLI.SetCapacity(PL.Count-1);
+    PLI := TVList.Create([PL[0]]);
+    PLI.SetCapacity(PL.Count);
     for i := 1 to PL.high do PLI.Add(eval(PL[i]));
-    binded_PL := bind_parameters_list(PLI,
-                        (PL.look[0] as TVInternalFunction).signature);
-    //эта функция может делать деструктурирующую привязку, но работает медленнее
-    //binded_PL := oph_bind_to_list((PL.look[0] as TVInternalFunction).signature,
-    //                        PLI);
-    result := nil;
-    result := (PL.look[0] as TVInternalFunction).body(binded_PL, eval);
+    result := call_internal(PLI);
 finally
-    FreeAndNil(binded_PL);
     PLI.Free;
 end; end;
 
-function TEvaluationFlow.internal_predicate_call(PL: TVList): TValue;  //PURE
+function TEvaluationFlow.internal_predicate_call(PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
     if PL.Count<>2 then ELE.InvalidParameters;
@@ -3787,14 +3865,7 @@ end;
 //    //это сделает его более предсказуемым по поведению
 //end;
 
-function TEvaluationFlow.eval_list(VL: TVList): TValue;
-var head: TValue;
-begin
-    //expand_ins(V as TVList);
 
-
-
-end;
 
 //{$DEFINE EVAL_DEBUG_PRINT}
 
@@ -3851,7 +3922,6 @@ begin try
                     result := TVOperator.Create(ops[o].nN, o);
                     goto return;
                 end;
-
             try
                 //WriteLn('eval symbol>> ',uname);
                 PV := nil;
@@ -3888,52 +3958,8 @@ begin try
             else
 
             if tpOperator((V as TVList).look[0])
-            then
-                case ((V as TVList).look[0] as TVOperator).op_enum of
-                    oeAND       : result := op_and(V as TVList);
-                    oeAPPEND    : result := op_append(V as TVList);
-                    oeAPPLY     : result := op_apply(V as TVList);
-                    oeBLOCK     : result := op_block(V as TVList);
-                    oeBREAK     : result := TVBreak.Create;
-                    oeCASE      : result := op_case(V as TVList);
-                    oeCOND      : result := op_cond(V as TVList);
-                    oeCONST     : result := op_const(V as TVList);
-                    oeCONTINUE  : result := TVContinue.Create;
-                    oeDEBUG     : result := op_debug(V as TVList);
-                    oeDEFAULT   : result := op_default(V as TVList);
-                    oeELT       : result := op_elt(V as TVList);
-                    oeELSE      : result := op_secondary_error(V as TVList);
-                    oeEXCEPTION : result := op_secondary_error(V as TVList);
-                    oeEXECUTE_FILE: result := op_execute_file(V as TVList);
-                    oeFILTER    : result := op_filter(V as TVList);
-                    oeFOR       : result := op_for(V as TVList);
-                    oeGOTO      : result := op_goto(V as TVList);
-                    oeIF        : result := op_if(V as TVList);
-                    oeIF_NIL    : result := op_if_nil(V as TVList);
-                    oeLAST      : result := op_last(V as TVList);
-                    oeLET       : result := op_let(V as TVList);
-                    oeMACRO     : result := op_procedure(V as TVList);
-                    oeMACRO_SYMBOL: result := op_macro_symbol(V as TVList);
-                    oeMAP       : result := op_map(V as TVList);
-                    oeOR        : result := op_OR(V as TVList);
-                    oePACKAGE   : result := op_package(V as TVList);
-                    oePOP       : result := op_pop(V as TVList);
-                    oePROCEDURE : result := op_procedure(V as TVList);
-                    oePUSH      : result := op_push(V as TVList);
-                    oeQUOTE     : result := (V as TVList)[1];
-                    //TODO: QUOTE не проверяет количество аргументов
-                    oeRECORD    : result := op_record(V as TVList);
-                    oeRECORD_AS : result := op_record_as(V as TVList);
-                    oeRETURN    : result := op_return(V as TVList);
-                    oeSET       : result := op_set(V as TVList);
-                    oeTHEN      : result := op_secondary_error(V as TVList);
-                    oeVAL       : result := op_val(V as TVList);
-                    oeVAR       : result := op_var(V as TVList);
-                    oeWHEN      : result := op_when(V as TVList);
-                    oeWHILE     : result := op_while(V as TVList);
-                    oeWITH      : result := op_with(V as TVList);
-                    else raise ELE.Create('неизвестный оператор');
-                end
+            then   result := call_operator(V as TVList)
+
             else
                 if (V as TVList).look[0] is TVProcedure
                 then begin

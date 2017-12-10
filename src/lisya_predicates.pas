@@ -62,6 +62,8 @@ function tpListOfOrdinarySymbols                    (V: TValue): boolean;
 
 function tpListOfStrings                            (V: TValue): boolean;
 
+function tpListOfSubprograms                        (V: TValue): boolean;
+
 function tpListOfSymbols                            (V: TValue): boolean;
 
 function tpNIL                                      (V: TValue): boolean;
@@ -387,6 +389,11 @@ begin
     result := tphListOf(V, tpString);
 end;
 
+function tpListOfSubprograms(V: TValue): boolean;
+begin
+    result := tphListOf(V, tpSubprogram);
+end;
+
 function tpListOfSymbols(V: TValue): boolean;
 begin
     result := tphListOf(V, tpSymbol);
@@ -491,6 +498,11 @@ end;
 /////////////////////////////////////
 /// Value Predicates ////////////////
 /////////////////////////////////////
+
+//бесполезная оптимизация?
+type Tkw =                                   (kwFlag, kwKey, kwOptional, kwRest);
+const kwNames: array[Tkw] of unicodestring = (':FLAG',':KEY',':OPTIONAL',':REST');
+var kwN: array[Tkw] of integer;
 
 function vphKeywordName(V: TValue; const n: unicodestring): boolean;
 begin
@@ -690,7 +702,8 @@ end;
 
 function vpKeyword_REST                             (V: TValue): boolean;
 begin
-    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':REST');
+    //result := (V is TVKeyword) and ((V as TVSymbol).uname = ':REST');
+    result := (V is TVKeyword) and ((V as TVSymbol).N = kwN[kwRest]);
 end;
 
 function vpKeyword_RESULT                           (V: TValue): boolean;
@@ -977,6 +990,16 @@ begin
     result := vphSymbolName(V, 'RANGE');
 end;
 
+
+procedure init_keywords;
+var kw: Tkw;
+begin
+    for kw := low(kwN) to high(kwN) do
+        kwN[kw] := TVSymbol.symbol_n(kwNames[kw]);
+end;
+
+initialization
+    init_keywords;
 
 end.  //955
 

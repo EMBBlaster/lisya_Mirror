@@ -357,6 +357,8 @@ type
 
         procedure SetCapacity(c: integer);
 
+        function extract(n: integer): TValue;
+        procedure delete(n: integer);
         function POP: TValue;
         procedure Clear;
         function ValueList: TValueList;
@@ -534,7 +536,8 @@ type
     end;
 
     type TEvalProc = function (V: TValue): TValue of Object;
-    type TInternalFunctionBody = function (const PL: TVList; call: TEvalProc): TValue;
+    type TCallProc = function (V: TVList): TValue of Object;
+    type TInternalFunctionBody = function (const PL: TVList; call: TCallProc): TValue;
 
     { TVInternalSubprogram }
 
@@ -2359,6 +2362,17 @@ end;
 procedure TVList.SetCapacity(c: integer);
 begin
     self.fL.Capacity:=c;
+end;
+
+function TVList.extract(n: integer): TValue;
+begin
+    result := fL.Items[n] as TValue;
+    fL.Delete(n);
+end;
+
+procedure TVList.delete(n: integer);
+begin
+    fL.Delete(n);
 end;
 
 function TVList.Copy: TValue;

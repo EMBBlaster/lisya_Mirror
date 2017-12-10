@@ -246,6 +246,14 @@
     (var l \(1 2 3 4))
     (assertion (= \(3 4) (filter (procedure (e) (> e 2)) l)) "filter"))
 
+(log \WHEN)
+(block "when"
+    (var cnd nil)
+    (var a 1)
+    (when cnd (error "test" "when nil expr"))
+    (when \cnd (set a 2))
+    (assertion (= a 2) "when t"))
+
 (log \STREAM)
 (block
     (var out (open-file "1.txt" :mode :write))
@@ -263,7 +271,7 @@
     
 
 (var tests (directory "../test/*_test.lisya"))
-(assertion (= 10 (length tests)) "tests count")
+(assertion (= 11 (length tests)) "tests count")
 (for test tests (execute-file test))
 
 
