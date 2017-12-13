@@ -398,77 +398,6 @@ begin
     result := buf;
 end;
 
-function ifh_equal(const A,B: TValue): boolean;
-var type_v: (int, num, str, sym, t, lst, struct, any, bytevec); i: integer;
-begin
-    if tpInteger(A) and tpInteger(B)
-    then type_v := int
-    else
-        if tpNumber(A) and tpNumber(B)
-        then type_v := num
-        else
-            if tpString(A) and tpString(B)
-            then type_v := str
-            else
-                if tpSymbol(A) and tpSymbol(B)
-                then type_v := sym
-                else
-                    if tpT(A) and tpT(B)
-                    then type_v := t
-                    else
-                        if tpList(A) and tpList(B)
-                        then type_v := lst
-                        else
-                            if tpRecord(A) and tpRecord(B)
-                            then type_v := struct
-                            else
-                                if tpByteVector(A) and tpByteVector(B)
-                                then type_v := bytevec
-                                else
-                                    type_v := any;
-
-    case type_v of
-        int: result := (A as TVInteger).fI=(B as TVInteger).fI;
-        num: result := (A as TVNumber).F=(B as TVNumber).F;
-        str: result := (A as TVString).S=(B as TVString).S;
-        sym: result := (A as TVSymbol).N=(B as TVSymbol).N;
-          t: result := true;
-        lst: begin
-                result := (A as TVList).Count = (B as TVList).Count;
-                if result then
-                for i:= 0 to (A as TVList).Count-1 do begin
-                    result := ifh_equal((A as TVList).look[i],
-                                        (B as TVList).look[i]);
-                    if not result then break;
-                end;
-        end;
-        struct: begin
-            result := (A as TVRecord).count = (B as TVRecord).count;
-            if result then
-                for i := 0 to (A as TVRecord).count-1 do begin
-                    result :=
-                        ((A as TVRecord).name_n(i)=(B as TVRecord).name_n(i))
-                        and ifh_equal((A as TVRecord).look[i],
-                                        (B as TVRecord).look[i]);
-                    if not result then Break;
-                end;
-        end;
-        bytevec: result := (A as TVByteVector).equal_to(B as TVByteVector);
-        any: result := false;
-    end;
-
-end;
-
-function ifh_member(const L: TVList; const E: TValue): boolean;
-var i: integer;
-begin
-    result := false;
-    for i := 0 to L.High do
-        if ifh_equal(L.look[i], E) then begin
-            result := true;
-            break;
-        end;
-end;
 
 function ifh_format(const L: TVList): unicodestring;
 var i: integer;
@@ -533,7 +462,8 @@ begin
         fres := 0.0;
         case params_is(PL, result, [
             tpListOfIntegers,
-            tpListOfNumbers]) of
+            tpListOfNumbers,
+            tpListOfLists]) of
             1: begin
                 for i := 0 to PL.L[0].high do
                     ires := ires + PL.L[0].I[i];
@@ -544,6 +474,7 @@ begin
                     fres := fres + PL.L[0].F[i];
                 result := TVFloat.Create(fres);
             end;
+            3: result := ifh_union(PL.L[0]);
         end;
 end;
 
@@ -1132,17 +1063,9 @@ begin
 end;
 
 function if_union               (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i, j: integer;
 begin
-    //WriteLn('union>>',PL.AsString);
     case params_is(PL, result, [tpListOfLists]) of
-        1: begin
-            result := TVList.Create;
-            for i := 0 to PL.L[0].high do
-                for j := 0 to PL.L[0].L[i].high do
-                    if not ifh_member((result as TVList), PL.L[0].L[i].look[j])
-                    then (result as TVList).Add(PL.L[0].L[i][j]);
-        end;
+        1: result := ifh_union(PL.L[0]);
     end;
 end;
 
@@ -1177,6 +1100,20 @@ begin
             for i := 0 to A.high do
                 if not ifh_member(B, A.look[i])
                 then (result as TVList).add(A[i]);
+        end;
+    end;
+end;
+
+function if_reverse             (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer; A, R: TVList;
+begin
+    case params_is(PL, result, [tpList]) of
+        1: begin
+            A := PL.L[0];
+            R := TVList.Create;
+            result := R;
+            R.SetCapacity(A.Count);
+            for i := A.high downto 0 do R.Add(A[i]);
         end;
     end;
 end;
@@ -2140,7 +2077,7 @@ begin
     end;
 end;
 
-const int_fun_count = 95;
+const int_fun_count = 96;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2196,6 +2133,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'UNION';                 f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION';          f:if_intersection;          s:'(:rest a)'),
 (n:'DIFFERENCE';            f:if_difference;            s:'(a b)'),
+(n:'REVERSE';               f:if_reverse;               s:'(a)'),
 (n:'MEMBER';                f:if_member;                s:'(l e)'),
 (n:'POSITION';              f:if_position;              s:'(l e)'),
 (n:'LENGTH';                f:if_length;                s:'(l)'),

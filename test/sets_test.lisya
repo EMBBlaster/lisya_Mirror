@@ -1,0 +1,14 @@
+
+(fmt nil "множества... ")
+(block
+    (assertion (equal-sets \(1 2) \(2 1)) "equal-sets 1")
+    (assertion (not (equal-sets \(1 2) \(3 1))) "equal-sets 2")
+    (assertion (equal-sets \(1 2) \(2 2 1)) "equal-sets 3")
+
+    (var a \(1 2))
+    (var b \(3 4))
+
+    (assertion (equal-sets \((1 3) (1 4) (2 3) (2 4)) (* a b)) "set mul"))
+
+(log \успешно)
+
