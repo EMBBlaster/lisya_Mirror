@@ -16,6 +16,10 @@ type TBindings = array of record
 
 function ifh_bind(sign, PL: TValue): TBindings;
 
+//function ifh_equal(const A, B: TValue;
+//    case_insensitive: boolean = false;
+//    order_insensitive: boolean = false);
+
 implementation
 
 
@@ -154,6 +158,18 @@ begin
    // end;
 
 end;
+
+////////////////////////////////////////////////////////////////////////////////
+/// equal //////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+//function ifh_equal(const A, B: TValue; case_insensitive: boolean;
+//    order_insensitive: boolean);
+//begin
+//
+//end;
 
 end.
 

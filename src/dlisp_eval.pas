@@ -569,14 +569,15 @@ begin
 end;
 
 function if_mul                 (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; fres: double; ires: Int64; A: TVList;
+var i, j, k: integer; fres: double; ires: Int64; A, B, C, R: TVList;
 begin
     ires := 1;
     fres := 1.0;
     A := PL.L[0];
     case params_is(PL, result, [
         tpListOfIntegers,
-        tpListOfNumbers]) of
+        tpListOfNumbers,
+        tpListOfLists]) of
         1: begin
             for i := 0 to A.high do ires := ires * A.I[i];
             result := TVInteger.Create(ires);
@@ -584,6 +585,29 @@ begin
         2: begin
             for i := 0 to A.high do fres := fres * A.F[i];
             result := TVFloat.Create(fres);
+        end;
+        3: begin //декартово произведение множеств
+            A := nil;
+            B := nil;
+            C := nil;
+            R := TVList.Create;
+            if PL.L[0].Count>0 then begin
+                A := PL.L[0].L[0];
+                for i := 0 to A.high do R.Add(TVList.Create([A[i]]));
+            end;
+            for j := 1 to PL.L[0].high do begin
+                A := PL.L[0].L[j];
+                B.Free;
+                B := R.Copy as TVList;
+                R.Clear;
+                for i := 0 to A.high do begin
+                    C := B.Copy as TVList;
+                    for k := 0 to C.high do C.L[k].Add(A[i]);
+                    R.Append(C);
+                end;
+            end;
+            B.Free;
+            result := R;
         end;
     end;
 end;
@@ -785,6 +809,34 @@ begin
         1: if UpperCaseU(PL.S[0])=UpperCaseU(PL.S[1])
             then result := TVT.Create
             else result := TVList.Create;
+    end;
+end;
+
+function if_equal_sets            (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i, j: integer; r: boolean; A, B: TVList;
+begin
+    case params_is(PL, result, [
+        tpNIL, tpNIL,
+        tpList, tpList]) of
+        1: result := TVT.Create;
+        2: begin
+            r := true;
+            A := PL.L[0];
+            B := PL.L[1];
+            for i := 0 to A.high do
+                if not ifh_member(B, A.look[i])
+                then begin
+                    r := false;
+                    break;
+                end;
+            if r then for i := 0 to B.high do
+                if not ifh_member(A, B.look[i])
+                then begin
+                    r := false;
+                    break;
+                end;
+            bool_to_TV(r, result);
+        end;
     end;
 end;
 
@@ -2088,7 +2140,7 @@ begin
     end;
 end;
 
-const int_fun_count = 94;
+const int_fun_count = 95;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2115,6 +2167,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'<>';                    f:if_not_equal;             s:'(a b)'),
 (n:'NOT';                   f:if_not;                   s:'(a)'),
 (n:'EQUAL-CASE-INSENSITIVE';f:if_equal_case_insensitive;s:'(s s)'),
+(n:'EQUAL-SETS';            f:if_equal_sets;            s:'(a b)'),
 
 (n:'TEST-DYN';              f:if_test_dyn;              s:'(a b)'),
 (n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
