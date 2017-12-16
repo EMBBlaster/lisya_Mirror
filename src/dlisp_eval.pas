@@ -13,7 +13,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    process, Classes, SysUtils, math, crc
+    process, Classes, SysUtils, math, crc, ucomplex
     , dlisp_values, dlisp_read, lisya_xml, mar,
     lisya_packages
     ,lisya_predicates
@@ -456,25 +456,32 @@ begin
 end;
 
 function if_add                 (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; fres: double; ires: Int64;
+var i: integer; fres: double; ires: Int64; cres: COMPLEX;
 begin
-        ires := 0;
-        fres := 0.0;
         case params_is(PL, result, [
             tpListOfIntegers,
+            tpListOfReals,
             tpListOfNumbers,
             tpListOfLists]) of
             1: begin
+                ires := 0;
                 for i := 0 to PL.L[0].high do
                     ires := ires + PL.L[0].I[i];
                 result := TVInteger.Create(ires);
             end;
             2: begin
+                fres := 0;
                 for i := 0 to PL.L[0].high do
                     fres := fres + PL.L[0].F[i];
                 result := TVFloat.Create(fres);
             end;
-            3: result := ifh_union(PL.L[0]);
+            3: begin
+                cres := _0;
+                for i := 0 to PL.L[0].high do
+                    cres := cres + PL.L[0].C[i];
+                result := TVComplex.Create(cres);
+            end;
+            4: result := ifh_union(PL.L[0]);
         end;
 end;
 
@@ -482,12 +489,13 @@ function if_sub                 (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
     {1} tpInteger,  tpNIL,
-    {2} tpNumber,   tpNIL,
+    {2} tpReal,     tpNIL,
     {3} tpInteger,  tpInteger,
-    {4} tpNumber,   tpNumber,
+    {4} tpReal,     tpReal,
     {5} tpDateTime, tpDatetime,
     {6} tpDateTime, tpTimeInterval,
-    {7} tpTimeInterval, tpTimeInterval]) of
+    {7} tpTimeInterval, tpTimeInterval,
+    {8} tpNumber,   tpNumber]) of
         1: result := TVInteger.Create(-PL.I[0]);
         2: result := TVFloat.Create(-PL.F[0]);
         3: result := TVInteger.Create(PL.I[0] - PL.I[1]);
@@ -496,17 +504,20 @@ begin
             (PL.look[0] as TVTime).fDT - (PL.look[1] as TVTime).fDT);
         6: result := TVDateTime.Create(
             (PL.look[0] as TVTime).fDT - (PL.look[1] as TVTime).fDT);
+        8: result := TVComplex.Create(PL.C[0] - PL.C[1]);
     end;
 end;
 
 function if_mul                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i, j, k: integer; fres: double; ires: Int64; A, B, C, R: TVList;
+    cres : COMPLEX;
 begin
     ires := 1;
     fres := 1.0;
     A := PL.L[0];
     case params_is(PL, result, [
         tpListOfIntegers,
+        tpListOfReals,
         tpListOfNumbers,
         tpListOfLists]) of
         1: begin
@@ -517,7 +528,13 @@ begin
             for i := 0 to A.high do fres := fres * A.F[i];
             result := TVFloat.Create(fres);
         end;
-        3: begin //декартово произведение множеств
+        3: begin
+            cres.im := 0;
+            cres.re := 1;
+            for i := 0 to A.high do cres := cres * A.C[i];
+            result := TVComplex.Create(cres);
+        end;
+        4: begin //декартово произведение множеств
             A := nil;
             B := nil;
             C := nil;
@@ -547,15 +564,19 @@ function if_div                 (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         vpIntegerAbsOne,    tpNIL,
-        vpNumberNotZero,    tpNIL,
+        vpRealNotZero,      tpNIL,
+        vpComplexNotZero,   tpNIL,
         tpInteger,          vpIntegerNotZero,
+        tpReal,             vpRealNotZero,
         tpNumber,           vpNumberNotZero]) of
         1: result := TVInteger.Create(1 div PL.I[0]);
         2: result := TVFloat.Create(1 / PL.F[0]);
-        3: if ((PL.I[0] mod PL.I[1]) = 0)
+        3: result := TVComplex.Create(cinv(PL.C[0]));
+        4: if ((PL.I[0] mod PL.I[1]) = 0)
             then result := TVInteger.Create(PL.I[0] div PL.I[1])
             else result := TVFloat.Create(PL.I[0] / PL.I[1]);
-        4: result := TVFloat.Create(PL.F[0] / PL.F[1]);
+        5: result := TVFloat.Create(PL.F[0] / PL.F[1]);
+        6: result := TVComplex.Create(PL.C[0] / PL.C[1]);
     end;
 end;
 
@@ -579,9 +600,11 @@ function if_abs                 (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpInteger,
-        tpNumber]) of
+        tpReal,
+        tpComplex]) of
         1: result := TVInteger.Create(abs(PL.I[0]));
         2: result := TVFloat.Create(abs(PL.F[0]));
+        3: result := TVFloat.Create(cmod(PL.C[0]));
     end;
 end;
 
@@ -589,26 +612,30 @@ function if_power               (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpInteger,            vpIntegerNotNegative,
-        vpNumberNotNegative,  tpNumber,
-        tpNumber,             vpNumberAbsOneOrMore]) of
+        vpRealNotNegative,    tpReal,
+        tpReal,               vpRealAbsOneOrMore,
+        tpNumber,             tpNumber]) of
         1: result := TVInteger.Create(PL.I[0] ** PL.I[1]);
         2,3: result := TVFloat.Create(PL.F[0] ** PL.F[1]);
+        4: result := TVComplex.Create(PL.C[0] ** PL.C[1]);
     end;
 end;
 
 function if_sqrt                (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        vpNumberNotNegative]) of
+        vpRealNotNegative,
+        tpNumber]) of
         1: result := TVFloat.Create(PL.F[0] ** 0.5);
+        2: result := TVComplex.Create(csqrt(PL.C[0]));
     end;
 end;
 
 function if_round               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpNumber,   tpNIL,
-        tpNumber,   vpIntegerRoundToRange]) of
+        tpReal,     tpNIL,
+        tpReal,     vpIntegerRoundToRange]) of
         1: result := TVInteger.Create(round(PL.F[0]));
         2: result := TVFloat.Create(roundto(PL.F[0], TRoundToRange(PL.I[0])));
     end;
@@ -650,6 +677,27 @@ begin
     end;
 end;
 
+function if_re                  (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal,
+        tpComplex]) of
+        1: result := PL[0];
+        2: result := TVFloat.Create((PL.look[0] as TVComplex).C.re);
+    end;
+end;
+
+function if_im                  (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal,
+        tpComplex]) of
+        1: result := TVFloat.Create(0);
+        2: result := TVFloat.Create((PL.look[0] as TVComplex).C.im);
+    end;
+end;
+
+
 function if_equal               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [tpAny, tpAny]) of
@@ -663,7 +711,7 @@ function if_more                (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
-        tpNumber,  tpNumber,
+        tpReal,    tpReal,
         tpString,  tpString]) of
         1: bool_to_TV( PL.I[0]>PL.I[1] , result);
         2: bool_to_TV( PL.F[0]>PL.F[1] , result);
@@ -675,7 +723,7 @@ function if_less                (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
-        tpNumber,  tpNumber,
+        tpReal,    tpReal,
         tpString,  tpString]) of
         1: bool_to_TV( PL.I[0]<PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<PL.F[1] , result);
@@ -687,7 +735,7 @@ function if_more_or_equal       (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
-        tpNumber,  tpNumber,
+        tpReal,    tpReal,
         tpString,  tpString]) of
         1: bool_to_TV( PL.I[0]>=PL.I[1] , result);
         2: bool_to_TV( PL.F[0]>=PL.F[1] , result);
@@ -699,7 +747,7 @@ function if_less_or_equal       (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
-        tpNumber,  tpNumber,
+        tpReal,    tpReal,
         tpString,  tpString]) of
         1: bool_to_TV( PL.I[0]<=PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<=PL.F[1] , result);
@@ -711,7 +759,7 @@ function if_not_equal           (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
-        tpNumber,  tpNumber,
+        tpReal,    tpReal,
         tpString,  tpString,
         tpByteVector, tpByteVector]) of
         1: bool_to_TV( PL.I[0]<>PL.I[1] , result);
@@ -744,7 +792,7 @@ begin
 end;
 
 function if_equal_sets            (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i, j: integer; r: boolean; A, B: TVList;
+var i: integer; r: boolean; A, B: TVList;
 begin
     case params_is(PL, result, [
         tpNIL, tpNIL,
@@ -993,10 +1041,10 @@ var list: TValues; expr: TVlist; i: integer;
             tmp := call(expr);
             //Write(a.AsString(),'  -  ',b.AsString(),' = ', tmp.AsString());
 
-            if tpNIL(tmp) or vpNumberNegative(tmp) or vpKeyword_LESS(tmp)
+            if tpNIL(tmp) or vpRealNegative(tmp) or vpKeyword_LESS(tmp)
             then result := -1
             else
-                if vpNumberZero(tmp) or vpKeyword_EQUAL(tmp)
+                if vpRealZero(tmp) or vpKeyword_EQUAL(tmp)
                 then result := 0
                 else result := 1;
 
@@ -1825,7 +1873,7 @@ end;
 function if_fixed               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpNumber,  vpIntegerNotNegative]) of
+        tpReal,  vpIntegerNotNegative]) of
         1: result := TVString.Create(FloatToStrF(PL.F[0], ffFixed, 0, PL.I[1]));
     end;
 end;
@@ -2077,7 +2125,7 @@ begin
     end;
 end;
 
-const int_fun_count = 96;
+const int_fun_count = 98;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2095,6 +2143,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RANGE';                 f:if_range;                 s:'(l :optional h)'),
 (n:'SYMBOL';                f:if_symbol;                s:'(n)'),
 (n:'RANDOM';                f:if_random;                s:'(:optional r)'),
+(n:'RE';                    f:if_re;                    s:'(a)'),
+(n:'IM';                    f:if_im;                    s:'(a)'),
 
 (n:'=';                     f:if_equal;                 s:'(a b)'),
 (n:'>';                     f:if_more;                  s:'(a b)'),
@@ -2199,7 +2249,8 @@ const predicates: array[1..14] of record n: unicodestring; f: TTypePredicate; en
 (n:'T?';                    f:tpT),
 (n:'NIL?';                  f:tpNIL),
 (n:'TRUE?';                 f:tpTRUE),
-(n:'NUMBER?';               f:tpNumber),
+//(n:'NUMBER?';               f:tpNumber),
+(n:'REAL?';                 f:tpReal),
 (n:'INTEGER?';              f:tpInteger),
 (n:'FLOAT?';                f:tpFloat),
 (n:'ATOM?';                 f:tpAtom),
@@ -2208,8 +2259,8 @@ const predicates: array[1..14] of record n: unicodestring; f: TTypePredicate; en
 (n:'SYMBOL?';               f:tpSymbol),
 (n:'KEYWORD?';              f:tpKeyword),
 (n:'STRING?';               f:tpString),
-(n:'POSITIVE?';             f:vpNumberPositive),
-(n:'NEGATIVE?';             f:vpNumberNegative)
+(n:'POSITIVE?';             f:vpRealPositive),
+(n:'NEGATIVE?';             f:vpRealNegative)
 
 );
 

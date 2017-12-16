@@ -8,7 +8,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    process, Classes, SysUtils, math
+    process, Classes, SysUtils, math, ucomplex
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -27,6 +27,8 @@ function tpBoolean                                  (V: TValue): boolean;
 function tpBreak                                    (V: TValue): boolean;
 
 function tpByteVector                               (V: TValue): boolean;
+
+function tpComplex                                  (V: TValue): boolean;
 
 function tpCompoundIndexed                          (V: TValue): boolean;
 
@@ -58,6 +60,8 @@ function tpListOfLists                              (V: TValue): boolean;
 
 function tpListOfNumbers                            (V: TValue): boolean;
 
+function tpListOfReals                              (V: TValue): boolean;
+
 function tpListOfOrdinarySymbols                    (V: TValue): boolean;
 
 function tpListOfStrings                            (V: TValue): boolean;
@@ -79,6 +83,8 @@ function tpPredicate                                (V: TValue): boolean;
 function tpProcedure                                (V: TValue): boolean;
 
 function tpRange                                    (V: TValue): boolean;
+
+function tpReal                                     (V: TValue): boolean;
 
 function tpRecord                                   (V: TValue): boolean;
 
@@ -107,6 +113,9 @@ function tpTrue                                     (V: TValue): boolean;
 /////////////////////////////////////
 /// Value Predicates ////////////////
 /////////////////////////////////////
+
+function vpComplexNotZero                           (V: TValue): boolean;
+
 
 function vpIntegerAbsOne                            (V: TValue): boolean;
 
@@ -229,20 +238,23 @@ function vpListOpCall_THEN                          (V: TValue): boolean;
 function vpListSymbolValue                          (V: TValue): boolean;
 
 
-function vpNumberAbsOneOrMore                       (V: TValue): boolean;
-
-function vpNumberNegative                           (V: TValue): boolean;
-
-function vpNumberNotNegative                        (V: TValue): boolean;
-
 function vpNumberNotZero                            (V: TValue): boolean;
-
-function vpNumberPositive                           (V: TValue): boolean;
-
-function vpNumberZero                               (V: TValue): boolean;
 
 
 function vpRangeNotNegative                         (V: TValue): boolean;
+
+
+function vpRealAbsOneOrMore                         (V: TValue): boolean;
+
+function vpRealNegative                             (V: TValue): boolean;
+
+function vpRealNotNegative                          (V: TValue): boolean;
+
+function vpRealNotZero                              (V: TValue): boolean;
+
+function vpRealPositive                             (V: TValue): boolean;
+
+function vpRealZero                                 (V: TValue): boolean;
 
 
 function vpSQLPointerActive                         (V: TValue): boolean;
@@ -302,6 +314,11 @@ end;
 function tpByteVector(V: TValue): boolean;
 begin
     result := V is TVByteVector;
+end;
+
+function tpComplex(V: TValue): boolean;
+begin
+    result := V is TVComplex;
 end;
 
 function tpCompoundIndexed(V: TValue): boolean;
@@ -379,6 +396,11 @@ begin
     result := tphListOf(V, tpNumber);
 end;
 
+function tpListOfReals(V: TValue): boolean;
+begin
+    result := tphListOf(V, tpReal);
+end;
+
 function tpListOfOrdinarySymbols(V: TValue): boolean;
 begin
     result := tphListOf(V, tpOrdinarySymbol);
@@ -406,7 +428,7 @@ end;
 
 function tpNumber(V: TValue): boolean;
 begin
-    result := (V is TVNumber);
+    result := V is TVNumber;
 end;
 
 function tpOperator(V: TValue): boolean;
@@ -432,6 +454,11 @@ end;
 function tpRange(V: TValue): boolean;
 begin
     result := V is TVRange;
+end;
+
+function tpReal(V: TValue): boolean;
+begin
+    result := (V is TVReal);
 end;
 
 function tpRecord(V: TValue): boolean;
@@ -540,6 +567,13 @@ begin
         and (vphSymbolName((V as TVList).look[0], n)
             or (((V as TVList).look[0] is TVOperator)
                 and (((V as TVList).look[0] as TVOperator).op_enum = op_en)));
+end;
+
+
+function vpComplexNotZero                           (V: TValue): boolean;
+begin
+    result := (V is TVComplex) and
+        (((V as TVComplex).fC.re<>0) or ((V as TVComplex).fC.im<>0));
 end;
 
 
@@ -903,40 +937,46 @@ begin
 end;
 
 
-function vpNumberAbsOneOrMore                       (V: TValue): boolean;
+function vpNumberNotZero(V: TValue): boolean;
 begin
-    result := (V is TVNumber) and (abs((V as TVNumber).F) >= 1);
-end;
-
-function vpNumberNegative                           (V: TValue): boolean;
-begin
-    result := (V is TVNumber) and ((V as TVNumber).F < 0);
-end;
-
-function vpNumberNotNegative                        (V: TValue): boolean;
-begin
-    result := (V is TVNumber) and ((V as TVNumber).F >= 0);
-end;
-
-function vpNumberNotZero                            (V: TValue): boolean;
-begin
-    result := (V is TVNumber) and ((V as TVNumber).F <> 0);
-end;
-
-function vpNumberPositive                           (V: TValue): boolean;
-begin
-    result := (V is TVNumber) and ((V as TVNumber).F > 0);
-end;
-
-function vpNumberZero                               (V: TValue): boolean;
-begin
-    result := (V is TVNumber) and ((V as TVNumber).F = 0);
+    result := (V is TVNumber) and not ((V as TVNumber).C = _0);
 end;
 
 
 function vpRangeNotNegative                         (V: TValue): boolean;
 begin
     result := (V is TVRange) and ((V as TVRange).high>=(V as TVRange).low);
+end;
+
+
+function vpRealAbsOneOrMore                         (V: TValue): boolean;
+begin
+    result := (V is TVReal) and (abs((V as TVReal).F) >= 1);
+end;
+
+function vpRealNegative                             (V: TValue): boolean;
+begin
+    result := (V is TVReal) and ((V as TVReal).F < 0);
+end;
+
+function vpRealNotNegative                          (V: TValue): boolean;
+begin
+    result := (V is TVReal) and ((V as TVReal).F >= 0);
+end;
+
+function vpRealNotZero                              (V: TValue): boolean;
+begin
+    result := (V is TVReal) and ((V as TVReal).F <> 0);
+end;
+
+function vpRealPositive                             (V: TValue): boolean;
+begin
+    result := (V is TVReal) and ((V as TVReal).F > 0);
+end;
+
+function vpRealZero                                 (V: TValue): boolean;
+begin
+    result := (V is TVReal) and ((V as TVReal).F = 0);
 end;
 
 

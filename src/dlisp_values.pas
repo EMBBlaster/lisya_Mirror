@@ -12,7 +12,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    SysUtils, Classes, Contnrs,
+    SysUtils, Classes, Contnrs, ucomplex,
     lisia_charset, zstream, mar;
 
 
@@ -84,44 +84,62 @@ type
     end;
 
 
-    { TVNumber }
-
     TVNumber = class (TValue)
+        function C: COMPLEX; virtual; abstract;
+    end;
+
+    { TVComplex }
+
+    TVComplex = class (TVNumber)
+        fC: COMPLEX;
+        function C: COMPLEX; override;
+        constructor Create(re, im: double); overload;
+        constructor Create(_c: COMPLEX); overload;
+        function Copy: TValue; override;
+        function AsString: unicodestring; override;
+        destructor Destroy; override;
+    end;
+
+    { TVReal }
+
+    TVReal = class (TVNumber)
         function F: double; virtual; abstract;
     end;
 
 
     { TVInteger }
 
-    TVInteger = class (TVNumber)
+    TVInteger = class (TVReal)
         fI: Int64;
         constructor Create(I: Int64);
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
 
         function F: double; override;
+        function C: COMPLEX; override;
     end;
 
 
-  { TVRange }
+    { TVRange }
 
-  TVRange = class (TValue)
-    low, high: Int64;
-    constructor Create(l,h: Int64);
-    function Copy(): TValue; override;
-    function AsString(): unicodestring; override;
-  end;
+    TVRange = class (TValue)
+        low, high: Int64;
+        constructor Create(l,h: Int64);
+        function Copy(): TValue; override;
+        function AsString(): unicodestring; override;
+    end;
 
-  { TVFloat }
+    { TVFloat }
 
-  TVFloat = class (TVNumber)
-    fF: double;
-    constructor Create(F: double);
-    function Copy(): TValue; override;
-    function AsString(): unicodestring; override;
+    TVFloat = class (TVReal)
+        fF: double;
+        constructor Create(F: double);
+        function Copy(): TValue; override;
+        function AsString(): unicodestring; override;
 
-    function F: double; override;
-  end;
+        function F: double; override;
+        function C: COMPLEX; override;
+    end;
 
 
     { TVTime }
@@ -326,6 +344,7 @@ type
         function GetElementF(index: integer): double;
         function GetElementS(index: integer): unicodestring;
         function GetElementL(index: integer): TVList;
+        function GetElementC(index: integer): COMPLEX;
         function LookElementSYM(index: integer): TVSymbol;
     public
         constructor Create; overload;
@@ -353,6 +372,7 @@ type
         property F[index: integer]: double read GetElementF;
         property S[index: integer]: unicodestring read GetElementS;
         property L[index: integer]: TVList read GetElementL;
+        property C[index: integer]: COMPLEX read GetElementC;
         property SYM[index: integer]: TVSymbol read LookElementSYM;
 
         procedure SetCapacity(c: integer);
@@ -761,6 +781,42 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVComplex }
+
+function TVComplex.C: COMPLEX;
+begin
+   result := fC;
+end;
+
+constructor TVComplex.Create(re, im: double);
+begin
+    fC.re := re;
+    fC.im := im;
+end;
+
+constructor TVComplex.Create(_c: COMPLEX);
+begin
+    fC := _c;
+end;
+
+function TVComplex.Copy: TValue;
+begin
+    result := TVComplex.Create(fC.re, fC.im);
+end;
+
+function TVComplex.AsString: unicodestring;
+begin
+    result := FloatToStr(fC.re);
+    if fC.im<0
+    then result := result+'-i'+FloatToStr(-fC.im)
+    else result := result+'+i'+FloatToStr(+fC.im);
+end;
+
+destructor TVComplex.Destroy;
+begin
+    inherited Destroy;
 end;
 
 { TVPredicate }
@@ -2155,6 +2211,12 @@ begin
     result := fF;
 end;
 
+function TVFloat.C: COMPLEX;
+begin
+    result.im := 0;
+    result.re := fF;
+end;
+
 
 { TVString }
 
@@ -2226,6 +2288,12 @@ function    TVInteger.AsString: unicodestring; begin result := IntToStr(fI); end
 function TVInteger.F: double;
 begin
     result := fI;
+end;
+
+function TVInteger.C: COMPLEX;
+begin
+    result.im := 0;
+    result.re := fI;
 end;
 
 constructor TVInteger.Create(I: Int64); begin fI := I; end;
@@ -2331,8 +2399,8 @@ end;
 
 function TVList.GetElementF(index: integer): double;
 begin
-    Assert(fL[index] is TVNumber, 'Элемент '+IntToStr(index)+' не число');
-    result := (fL[index] as tvNumber).F;
+    Assert(fL[index] is TVReal, 'Элемент '+IntToStr(index)+' не число');
+    result := (fL[index] as TVReal).F;
 end;
 
 function TVList.GetElementS(index: integer): unicodestring;
@@ -2346,6 +2414,12 @@ begin
     //writeln(self.asstring);
     Assert(fL[index] is TVList, 'Элемент '+IntToStr(index)+' не список');
     result := (fL[index] as TVList);
+end;
+
+function TVList.GetElementC(index: integer): COMPLEX;
+begin
+    Assert(fL[index] is TVNumber, 'Элемент '+IntToStr(index)+' не комплексное число');
+    result := (fL[index] as TVNumber).C;
 end;
 
 function TVList.LookElementSYM(index: integer): TVSymbol;

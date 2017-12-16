@@ -168,6 +168,35 @@ begin
     result :=  TryStrToFloat(s, f, fs);
 end;
 
+function str_is_complex(s: unicodestring; out re, im: double): boolean;
+var fs: TFormatSettings; i_pos, fs_pos, s_pos: integer;
+    re_s, im_s: unicodestring;
+    sign: unicodechar;
+begin
+    result := false;
+
+    i_pos := PosU('i', s);
+    if i_pos=0 then i_pos := PosU('м', s);
+    if i_pos=0 then exit;
+
+    if i_pos>2 then re_s := s[1..i_pos-2] else re_s :='0';
+    im_s := s[i_pos+1..Length(s)];
+
+    if i_pos>1 then sign := s[i_pos-1] else sign := '+';
+
+    fs.DecimalSeparator:='.';
+    result := TryStrToFloat(re_s, re, fs) and TryStrToFloat(im_s, im, fs);
+
+    if not result then begin
+        fs.DecimalSeparator:=',';
+        result :=  TryStrToFloat(re_s, re, fs) and TryStrToFloat(im_s, im, fs);
+    end;
+
+    if not result then exit;
+
+    if sign='-' then im := - im;
+end;
+
 function is_nil(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).Count=0);
@@ -178,7 +207,7 @@ function read_u(sp: TVStreamPointer; ss_in: PSS = nil): TValue;
 var
     q, r, sq: boolean;
     p: integer;
-    f: double;
+    f, re, im: double;
     l, h: Int64;
     ch: unicodechar;
     acc, trans: unicodestring;
@@ -334,6 +363,10 @@ begin
 
     if str_is_float(acc, f)
     then result := TVFloat.Create(f)
+    else
+
+    if str_is_complex(acc, re, im)
+    then result := TVComplex.Create(re, im)
     else
 
     if str_is_range(acc, l, h)

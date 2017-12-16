@@ -171,7 +171,7 @@ begin
     if tpInteger(A) and tpInteger(B)
     then type_v := int
     else
-        if tpNumber(A) and tpNumber(B)
+        if tpReal(A) and tpReal(B)
         then type_v := num
         else
             if tpString(A) and tpString(B)
@@ -196,7 +196,7 @@ begin
 
     case type_v of
         int: result := (A as TVInteger).fI=(B as TVInteger).fI;
-        num: result := (A as TVNumber).F=(B as TVNumber).F;
+        num: result := (A as TVReal).F=(B as TVReal).F;
         str: result := (A as TVString).S=(B as TVString).S;
         sym: result := (A as TVSymbol).N=(B as TVSymbol).N;
           t: result := true;
