@@ -1,4 +1,4 @@
-
+﻿
 (fmt nil "множества... ")
 (block
     (assertion (equal-sets \(1 2) \(2 1)) "equal-sets 1")

@@ -702,6 +702,30 @@ type
         function AsString: unicodestring; override;
     end;
 
+
+    { TVDeflateStream }
+
+    TVDeflateStream = class (TVStream)
+        target: PVariable;
+
+        constructor Create(_target: PVariable; enc: TStreamEncoding = seUTF8;
+            head: boolean = false);
+        destructor Destroy; override;
+
+//        procedure read_BOM; override;
+        function AsString: unicodestring; override;
+    end;
+
+    { TVMemoryStream }
+
+    TVMemoryStream = class (TVStream)
+        constructor Create; overload;
+        constructor Create(const bb: TBytes); overload;
+        constructor Create(const s: unicodestring); overload;
+
+        function AsString: unicodestring;
+    end;
+
     { TVStreamPointer2 }
 
     TVStreamPointer = class (TValue)
@@ -782,6 +806,58 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVDeflateStream }
+
+constructor TVDeflateStream.Create(_target: PVariable; enc: TStreamEncoding;
+    head: boolean);
+begin
+    encoding := enc;
+    target := _target;
+    //WriteLn('inflate>> ',target.V.AsString());
+    fStream := TCompressionStream.create(clDefault,
+        (target.V as TVStream).fstream, not head);
+end;
+
+destructor TVDeflateStream.Destroy;
+begin
+    ReleaseVariable(target);
+    inherited Destroy;
+end;
+
+function TVDeflateStream.AsString: unicodestring;
+begin
+    result := '#<DEFLATE-STREAM '+target.V.AsString+'>';
+end;
+
+{ TVMemoryStream }
+
+constructor TVMemoryStream.Create;
+begin
+    encoding := seUTF8;
+    fstream := TMemoryStream.Create;
+end;
+
+constructor TVMemoryStream.Create(const bb: TBytes);
+var i: integer;
+begin
+    encoding := seUTF8;
+    fstream := TMemoryStream.Create;
+    for i := 0 to high(bb) do fstream.WriteByte(bb[i]);
+end;
+
+constructor TVMemoryStream.Create(const s: unicodestring);
+var i: integer;
+begin
+    encoding := seUTF8;
+    fstream := TMemoryStream.Create;
+    for i := 1 to Length(s) do self.write_char(s[i]);
+end;
+
+function TVMemoryStream.AsString: unicodestring;
+begin
+    result := '<#MEMORY STREAM>'
 end;
 
 { TVComplex }

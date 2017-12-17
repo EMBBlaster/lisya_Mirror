@@ -153,6 +153,7 @@ function ifh_bind(sign, PL: TValue): TBindings;
     end;
 var i: integer;
 begin
+
    // WriteLn('bind_PL>> ',PL.AsString);
     bind(sign, PL);
    // for i := 0 to high(result) do begin

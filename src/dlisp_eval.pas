@@ -13,7 +13,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    process, Classes, SysUtils, math, crc, ucomplex
+    process, Classes, SysUtils, math, crc, ucomplex, zstream
     , dlisp_values, dlisp_read, lisya_xml, mar,
     lisya_packages
     ,lisya_predicates
@@ -823,7 +823,7 @@ end;
 
 function if_test_dyn            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
-    ifh_bind(PL.look[0] as TVList, PL.look[1] as TVList);
+    //ifh_bind(PL.look[0] as TVList, PL.look[1] as TVList);
 
     result := TVT.Create;
 end;
@@ -1589,10 +1589,48 @@ begin
     end;
 end;
 
-function if_inflate             (const PL: TVList; {%H-}call: TCallProc): TValue;
+
+function if_deflate             (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer; bv: TVByteVector; cs: TCompressionStream; ms: TMemoryStream;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpKeywordOrNIL, tpAny,
+        tpByteVector,           tpKeywordOrNil, tpAny,
+        tpStreamPointer, tpKeywordOrNIL, tpAny]) of
+        1:  begin
+            result := TVStreamPointer.Create(
+                NewVariable(
+                    TVDeflateStream.Create(
+                        RefVariable((PL.look[0] as TVStreamPointer).body),
+                        ifh_keyword_to_encoding(PL.look[1]),
+                        tpTrue(PL.look[2]))));
+        end;
+        2: begin
+            bv := PL.look[0] as TVByteVector;
+            ms := TMemoryStream.Create;
+            ms.Position :=0 ;
+            cs := TCompressionStream.create(clDefault, ms, not tpTrue(PL.look[2]));
+            for i := 0 to high(bv.fBytes) do cs.WriteByte(bv.fBytes[i]);
+            cs.Free;
+            ms.Position := 0;
+            result := TVByteVector.Create;
+            bv := result as TVByteVector;
+            //writeln('ms.size>> ', ms.Size);
+            bv.SetCount(ms.Size);
+            for i := 0 to high(bv.fBytes) do bv.fBytes[i] := ms.ReadByte;
+            ms.Free;
+            //writeln('bv>> ', bv.AsString());
+        end;
+        3: raise ELE.Create('inactive stream', 'invalid parameters');
+    end;
+end;
+
+function if_inflate             (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer; bv: TVByteVector; ds: TDecompressionStream; ms: TMemoryStream;
+begin
+    case params_is(PL, result, [
+        vpStreamPointerActive, tpKeywordOrNIL, tpAny,
+        tpByteVector,           tpKeywordOrNil, tpAny,
         tpStreamPointer, tpKeywordOrNIL, tpAny]) of
         1:  begin
             result := TVStreamPointer.Create(
@@ -1602,7 +1640,48 @@ begin
                         ifh_keyword_to_encoding(PL.look[1]),
                         tpTrue(PL.look[2]))));
         end;
-        2: raise ELE.Create('inactive stream', 'invalid parameters');
+        2: begin
+            bv := PL.look[0] as TVByteVector;
+            ms := TMemoryStream.Create;
+            ms.SetSize(Length(bv.fBytes));
+            ms.Position :=0 ;
+            for i := 0 to high(bv.fBytes) do ms.WriteByte(bv.fBytes[i]);
+            try
+                ms.Position := 0;
+                ds := TDecompressionStream.create(ms, not tpTrue(PL.look[2]));
+                result := TVByteVector.Create;
+                bv := result as TVByteVector;
+                try
+                    while true do bv.Add(ds.ReadByte);
+                except
+                    //on E:EDecompressionError do;
+                end;
+            finally
+                ms.Free;
+                ds.Free;
+            end;
+        end;
+        3: raise ELE.Create('inactive stream', 'invalid parameters');
+    end;
+end;
+
+function if_memory_stream       (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpByteVector,
+        tpString,
+        tpNIL]) of
+        1: result := TVStreamPointer.Create(
+                NewVariable(
+                    TVMemoryStream.Create(
+                        (PL.look[0] as TVByteVector).fBytes)));
+        2: result := TVStreamPointer.Create(
+                NewVariable(
+                    TVMemoryStream.Create(
+                        (PL.look[0] as TVString).S)));
+        3: result := TVStreamPointer.Create(
+                NewVariable(
+                    TVMemoryStream.Create));
     end;
 end;
 
@@ -2126,7 +2205,7 @@ begin
     end;
 end;
 
-const int_fun_count = 97;
+const int_fun_count = 99;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2210,7 +2289,9 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'OPEN-FILE';             f:if_open_file;             s:'(n :key mode encoding)'),
 (n:'CLOSE-FILE';            f:if_close_stream;          s:'(s)'),
+(n:'DEFLATE';               f:if_deflate;               s:'(s :key encoding header)'),
 (n:'INFLATE';               f:if_inflate;               s:'(s :key encoding header)'),
+(n:'MEMORY-STREAM';         f:if_memory_stream;         s:'(:optional bv)'),
 (n:'SET-ENCODING';          f:if_set_encoding;          s:'(s e)'),
 //(n:'SET-COMPRESSION-METHOD';f:if_set_compression_method;s:'(s c)'),
 (n:'STREAM-POSITION';       f:if_stream_position;       s:'(s :optional p)'),
@@ -2478,7 +2559,7 @@ end;
 
 procedure TEvaluationFlow.oph_bind(s, P: TValue; constant: boolean;
     st: TVSymbolStack);
-var bind: TBindings; i: integer; _: integer;
+var bind: TBindings; i: integer; _: integer; curry: boolean;
 begin
     if st=nil then st := stack;
     bind := ifh_bind(s, p);
@@ -3644,7 +3725,6 @@ begin try
             result.Free;
             result := tmp;
         end;
-//    if PL.look[0] is
 finally
     stack := tmp_stack;
     params.Free;

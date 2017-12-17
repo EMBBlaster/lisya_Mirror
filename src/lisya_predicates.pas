@@ -130,6 +130,8 @@ function vpIntegerNotZero                           (V: TValue): boolean;
 function vpIntegerRoundToRange                      (V: TValue): boolean;
 
 
+function vpKeyword__                                (V: TValue): boolean;
+
 function vpKeyword_ALL                              (V: TValue): boolean;
 
 function vpKeyword_APPEND                           (V: TValue): boolean;
@@ -527,8 +529,8 @@ end;
 /////////////////////////////////////
 
 //бесполезная оптимизация?
-type Tkw =                                   (kwFlag, kwKey, kwOptional, kwRest);
-const kwNames: array[Tkw] of unicodestring = (':FLAG',':KEY',':OPTIONAL',':REST');
+type Tkw =                                   (kwFlag, kwKey, kwOptional, kwRest, kw_);
+const kwNames: array[Tkw] of unicodestring = (':FLAG',':KEY',':OPTIONAL',':REST','_');
 var kwN: array[Tkw] of integer;
 
 function vphKeywordName(V: TValue; const n: unicodestring): boolean;
@@ -612,6 +614,11 @@ begin
             high(math.TRoundToRange));
 end;
 
+
+function vpKeyword__                                (V: TValue): boolean;
+begin
+    result := (V is TVKeyword) and ((V as TVSymbol).N = kwN[kw_]);
+end;
 
 function vpKeyword_ALL                              (V: TValue): boolean;
 begin
