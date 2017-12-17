@@ -20,6 +20,8 @@ function ifh_equal(const A,B: TValue): boolean;
 
 function ifh_member(const L: TVList; const E: TValue): boolean;
 
+function ifh_difference         (const A, B: TVList): TVList;
+
 function ifh_union              (const L: TVList): TVList;
 
 implementation
@@ -240,6 +242,15 @@ begin
             result := true;
             break;
         end;
+end;
+//------------------------------------------------------------------------------
+function ifh_difference         (const A, B: TVList): TVList;
+var i: integer;
+begin
+    result := TVList.Create;
+    for i := 0 to A.high do
+        if not ifh_member(B, A.look[i])
+        then result.add(A[i]);
 end;
 //------------------------------------------------------------------------------
 function ifh_union              (const L: TVList): TVList;

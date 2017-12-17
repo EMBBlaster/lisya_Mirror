@@ -496,7 +496,8 @@ begin
     {5} tpDateTime, tpDatetime,
     {6} tpDateTime, tpTimeInterval,
     {7} tpTimeInterval, tpTimeInterval,
-    {8} tpNumber,   tpNumber]) of
+    {8} tpNumber,   tpNumber,
+    {9} tpList,     tpList]) of
         1: result := TVInteger.Create(-PL.I[0]);
         2: result := TVFloat.Create(-PL.F[0]);
         3: result := TVInteger.Create(PL.I[0] - PL.I[1]);
@@ -506,6 +507,7 @@ begin
         6: result := TVDateTime.Create(
             (PL.look[0] as TVTime).fDT - (PL.look[1] as TVTime).fDT);
         8: result := TVComplex.Create(PL.C[0] - PL.C[1]);
+        9: result := ifh_difference(PL.L[0], PL.L[1]);
     end;
 end;
 
@@ -1139,17 +1141,9 @@ begin
 end;
 
 function if_difference          (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; A, B: TVList;
 begin
     case params_is(PL, result, [tpList, tpList]) of
-        1: begin
-            A := PL.L[0];
-            B := PL.L[1];
-            result := TVList.Create;
-            for i := 0 to A.high do
-                if not ifh_member(B, A.look[i])
-                then (result as TVList).add(A[i]);
-        end;
+        1: result := ifh_difference(PL.L[0], PL.L[1]);
     end;
 end;
 
