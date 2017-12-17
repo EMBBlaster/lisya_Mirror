@@ -906,7 +906,7 @@ end;
 
 function vpListOpCall_ELSE                          (V: TValue): boolean;
 begin
-    result := vphListOpCall(V, 'ELSE', oeELSE);
+    //result := vphListOpCall(V, 'ELSE', oeELSE);
 end;
 
 function vpListOpCall_ELT                           (V: TValue): boolean;
@@ -916,12 +916,12 @@ end;
 
 function vpListOpCall_EXCEPTION                     (V: TValue): boolean;
 begin
-    result := vphListOpCall(V, 'EXCEPTION', oeEXCEPTION);
+    //result := vphListOpCall(V, 'EXCEPTION', oeEXCEPTION);
 end;
 
 function vpListOpCall_THEN                          (V: TValue): boolean;
 begin
-    result := vphListOpCall(V, 'THEN', oeTHEN);
+    //result := vphListOpCall(V, 'THEN', oeTHEN);
 end;
 
 function vpListSymbolValue                          (V: TValue): boolean;

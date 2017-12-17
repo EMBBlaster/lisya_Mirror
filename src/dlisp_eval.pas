@@ -57,6 +57,7 @@ type
         function op_debug(PL: TVList): TValue;
         function op_default(PL: TVList): TValue;
         function op_elt(PL: TVList): TValue;
+        function op_error(PL: TVList): TValue;
         function op_execute_file(PL: TVList): TValue;
         function op_filter(PL: TVList): TValue;
         function op_for(PL: TVList): TValue;
@@ -827,13 +828,13 @@ begin
     result := TVT.Create;
 end;
 
-function if_error               (const PL: TVList; {%H-}call: TCallProc): TValue;
-begin
-    case params_is (PL, result, [
-        tpString, tpList]) of
-        1: raise ELE.Create(ifh_format(PL.L[1]), PL.S[0]);
-    end;
-end;
+//function if_error               (const PL: TVList; {%H-}call: TCallProc): TValue;
+//begin
+//    case params_is (PL, result, [
+//        tpString, tpList]) of
+//        1: raise ELE.Create(ifh_format(PL.L[1]), PL.S[0]);
+//    end;
+//end;
 
 function if_extract_file_ext    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2125,7 +2126,7 @@ begin
     end;
 end;
 
-const int_fun_count = 98;
+const int_fun_count = 97;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2157,7 +2158,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'EQUAL-SETS';            f:if_equal_sets;            s:'(a b)'),
 
 (n:'TEST-DYN';              f:if_test_dyn;              s:'(a b)'),
-(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
+//(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
 
 
 (n:'EXTRACT-FILE-EXT';      f:if_extract_file_ext;      s:'(s)'),
@@ -2289,8 +2290,9 @@ begin
             oeDEBUG     : op('DEBUG');
             oeDEFAULT   : op('DEFAULT');
             oeELT       : op('ELT');
-            oeELSE      : op('ELSE');
-            oeEXCEPTION : op('EXCEPTION');
+            oeERROR     : op('ERROR');
+            //oeELSE      : op('ELSE');
+            //oeEXCEPTION : op('EXCEPTION');
             oeEXECUTE_FILE: op('EXECUTE-FILE');
             oeFILTER    : op('FILTER');
             oeFOR       : op('FOR');
@@ -2312,7 +2314,7 @@ begin
             oeRECORD_AS : op('RECORD-AS');
             oeRETURN    : op('RETURN');
             oeSET       : op('SET');
-            oeTHEN      : op('THEN');
+            //oeTHEN      : op('THEN');
             oeVAL       : op('VAL');
             oeVAR       : op('VAR');
             oeWHEN      : op('WHEN');
@@ -2409,7 +2411,7 @@ label return;
     begin
         result := false;
         ec := UpperCaseU(exception_class);
-        if vpListOpCall_EXCEPTION(PL.look[pc]) then
+        if vpListHeaded_EXCEPTION(PL.look[pc]) then
              if (PL.L[pc].Count>=2) and tpString(PL.L[pc].look[1])
              then begin
                 eh := UpperCaseU(PL.L[pc].S[1]);
@@ -2699,12 +2701,12 @@ end;
 
 function TEvaluationFlow.op_secondary_error(PL: TVList): TValue;
 begin
-    case (PL.look[0] as TVOperator).op_enum of
-        oeTHEN : raise ELE.Create('THEN not inside IF', 'syntax');
-        oeELSE : raise ELE.Create('ELSE not inside IF', 'syntax');
-        oeEXCEPTION : raise ELE.Create('EXCEPTION not inside block', 'syntax');
-        else raise ELE.Create('secondary op error');
-    end;
+   // case (PL.look[0] as TVOperator).op_enum of
+        //oeTHEN : raise ELE.Create('THEN not inside IF', 'syntax');
+        //oeELSE : raise ELE.Create('ELSE not inside IF', 'syntax');
+        //oeEXCEPTION : raise ELE.Create('EXCEPTION not inside block', 'syntax');
+   //     else raise ELE.Create('secondary op error');
+  //  end;
     result := TVT.Create;
 end;
 
@@ -2787,6 +2789,76 @@ begin
     CP := opl_elt(PL);
     result := CP.value;
     CP.Free;
+end;
+
+function TEvaluationFlow.op_error(PL: TVList): TValue;
+var emsg, eclass: TValue; smsg,sclass,sstack: unicodestring;
+    P: PVariable;
+    sym_eclass, sym_emsg, sym_estack: TVSymbol;
+begin
+    //если задан класс [и сообщение] то вызывается новое исключение
+    //если параметры не заданы, то в текущем стеке ищется ранее возникшее исключение
+    //стэк исключения всегда ищется в стеке и если не найден принимается пустым
+    if PL.Count>3 then raise ELE.Malformed('ERROR');
+
+    sclass := '';
+    if PL.Count>1 then try
+        eclass := eval(PL[1]);
+        if tpString(eclass)
+        then sclass := (eclass as TVString).S
+        else raise ELE.InvalidParameters;
+    finally
+        eclass.Free;
+    end;
+
+    smsg := '';
+    if PL.Count>2 then try
+        emsg := eval(PL[2]);
+        if tpString(emsg)
+        then smsg := (emsg as TVString).S
+        else raise ELE.InvalidParameters;
+    finally
+        emsg.Free;
+    end;
+
+    sstack := '';
+    try
+        sym_estack := TVSymbol.Create('EXCEPTION-STACK');
+        P := nil;
+        P := stack.find_ref_or_nil(sym_estack);
+        if (p<>nil) and tpString(p.V)
+        then sstack := (P.V as TVString).S
+        else sstack := '';
+    finally
+        sym_estack.Free;
+        ReleaseVariable(P);
+    end;
+
+    if PL.Count=1 then try
+        sym_eclass := TVSymbol.Create('EXCEPTION-CLASS');
+        P := nil;
+        P := stack.find_ref_or_nil(sym_eclass);
+        if (p<>nil) and tpString(p.V)
+        then sclass := (P.V as TVString).S
+        else raise ELE.Create('exception not found','syntax');
+    finally
+        sym_eclass.Free;
+        ReleaseVariable(P);
+    end;
+
+    if PL.Count=1 then try
+        sym_emsg := TVSymbol.Create('EXCEPTION-MESSAGE');
+        P := nil;
+        P := stack.find_ref_or_nil(sym_emsg);
+        if (p<>nil) and tpString(p.V)
+        then smsg := (P.V as TVString).S
+        else raise ELE.Create('exception not found','syntax');
+    finally
+        sym_emsg.Free;
+        ReleaseVariable(P);
+    end;
+
+    raise ELE.Create(smsg, sclass, sstack);
 end;
 
 function TEvaluationFlow.op_execute_file(PL: TVList): TValue;
@@ -3044,8 +3116,7 @@ var condition: TValue;
 begin
     if (PL.Count<3) or (PL.Count>4)
         //TODO: эти проверки синтаксиса IF нужны только для более ясного сообщения об ошибке
-        //их отсутствие приведёт к падению с сообщением symbol not bound THEN/ELSE
-        //при условии, что переменные с такими именами не существуют
+        //их отсутствие приведёт к падению с сообщением THEN/ELSE is not subprogram
         //or vpListHeaded_ELSE(PL.look[2])
         //or ((PL.Count=4) and vpListHeaded_THEN(PL.look[3]))
     then raise ELE.malformed('IF');
@@ -3055,14 +3126,14 @@ try
 
     if not tpNIL(condition)
     then begin
-        if vpListOpCall_THEN(PL.look[2])
+        if vpListHeaded_THEN(PL.look[2])
         then result := oph_block(PL.L[2], 1, false)
         else result := eval(PL[2]);
     end
     else
         if PL.Count=4
         then begin
-            if vpListOpCall_ELSE(PL.look[3])
+            if vpListHeaded_ELSE(PL.look[3])
             then result := oph_block(PL.L[3], 1, false)
             else result := eval(PL[3]);
         end
@@ -3617,8 +3688,9 @@ begin
         oeDEBUG     : result := op_debug(PL);
         oeDEFAULT   : result := op_default(PL);
         oeELT       : result := op_elt(PL);
-        oeELSE      : result := op_secondary_error(PL);
-        oeEXCEPTION : result := op_secondary_error(PL);
+        oeERROR     : result := op_error(PL);
+        //oeELSE      : result := op_secondary_error(PL);
+        //oeEXCEPTION : result := op_secondary_error(PL);
         oeEXECUTE_FILE: result := op_execute_file(PL);
         oeFILTER    : result := op_filter(PL);
         oeFOR       : result := op_for(PL);
@@ -3641,7 +3713,7 @@ begin
         oeRECORD_AS : result := op_record_as(PL);
         oeRETURN    : result := op_return(PL);
         oeSET       : result := op_set(PL);
-        oeTHEN      : result := op_secondary_error(PL);
+        //oeTHEN      : result := op_secondary_error(PL);
         oeVAL       : result := op_val(PL);
         oeVAR       : result := op_var(PL);
         oeWHEN      : result := op_when(PL);

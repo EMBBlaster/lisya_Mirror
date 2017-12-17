@@ -23,6 +23,9 @@ procedure print_ln(V:TValue; stream: TStream);
 
 implementation
 
+const special_keywords: array[1..4] of unicodestring = (
+    '_', 'ELSE', 'EXCEPTION', 'THEN');
+
 type TSS = record
         s: unicodestring;
         i: integer;
@@ -195,6 +198,19 @@ begin
     if not result then exit;
 
     if sign='-' then im := - im;
+end;
+
+function str_is_keyword(s: unicodestring): boolean;
+var i: integer; us: unicodestring;
+begin
+    result := true;
+    if s[1]=':' then exit;
+
+    us := UpperCaseU(s);
+    for i := 1 to high(special_keywords) do
+        if us = special_keywords[i] then Exit;
+
+    result := false;
 end;
 
 function is_nil(V: TValue): boolean;
@@ -377,7 +393,7 @@ begin
     then result := read_from_string(trans)
     else
 
-    if acc[1]=':'
+    if str_is_keyword(acc)
     then result := TVKeyword.Create(acc)
     else
 
