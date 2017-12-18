@@ -674,9 +674,11 @@ function if_random              (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         vpIntegerNotNegative,
+        tpListNotEmpty,
         tpNIL]) of
         1: result := TVInteger.Create(system.Random(PL.I[0]));
-        2: result := TVFloat.Create(system.Random);
+        2: result := PL.L[0][system.Random(PL.L[0].Count)];
+        3: result := TVFloat.Create(system.Random);
     end;
 end;
 
