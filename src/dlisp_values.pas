@@ -12,7 +12,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    SysUtils, Classes, Contnrs, ucomplex,
+    SysUtils, Classes, Contnrs, ucomplex, crc,
     lisia_charset, zstream, mar;
 
 
@@ -48,6 +48,7 @@ type
     TValue = class
         function Copy(): TValue; virtual; abstract;
         function AsString(): unicodestring; virtual; abstract;
+        function hash: Int64; virtual;
     end;
     TValueList = array of TValue;
 
@@ -81,6 +82,7 @@ type
     TVT = class (TValue)
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
     end;
 
 
@@ -98,6 +100,7 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         destructor Destroy; override;
+        function hash: Int64; override;
     end;
 
     { TVReal }
@@ -114,6 +117,7 @@ type
         constructor Create(I: Int64);
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
 
         function F: double; override;
         function C: COMPLEX; override;
@@ -127,6 +131,7 @@ type
         constructor Create(l,h: Int64);
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
     end;
 
     { TVFloat }
@@ -136,6 +141,7 @@ type
         constructor Create(F: double);
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
 
         function F: double; override;
         function C: COMPLEX; override;
@@ -162,6 +168,7 @@ type
         constructor Create(dt: TDateTime);
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
     end;
 
     { TVDateTime }
@@ -170,6 +177,7 @@ type
         constructor Create(dt: TDateTime);
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
 
         function AsSQLDateTime: unicodestring;
     end;
@@ -194,6 +202,7 @@ type
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
 
         class function symbol_n(n: unicodestring): integer;
     end;
@@ -220,6 +229,7 @@ type
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
     end;
 
 
@@ -228,6 +238,7 @@ type
     TVBreak = class (TVGo)
         function Copy: TVBreak; override;
         function AsString: unicodestring; override;
+        function hash: Int64; override;
     end;
 
 
@@ -236,6 +247,7 @@ type
     TVContinue = class (TVGo)
         function Copy: TVContinue; override;
         function AsString: unicodestring; override;
+        function hash: Int64; override;
     end;
 
 
@@ -247,6 +259,7 @@ type
         destructor Destroy; override;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
+        function hash: Int64; override;
     end;
 
     { TVPrimitive }
@@ -256,6 +269,7 @@ type
         //что компонент является примитивным типом
         function Copy: TValue; override;
         function AsString: unicodestring; override;
+        function hash: Int64; override;
     end;
 
 
@@ -272,6 +286,7 @@ type
         destructor Destroy; override;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
+        function hash: Int64; override;
 
         function constant: boolean;
         function value: TValue;
@@ -322,8 +337,11 @@ type
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
+
 
         function Count: integer; override;
+        function crc32: DWORD;
 
         function subseq(istart: integer; iend: integer = -1): TValue; override;
     end;
@@ -354,6 +372,7 @@ type
         function Copy(): TValue; override;
         function Phantom_Copy: TVList;
         function AsString(): unicodestring; override;
+        function hash: int64; override;
 
         function Count: integer; override;
 
@@ -407,12 +426,14 @@ type
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
 
         property bytes[Index: integer]: Int64 read GetByte write SetByte; default;
         procedure SetCount(l: integer);
         procedure Add(b: Int64);
 
         function equal_to(BV: TVByteVector): boolean;
+        function crc32: DWORD;
 
         function count: integer; override;
         function subseq(istart: integer; iend: integer = -1): TValue; override;
@@ -441,6 +462,7 @@ type
         destructor Destroy; override;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
+        function hash: Int64; override;
 
         property slot[index: unicodestring]:TValue read fGetSlot write fSetSlot;
         property Items[index: integer]: TValue read GetItem write SetItem; default;
@@ -451,7 +473,7 @@ type
 
         function count: integer; override;
         function name_n(n: integer): unicodestring;
-
+        //TODO: сравнение записей должно быть независимым от порядка слотов
         function get_n_of(index: unicodestring): integer;
     end;
 
@@ -538,6 +560,7 @@ type
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: Int64; override;
 
         procedure Complement;
     end;
@@ -577,6 +600,7 @@ type
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: int64; override;
     end;
 
     { TVPredicate }
@@ -589,6 +613,7 @@ type
         constructor Create(_nN: integer; _body: TTypePredicate); overload;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
+        function hash: int64; override;
     end;
 
     { TVOperator }
@@ -646,6 +671,7 @@ type
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
+        function hash: int64; override;
     end;
 
 
@@ -661,8 +687,9 @@ type
         encoding: TStreamEncoding;
 
         destructor Destroy; override;
-
         function Copy: TValue; override;
+
+        function hash: int64; override;
 
         function read_byte(out b: byte): boolean;
         function read_bytes(var bb: TBytes; count: integer = -1): boolean;
@@ -737,6 +764,7 @@ type
 
         function Copy: TValue; override;
         function AsString: unicodestring; override;
+        function hash: int64; override;
 
         procedure close_stream;
     end;
@@ -806,6 +834,14 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+
+{ TValue }
+
+function TValue.hash: Int64;
+begin
+    raise ELE.Create('hash not implemented');
 end;
 
 { TVDeflateStream }
@@ -896,6 +932,13 @@ begin
     inherited Destroy;
 end;
 
+function TVComplex.hash: Int64;
+begin
+    if fC.im=0
+    then result := crc32(0, @fC.re, SizeOf(fc.re))
+    else result := crc32(0, @fC, SizeOf(COMPLEX));
+end;
+
 { TVPredicate }
 
 constructor TVPredicate.Create(name: unicodestring; _body: TTypePredicate);
@@ -918,6 +961,11 @@ end;
 function TVPredicate.AsString: unicodestring;
 begin
     result := '#<PREDICATE '+symbols[nN]+'>';
+end;
+
+function TVPredicate.hash: int64;
+begin
+    result := crc32(0, @body, SizeOf(body));
 end;
 
 { TVReturn }
@@ -943,6 +991,13 @@ begin
     result := '#<RETURN '+value.AsString+'>';
 end;
 
+function TVReturn.hash: Int64;
+var i: Int64;
+begin
+    i := 4;
+    result := crc32(value.hash, @i, SizeOf(i));
+end;
+
 { TVStreamPointer }
 
 constructor TVStreamPointer.Create(_body: PVariable);
@@ -965,6 +1020,13 @@ end;
 function TVStreamPointer.AsString: unicodestring;
 begin
     result := '#<STREAM-POINTER '+body.V.AsString+'>';
+end;
+
+function TVStreamPointer.hash: int64;
+begin
+    if body=nil
+    then result := 10007
+    else result := crc32(0, @stream, SizeOf(stream));
 end;
 
 procedure TVStreamPointer.close_stream;
@@ -1042,6 +1104,11 @@ function TVStream.Copy: TValue;
 begin
     result := nil;
     raise ELE.Create('копирование потока', 'internal');
+end;
+
+function TVStream.hash: int64;
+begin
+    result := crc32(0, @fStream, SizeOf(fStream));
 end;
 
 function TVStream.read_byte(out b: byte): boolean;
@@ -1279,6 +1346,11 @@ begin
     result := '#<PRIMITIVE>'
 end;
 
+function TVPrimitive.hash: Int64;
+begin
+    Result := 10004;
+end;
+
 { TVChainPointer }
 
 constructor TVChainPointer.Create(P: PVariable);
@@ -1320,6 +1392,11 @@ begin
     result := '#<CHAIN-POINTER';
     for i := 0 to high(index) do result := result+' '+IntToStr(index[i]);
     result := result + '>';
+end;
+
+function TVChainPointer.hash: Int64;
+begin
+    Result:= look.hash;
 end;
 
 function TVChainPointer.constant: boolean;
@@ -1416,6 +1493,11 @@ begin
     else result := '#< - '+result+'>'
 end;
 
+function TVTimeInterval.hash: Int64;
+begin
+    result := crc32(1, @fDT, SizeOf(fDT));
+end;
+
 { TVDateTime }
 
 constructor TVDateTime.Create(dt: TDateTime);
@@ -1431,6 +1513,11 @@ end;
 function TVDateTime.AsString(): unicodestring;
 begin
     result := AsSQLDateTime;
+end;
+
+function TVDateTime.hash: Int64;
+begin
+    result := crc32(2, @fDT, SizeOf(fDT));
 end;
 
 function TVDateTime.AsSQLDateTime: unicodestring;
@@ -1512,6 +1599,11 @@ begin
     result := result + ')';
 end;
 
+function TVByteVector.hash: Int64;
+begin
+    Result := crc32;
+end;
+
 procedure TVByteVector.SetCount(l: integer);
 begin
     SetLength(fBytes, l);
@@ -1560,6 +1652,11 @@ begin
                 result := false;
                 Exit;
             end;
+end;
+
+function TVByteVector.crc32: DWORD;
+begin
+    result := crc.crc32(0, @fBytes[0], Length(fBytes));
 end;
 
 function TVByteVector.count: integer;
@@ -1887,6 +1984,12 @@ begin
     result := IntToStr(low)+'..'+IntToStr(high);
 end;
 
+function TVRange.hash: Int64;
+begin
+    result := crc32(0, @low, SizeOf(low));
+    result := crc32(result, @high, SizeOf(high));
+end;
+
 
 { TVRecord }
 
@@ -1985,6 +2088,20 @@ begin
     result := result + ')';
 end;
 
+function TVRecord.hash: Int64;
+var i,j: integer; h, cp: DWORD;
+begin
+    result := 10007;
+    for i := 0 to unames.Count-1 do begin
+        h := 0;
+        for j := 1 to length(unames[i]) do begin
+            cp := ord(unames[i][j]);
+            h := crc32(h, @cp, SizeOf(cp));
+        end;
+        result := result + crc32((slots[i] as TValue).hash, @h, SizeOf(h));
+    end;
+end;
+
 function TVRecord.is_class(cl: TVRecord): boolean;
 var i: integer;
 begin
@@ -2048,6 +2165,11 @@ begin
     result := '#<OPERATOR '+symbols[nN]+'>';//+signature.AsString()+'>';
 end;
 
+function TVOperator.hash: int64;
+begin
+    result := crc32(6, @op_enum, SizeOf(op_enum));
+end;
+
 { TVInternalFunction }
 
 constructor TVInternalFunction.Create(sign: TVList;
@@ -2090,6 +2212,11 @@ begin
     result := '#<INTERNAL '+symbols[nN]+' '+signature.AsString()+'>';
 end;
 
+function TVInternalFunction.hash: int64;
+begin
+    result := crc32(0, @body, SizeOf(body));
+end;
+
 { TVContinue }
 
 function TVContinue.Copy: TVContinue;
@@ -2102,6 +2229,11 @@ begin
     result := '#<CONTINUE>';
 end;
 
+function TVContinue.hash: Int64;
+begin
+    result := 10003;
+end;
+
 { TVBreak }
 
 function TVBreak.Copy: TVBreak;
@@ -2112,6 +2244,11 @@ end;
 function TVBreak.AsString: unicodestring;
 begin
     result := '#<BREAK>';
+end;
+
+function TVBreak.hash: Int64;
+begin
+    result := 10002;
 end;
 
 
@@ -2205,6 +2342,11 @@ begin
     else result := '#<PROCEDURE '+symbols[nN]+'>';
 end;
 
+function TVProcedure.hash: Int64;
+begin
+    result := sign.hash + body.hash;
+end;
+
 procedure TVProcedure.Complement;
 var i: integer;
 begin
@@ -2253,6 +2395,11 @@ begin
     result := '#<GOTO '+IntTostr(n)+' '+uname+'>';
 end;
 
+function TVGoto.hash: Int64;
+begin
+    result := crc32(3, @n, SizeOf(n));
+end;
+
 
 { TVT }
 
@@ -2264,6 +2411,11 @@ end;
 function TVT.AsString: unicodestring;
 begin
     result := 'T';
+end;
+
+function TVT.hash: Int64;
+begin
+    result := 10001;
 end;
 
 { TVFloat }
@@ -2281,6 +2433,11 @@ end;
 function TVFloat.AsString: unicodestring;
 begin
     result := FloatToStr(F);
+end;
+
+function TVFloat.hash: Int64;
+begin
+    result := crc32(0, @fF, SizeOf(fF));
 end;
 
 function TVFloat.F: double;
@@ -2341,9 +2498,24 @@ begin
     result := result + '"';
 end;
 
+function TVString.hash: Int64;
+begin
+    result := crc32;
+end;
+
 function TVString.Count: integer;
 begin
     result := Length(S);
+end;
+
+function TVString.crc32: DWORD;
+var i, cp: DWORD;
+begin
+    result := 10005;
+    for i := 1 to Length(S) do begin
+        cp := Ord(S[i]);
+        result := crc.crc32(result, @cp, SizeOf(cp));
+    end;
 end;
 
 function TVString.subseq(istart: integer; iend: integer = -1): TValue;
@@ -2361,6 +2533,13 @@ begin
 end;
 
 function    TVInteger.AsString: unicodestring; begin result := IntToStr(fI); end;
+
+function TVInteger.hash: Int64;
+var f: real;
+begin
+    f := fI;
+    result := crc32(0, @f, SizeOf(f));
+end;
 
 function TVInteger.F: double;
 begin
@@ -2390,6 +2569,11 @@ end;
 function TVSymbol.AsString: unicodestring;
 begin
     result := fname;
+end;
+
+function TVSymbol.hash: Int64;
+begin
+    result := N;
 end;
 
 class function TVSymbol.symbol_n(n: unicodestring): integer;
@@ -2554,6 +2738,16 @@ begin  // try
         for i := 0 to fL.Count-1 do
             result := result + (fL[i] as TValue).AsString() + ' ';
         result[length(result)]:=')';
+    end;
+end;
+
+function TVList.hash: int64;
+var h: int64; i: integer;
+begin
+    result := 10006;
+    for i := 0 to high do begin
+        h := (fL[i] as TValue).hash;
+        result := crc32(result, @h, SizeOf(h));
     end;
 end;
 

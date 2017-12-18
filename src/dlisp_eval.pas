@@ -700,6 +700,14 @@ begin
     end;
 end;
 
+function if_hash                (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpAny]) of
+        1: result := TVInteger.Create(PL.look[0].hash);
+    end;
+end;
+
 
 function if_equal               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -1373,18 +1381,12 @@ begin
 end;
 
 function if_crc32               (const PL: TVList; {%H-}call: TCallProc): TValue;
-var b: TVByteVector;
 begin
     case params_is(PL, result, [
-        tpByteVector]) of
-        1: begin
-            b := PL.look[0] as TVByteVector;
-            result := TVInteger.Create(
-                crc32(0,
-                    @b.fBytes[0],
-                    Length((PL.look[0] as TVByteVector).fBytes)));
-        end;
-
+        tpByteVector,
+        tpString]) of
+        1: result := TVInteger.Create((PL.look[0] as TVByteVector).crc32);
+        2: result := TVInteger.Create((PL.look[0] as TVString).crc32);
     end;
 end;
 
@@ -2199,7 +2201,7 @@ begin
     end;
 end;
 
-const int_fun_count = 99;
+const int_fun_count = 100;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2219,6 +2221,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RANDOM';                f:if_random;                s:'(:optional r)'),
 (n:'RE';                    f:if_re;                    s:'(a)'),
 (n:'IM';                    f:if_im;                    s:'(a)'),
+(n:'HASH';                  f:if_hash;                  s:'(a)'),
 
 (n:'=';                     f:if_equal;                 s:'(a b)'),
 (n:'>';                     f:if_more;                  s:'(a b)'),
