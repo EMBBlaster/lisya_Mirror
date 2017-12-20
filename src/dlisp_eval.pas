@@ -43,6 +43,7 @@ type
         procedure oph_bind(s, P: TValue; constant: boolean; st: TVSymbolStack=nil);
         function oph_bind_to_list(s, P: TVList): TVList;
         procedure oph_execute_file(fn: unicodestring);
+        function oph_map(PL: TVList; P: TVSubprogram; b, e: integer): TValue;
 
         function opl_elt(PL: TVList): TVChainPointer;
         function opl_last(PL: TVList): TVChainPointer;
@@ -67,6 +68,7 @@ type
         function op_last(PL: TVList): TValue;
         function op_let(PL: TVList): TValue;
         function op_map(PL: TVList): TValue;
+        function op_map_th(PL: TVList): TValue;
         function op_macro_symbol(PL: TVList): TValue;
         function op_or(PL: TVList): TValue;
         function op_package(PL: TVList): TValue;
@@ -117,6 +119,8 @@ type
 function execute_file(filename: unicodestring): boolean;
 
 implementation
+
+uses lisya_thread;
 
 var root_evaluation_flow: TEvaluationFlow = nil;
     base_stack: TVSymbolStack = nil;
@@ -335,41 +339,6 @@ begin
     end;
 end;
 //------------------------------------------------------------------------------
-//TODO: накопилось очень много функций тестирующих параметры вызовов подпрограмм
-
-//function parse_subprogram_signature(PL: TVList): TSubprogramSignature;
-//var
-//    mode: TSubprogramParmeterMode;
-//    uname: unicodestring;
-//    i: integer;
-//begin
-//    mode := spmNec;
-//    SetLength(result, 0);
-//    for i:=0 to PL.Count-1 do
-//        if tpSymbol(PL.look[i])
-//        then
-//            if not (PL.name[i][1]='&')
-//            then begin
-//                SetLength(result, Length(result)+1);
-//                result[high(result)].n := PL.uname[i];
-//                result[high(result)].m := mode;
-//            end
-//            else
-//                if mode=spmNec
-//                then begin
-//                    uname := UpperCaseU(PL.name[i]);
-//                    if uname='&OPTIONAL' then mode := spmOpt;
-//                    if uname='&KEY' then mode := spmKey;
-//                    if (uname='&REST') or (uname='&BODY') then mode := spmRest;
-//                    if (uname='&CAPTURED') then mode := spmCaptured;
-//                end
-//                else
-//                    if UpperCaseU(PL.name[i])='&CAPTURED'
-//                    then mode := spmCaptured
-//                    else raise ELE.malformed('parameters list')
-//        else raise ELE.malformed('parameters list');
-//end;
-
 
 //////////////////////////////////////////////
 //// Internal Functions //////////////////////
@@ -835,9 +804,9 @@ end;
 
 function if_test_dyn            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
-    //ifh_bind(PL.look[0] as TVList, PL.look[1] as TVList);
-
-    result := TVT.Create;
+    case params_is(PL, result, [tpListOfLists]) of
+        1: result := ifh_intersection(PL.L[0]);
+    end;
 end;
 
 //function if_error               (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -1131,22 +1100,10 @@ begin
 end;
 
 function if_intersection        (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i, j: integer; m: boolean; A: TVList;
 begin
     case params_is(PL, result, [tpNIL, tpListOfLists]) of
         1: result := TVList.Create;
-        2: begin
-            A := PL.L[0];
-            result := TVList.Create;
-            for i := 0 to A.L[0].high do begin
-                for j := 1 to A.high do begin
-                    m := ifh_member(A.L[j], A.L[0].look[i]);
-                    if not m then break;
-                end;
-                if m and not ifh_member(result as TVList, A.L[0].look[i])
-                then (result as TVList).Add(A.L[0][i]);
-            end;
-        end;
+        2: result := ifh_intersection(PL.L[0]);
     end;
 end;
 
@@ -1942,8 +1899,9 @@ begin
     case params_is(PL, result, [
         vpIntegerNotNegative,  tpNIL,
         vpIntegerNotNegative,  vpIntegerNotNegative]) of
-        1: result := TVString.Create(IntToHex(PL.I[0],
-                        round(math.logn(16, PL.I[0]))));
+        1: result := TVString.Create(IntToHex(PL.I[0], 16));
+                        //round(math.logn(16, PL.I[0]))));
+                        //TODO: этот код вызывает ошибку арифметики
         2: result := TVString.Create(IntToHex(PL.I[0], PL.I[1]));
     end;
 end;
@@ -2235,7 +2193,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'EQUAL-CASE-INSENSITIVE';f:if_equal_case_insensitive;s:'(s s)'),
 (n:'EQUAL-SETS';            f:if_equal_sets;            s:'(a b)'),
 
-(n:'TEST-DYN';              f:if_test_dyn;              s:'(a b)'),
+(n:'TEST-DYN';              f:if_test_dyn;              s:'(:rest a)'),
 //(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
 
 
@@ -2609,6 +2567,22 @@ begin
             FreeAndNil(prog_file);
             FreeAndNil(res);
         end;
+end;
+
+function TEvaluationFlow.oph_map(PL: TVList; P: TVSubprogram; b, e: integer
+    ): TValue;
+var expr: TVList;
+    i, j: integer;
+begin
+    result := TVList.Create;
+    expr := TVList.CreatePhantom;
+    expr.SetCapacity(PL.Count+1);
+    expr.Add_phantom(P);
+    for j := 0 to PL.high do expr.Add_phantom(P);
+    for i := b to e do begin
+        for j := 0 to PL.high do expr[j+1] := PL.L[j].look[i];
+        (result as TVList).Add(call(expr));
+    end;
 end;
 
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
@@ -3313,6 +3287,52 @@ end;
 end;
 
 
+var th: boolean = false;
+
+function TEvaluationFlow.op_map_th                  (PL: TVList): TValue;
+var expr: TVList; i,j: integer;
+    min_count: integer; PLI: TVList;
+    th1, th2: TEvaluationThread;
+begin
+    if PL.Count<3 then raise ELE.Malformed('MAP');
+    result := nil;
+    expr := nil;
+    PLI := TVList.Create;
+    PLI.SetCapacity(PL.Count-1);
+try
+    for i := 1 to PL.High do PLI.Add(eval(PL[i]));
+
+    if not (tpSubprogram(PLI.look[0]) and not tpOperator(PLI.look[0]))
+    then raise ELE.InvalidParameters;
+    for i := 1 to PLI.high do
+        if not tpList(PLI.look[i]) then raise ELE.InvalidParameters;
+
+    min_count := min_list_length(PLI, 1);
+try
+    th := true;
+    th1 := nil;
+    th2 := nil;
+    th1 := TEvaluationThread.Create(true);
+    th2 := TEvaluationThread.Create(true);
+    th1.eval_map(PLI, 0, min_count div 2 );
+    //th1.eval_map(PLI, 0, min_count -1 );
+    th2.eval_map(PLI, min_count div 2 + 1, min_count - 1);
+    result := th1.WaitResult;
+    (result as TVList).Append(th2.WaitResult);
+except
+    //удалить результаты предыдущих итераций если текущая завершилась
+    // с ошибкой
+    FreeAndNil(result);
+    raise;
+end;
+finally
+    PLI.Free;
+    th1.Free;
+    th2.Free;
+    th := false;
+end;
+end;
+
 function TEvaluationFlow.op_macro_symbol(PL: TVList): TValue;
 var proc: TVProcedure; sl: TVList;
 begin
@@ -3780,6 +3800,7 @@ begin
         oeLET       : result := op_let(PL);
         oeMACRO     : result := op_procedure(PL);
         oeMACRO_SYMBOL: result := op_macro_symbol(PL);
+        //oeMAP       : if th then result := op_map(PL) else result := op_map_th(PL);
         oeMAP       : result := op_map(PL);
         oeOR        : result := op_OR(PL);
         oePACKAGE   : result := op_package(PL);

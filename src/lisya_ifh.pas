@@ -19,10 +19,13 @@ function ifh_bind(sign, PL: TValue): TBindings;
 function ifh_equal(const A,B: TValue): boolean;
 
 function ifh_member(const L: TVList; const E: TValue): boolean;
+function ifh_member1(const L: TVList; const E: TValue): boolean;
 
 function ifh_difference         (const A, B: TVList): TVList;
 
 function ifh_union              (const L: TVList): TVList;
+
+function ifh_intersection       (const L: TVList): TVList;
 
 implementation
 
@@ -243,6 +246,22 @@ begin
             break;
         end;
 end;
+function ifh_member1(const L: TVList; const E: TValue): boolean;
+var i: integer;
+    hashes: array of DWORD;
+    hash: DWORD;
+begin
+    result := false;
+    SetLength(hashes, L.Count);
+    for i := 0 to L.high do hashes[i] := L.look[i].hash;
+    hash := E.hash;
+    for i := 0 to L.High do
+        if (hash=hashes[i]) and ifh_equal(L.look[i], E) then begin
+            result := true;
+            break;
+        end;
+    SetLength(hashes, 0);
+end;
 //------------------------------------------------------------------------------
 function ifh_difference         (const A, B: TVList): TVList;
 var i: integer;
@@ -261,6 +280,70 @@ begin
         for j := 0 to L.L[i].high do
             if not ifh_member(result, L.L[i].look[j])
             then result.Add(L.L[i][j]);
+end;
+//------------------------------------------------------------------------------
+function ifh_intersection       (const L: TVList): TVList;
+var hashes: array of array of DWORD;
+    res: array of DWORD;
+    i,j, min_length, res_count :integer;
+    m: boolean;
+
+
+    function memb(v, a: integer): boolean;
+    var k: integer;
+    begin
+        result := true;
+        for k := 0 to L.L[a].high do
+            if (hashes[0][v] = hashes[a][k])
+                and ifh_equal(L.L[0].look[v], L.L[a].look[k])
+                then exit;
+        result := false;
+    end;
+
+    procedure add_in_res(v: integer);
+    var k: integer;
+    begin
+        for k := 0 to res_count-1 do
+            if (hashes[0][v]=res[k]) and ifh_equal(L.L[0].look[v], result.look[k])
+            then exit;
+        res[res_count] := hashes[0][v];
+        result.Add(L.L[0][v]);
+        inc(res_count);
+    end;
+
+begin
+    //TODO: intersection может быть ускорена если предварительно отсортировать
+    //множества по длине
+    //левая свёртка этой функцией работает на 10% быстрее чем сама функция от множества аргументов
+    result := TVList.Create;
+    if (L.Count=0) then Exit;
+
+    //вычисление хэшей
+    setLength(hashes, L.Count);
+    for i := 0 to L.high do begin
+        SetLength(hashes[i], L.L[i].Count);
+        for j := 0 to L.L[i].high do hashes[i][j] := L.L[i].look[j].hash;
+    end;
+
+    //результат не может быть больше самого маленького из множеств
+    min_length := Length(hashes[0]);
+    for i := 1 to High(hashes) do
+        if Length(hashes[i])<min_length then min_length := Length(hashes[i]);
+    result.SetCapacity(min_length);
+    SetLength(res, min_length);
+    res_count := 0;
+
+    for i := 0 to L.L[0].high do begin
+        for j := 1 to L.high do begin
+            m := memb(i,j);
+            if not m then break;
+        end;
+        if m then add_in_res(i);
+    end;
+
+    for i := 0 to high(hashes) do SetLength(hashes[i], 0);
+    SetLength(hashes, 0);
+    SetLength(res, 0);
 end;
 
 end.
