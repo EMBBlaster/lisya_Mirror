@@ -1095,7 +1095,7 @@ end;
 function if_union               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [tpListOfLists]) of
-        1: result := ifh_union(PL.L[0]);
+        1: result := ifh_union1(PL.L[0]);
     end;
 end;
 
