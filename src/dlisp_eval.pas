@@ -451,7 +451,7 @@ begin
                     cres := cres + PL.L[0].C[i];
                 result := TVComplex.Create(cres);
             end;
-            4: result := ifh_union(PL.L[0]);
+            4: result := ifh_union1(PL.L[0]);
         end;
 end;
 
