@@ -54,6 +54,10 @@
     (assertion (= 2 b) "bind 8 2")
     (assertion (= \(3 4) c) "bind 8 3"))
 
+(block "неполная привязка"
+    (var (a _ b) \(1 2 3))
+    (assertion (and (= a 1) (= b 3)) "bind _"))
+
 
 
 

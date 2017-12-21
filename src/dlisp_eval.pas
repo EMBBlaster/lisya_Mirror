@@ -209,17 +209,21 @@ begin
             case mode of
                 spmNec:
                     if (i+offset)<PL.Count
-                    then result.Add_phantom(PL.look[i+offset])
+                    //then result.Add_phantom(PL.look[i+offset])
+                    then result.Add(PL[i+offset])
                     else raise ELE.Create('insufficient parameters count', 'invalid parameters');
                 spmOpt:
                     if (i-1+offset)<PL.Count
-                    then result.Add_phantom(PL.look[i-1+offset])
+                    //then result.Add_phantom(PL.look[i-1+offset])
+                    then result.Add(PL[i-1+offset])
                     else result.Add(TVList.Create);
                 spmKey: if key_pos(PL, ':'+sign.uname[i], opt_start, p)
-                    then result.Add_phantom(PL.look[p+1])
+                    //then result.Add_phantom(PL.look[p+1])
+                    then result.Add(PL[p+1])
                     else result.Add(TVList.Create);
                 spmRest:
-                    result.Add(PL.phantom_subseq(i-1+offset, PL.Count));
+                    //result.Add(PL.phantom_subseq(i-1+offset, PL.Count));
+                    result.Add(PL.subseq(i-1+offset, PL.Count));
                 spmFlag: if flag_exists(PL, ':'+sign.uname[i], opt_start)
                     then result.add(TVT.Create)
                     else result.add(TVList.Create);
@@ -507,21 +511,30 @@ begin
             result := TVComplex.Create(cres);
         end;
         4: begin //декартово произведение множеств
+            //WriteLn('a>> ', PL.L[0].look[0].AsString);
+            //WriteLn('b>> ', PL.L[0].look[1].AsString);
             A := nil;
             B := nil;
             C := nil;
             R := TVList.Create;
             if PL.L[0].Count>0 then begin
                 A := PL.L[0].L[0];
+                //WriteLn('A>> ', A.AsString);
                 for i := 0 to A.high do R.Add(TVList.Create([A[i]]));
+                //WriteLn('R>> ', R.AsString);
             end;
+            //WriteLn('---');
             for j := 1 to PL.L[0].high do begin
                 A := PL.L[0].L[j];
+                //WriteLn('A>> ', A.AsString);
                 B.Free;
                 B := R.Copy as TVList;
                 R.Clear;
+                //WriteLn('B>> ', B.AsString);
                 for i := 0 to A.high do begin
                     C := B.Copy as TVList;
+                    //WriteLn('C>> ', C.AsString);
+                    C.CopyOnWrite;
                     for k := 0 to C.high do C.L[k].Add(A[i]);
                     R.Append(C);
                 end;
@@ -784,6 +797,8 @@ begin
             r := true;
             A := PL.L[0];
             B := PL.L[1];
+            //WriteLn('A>> ', A.AsString);
+            //WriteLn('B>> ', B.AsString);
             for i := 0 to A.high do
                 if not ifh_member(B, A.look[i])
                 then begin
@@ -1220,17 +1235,21 @@ begin
     case params_is(PL, result, [
         tpList, tpListOfSubprograms]) of
         1: try
-            source := PL.L[0].Phantom_Copy;
+            //source := PL.L[0].Phantom_Copy;
+            source := PL.L[0].Copy as TVList;
             predicates := PL.L[1];
-            expr := TVList.CreatePhantom; expr.Add(nil); expr.Add(nil);
+            //expr := TVList.CreatePhantom; expr.Add(nil); expr.Add(nil);
+            expr := TVList.Create; expr.Add(nil); expr.Add(nil);
             result := TVList.Create;
             groups := result as TVList;
             groups.SetCapacity(predicates.Count+1);
             for p := 0 to predicates.high do begin
-                expr[0] := predicates.look[p];
+                //expr[0] := predicates.look[p];
+                expr[0] := predicates[p];
                 group := TVList.Create;
                 for i := source.high downto 0 do begin
-                    expr[1] := source.look[i];
+                    //expr[1] := source.look[i];
+                    expr[1] := source[i];
                     FreeAndNil(cnd);
                     cnd := call(expr);
                     if tpTRUE(cnd) then begin
@@ -2400,6 +2419,7 @@ begin
     base_stack.new_var('CR', TVString.Create(#10), true);
     base_stack.new_var('LF', TVString.Create(#13), true);
     base_stack.new_var('TAB', TVString.Create(#09), true);
+    base_stack.new_var('_', TVSymbol.Create('_'));
 end;
 
 
@@ -2533,7 +2553,8 @@ function TEvaluationFlow.oph_bind_to_list(s, P: TVList): TVList;
 var bind: TBindings; i: integer;
     params: TVList;
 begin
-    params := P.Phantom_CDR;
+    //params := P.Phantom_CDR;
+    params := P.CDR;
     //WriteLn('params>> ', params.asString);
     result := TVList.Create;
     bind := ifh_bind(s, params);
@@ -2575,12 +2596,16 @@ var expr: TVList;
     i, j: integer;
 begin
     result := TVList.Create;
-    expr := TVList.CreatePhantom;
+    //expr := TVList.CreatePhantom;
+    expr := TVList.Create;
     expr.SetCapacity(PL.Count+1);
-    expr.Add_phantom(P);
-    for j := 0 to PL.high do expr.Add_phantom(P);
+    //expr.Add_phantom(P);
+    expr.Add(P);
+    for j := 0 to PL.high do //expr.Add_phantom(P);
+        expr.Add(nil);
     for i := b to e do begin
-        for j := 0 to PL.high do expr[j+1] := PL.L[j].look[i];
+        for j := 0 to PL.high do //expr[j+1] := PL.L[j].look[i];
+            expr[j+1] := PL.L[j][i];
         (result as TVList).Add(call(expr));
     end;
 end;
@@ -2746,6 +2771,7 @@ begin
 try
     if CP.constant then raise ELE.Create('target is not variable');
     if not tpList(CP.look) then raise ELE.Create('target is not list');
+    CP.CopyOnWrite;
     for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
     result := TVT.Create;
 finally
@@ -2772,6 +2798,7 @@ begin
 try
     if CP.constant then raise ELE.Create('target is not variable');
     if not tpList(CP.look) then raise ELE.Create('target is not list');
+    CP.CopyOnWrite;
     result := (cp.look as TVList).POP;
 finally
     CP.Free;
@@ -2827,7 +2854,10 @@ try
         if CP.constant
         then //stack.new_var(PL.uname[1], eval(PL[2]), true)
             stack.new_var(PL.SYM[1], eval(PL[2]), true)
-        else CP.set_target(eval(PL[2]));
+        else begin
+            CP.CopyOnWrite;
+            CP.set_target(eval(PL[2]));
+        end;
 
     result := TVT.Create;
 finally
@@ -2979,6 +3009,7 @@ begin try
     CP := nil;
     CP := eval_link(PL.look[1]);
     if CP.constant then raise ELE.Create('target is not variable');
+    CP.CopyOnWrite;
     CP.set_target(eval(PL[2]));
     result := TVT.Create;
 finally
@@ -3268,10 +3299,14 @@ try
 
     min_count := min_list_length(PLI, 1);
 try
-    expr := PLI.Phantom_Copy;
+    //expr := PLI.Phantom_Copy;
+    //expr := PLI.Copy as TVList;
+    expr := TVList.Create([PLI[0]]);
+    for j := 1 to PLI.high do expr.Add(nil);
     result := TVList.Create;
     for i := 0 to min_count - 1 do begin
-        for j := 1 to PLI.High do expr[j] := PLI.L[j].look[i];
+        for j := 1 to PLI.High do //expr[j] := PLI.L[j].look[i];
+            expr[j] := PLI.L[j][i];
         (result as TVList).Add(call(expr));
     end;
 except
@@ -3445,9 +3480,11 @@ begin try
             (CP.look as TVString).S := (CP.look as TVString).S + PL.S[i]
     else
         if CP.look is TVList
-        then
+        then begin
+            CP.CopyOnWrite;
             for i := 2 to PL.high do
                 (CP.look as TVList).Append(PL[i] as TVList)
+        end
         else
             if CP.look is TVByteVector
             then
@@ -3733,7 +3770,8 @@ begin try
     proc := PL.look[0] as TVProcedure;
     proc.Complement;
     proc_stack := proc.stack.Copy as TVSymbolStack;
-    params := PL.Phantom_CDR;
+    //params := PL.Phantom_CDR;
+    params := PL.CDR;
     oph_bind(proc.sign, params, true, proc_stack);
 
     tmp_stack := stack;
@@ -3761,7 +3799,8 @@ function TEvaluationFlow.call_internal(PL: TVList): TValue;
 var binded_PL, params: TVList;
 begin try
     binded_PL := nil;
-    params := PL.Phantom_CDR;
+    //params := PL.Phantom_CDR;
+    params := PL.CDR;
     binded_PL := bind_parameters_list(params,
                         (PL.look[0] as TVInternalFunction).signature);
     result := nil;

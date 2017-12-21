@@ -99,9 +99,11 @@ var expr: TVList;
     i, j: integer;
 begin try try
     result := TVList.Create;
-    expr := fExpression.Phantom_Copy;
+    //expr := fExpression.Phantom_Copy;
+    expr := fExpression.Copy as TVList;
     for i := fA to fB do begin
-        for j := 1 to fExpression.high do expr[j] := fExpression.L[j].look[i];
+        //for j := 1 to fExpression.high do expr[j] := fExpression.L[j].look[i];
+        for j := 1 to fExpression.high do expr[j] := fExpression.L[j][i];
         (result as TVList).Add(fflow.call(expr));
     end;
 except

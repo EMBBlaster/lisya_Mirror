@@ -5,6 +5,7 @@
     (assertion (= (map if \(t nil) \(1 1) \(2 2)) \(1 2)) "map op")
     (assertion (= (map (procedure (x) (+ 1 x)) \(1 2)) \(2 3)) "map proc"))
 
+
 (block
     (var a \\("a" "b" "c" "d"))
     (var b \(3 2 1 0))

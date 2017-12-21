@@ -293,6 +293,7 @@ type
         function look: TValue;
         procedure add_index(i: integer);
         procedure set_target(_V: TValue);
+        procedure CopyOnWrite;
         procedure set_last_index(i: integer);
     end;
 
@@ -349,9 +350,16 @@ type
 
     { TVList }
 
+    { TListBody }
+
+    TListBody = class (TObjectList)
+        ref_count: integer;
+        constructor Create(free_objects: boolean);
+    end;
+
     TVList = class (TVCompoundIndexed)
     private
-        fL: TObjectList;
+        fL: TListBody;
         function GetItem(index: integer): TValue; override;
         procedure SetItem(index: integer; _V: TValue); override;
         function LookItem(index: integer): TValue; override;
@@ -367,23 +375,24 @@ type
     public
         constructor Create; overload;
         constructor Create(VL: array of TValue); overload;
-        constructor CreatePhantom;
+        constructor Create(body: TListBody); overload;
+        //constructor CreatePhantom;
         destructor Destroy; override;
         function Copy(): TValue; override;
-        function Phantom_Copy: TVList;
+        //function Phantom_Copy: TVList;
         function AsString(): unicodestring; override;
         function hash: int64; override;
 
         function Count: integer; override;
 
         function subseq(istart: integer; iend: integer = -1): TValue; override;
-        function phantom_subseq(istart: integer; iend: integer = -1): TVList;
+        //function phantom_subseq(istart: integer; iend: integer = -1): TVList;
 
-
+        function CopyOnWrite: boolean;
         procedure Add(V: TValue);
         procedure Append(VL: TVList);
 
-        procedure Add_phantom(V: TValue);
+        //procedure Add_phantom(V: TValue);
 
         property name[index: integer]: unicodestring read GetElementName;
         property uname[index: integer]: unicodestring read GetElementUName;
@@ -404,7 +413,7 @@ type
         function CdrValueList: TValueList;
         function CAR: TValue;
         function CDR: TVList;
-        function Phantom_CDR: TVList;
+        //function Phantom_CDR: TVList;
     end;
 
 
@@ -834,6 +843,14 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TListBody }
+
+constructor TListBody.Create(free_objects: boolean);
+begin
+    inherited Create(free_objects);
+    ref_count := 1;
 end;
 
 
@@ -1450,6 +1467,17 @@ begin
         tmp := V.V as TVCompound;
         for i := 0 to high(index)-1 do tmp := tmp.look[index[i]] as TVCompound;
         tmp[index[high(index)]] := _V;
+    end;
+end;
+
+procedure TVChainPointer.CopyOnWrite;
+var obj: TValue; i: integer;
+begin
+    obj := self.V.V;
+    if (obj is TVList) and (obj as TVList).CopyOnWrite then Exit;
+    for i := 0 to high(index) do begin
+        obj := (obj as TVCompound).look[index[i]];
+        if (obj is TVList) and (obj as TVList).CopyOnWrite then Exit;
     end;
 end;
 
@@ -2619,26 +2647,29 @@ end;
 
 procedure TVList.Add(V: TValue);
 begin
-  fL.Add(V);
+    CopyOnWrite;
+    fL.Add(V);
 end;
 
 procedure TVList.Append(VL: TVList);
 var
   i: integer;
 begin
-  fL.Capacity := fL.Capacity + VL.fL.Capacity;
-  for i := 0 to VL.fL.Count - 1 do begin
-    fL.Add((VL.fL[i] as TValue).Copy);
-  end;
-  VL.Free;
+    CopyOnWrite;
+    fL.Capacity := fL.Capacity + VL.fL.Capacity;
+    for i := 0 to VL.fL.Count - 1 do begin
+        fL.Add((VL.fL[i] as TValue).Copy);
+    end;
+    VL.Free;
 end;
 
-procedure TVList.Add_phantom(V: TValue);
-begin
-    if V is TVList
-    then fl.Add((V as TVList).Phantom_Copy)
-    else fL.Add(V.Copy)
-end;
+//procedure TVList.Add_phantom(V: TValue);
+//begin
+//    CopyOnWrite;
+//    if V is TVList
+//    then fl.Add((V as TVList).Phantom_Copy)
+//    else fL.Add(V.Copy)
+//end;
 
 function TVList.GetElementName(index: integer): unicodestring;
 begin
@@ -2696,37 +2727,41 @@ end;
 
 procedure TVList.SetCapacity(c: integer);
 begin
+    CopyOnWrite;
     self.fL.Capacity:=c;
 end;
 
 function TVList.extract(n: integer): TValue;
 begin
+    CopyOnWrite;
     result := fL.Items[n] as TValue;
     fL.Delete(n);
 end;
 
 procedure TVList.delete(n: integer);
 begin
+    CopyOnWrite;
     fL.Delete(n);
 end;
 
 function TVList.Copy: TValue;
 var i: integer;
 begin
-    result := TVList.Create;
-    (result as TVList).fL.Capacity := fL.Capacity;
-    for i := 0 to fL.Count - 1 do
-        (result as TVList).fL.Add((fL[i] as TValue).Copy);
+    Inc(fL.ref_count);
+    result := TVList.Create(fL);
+    //(result as TVList).fL.Capacity := fL.Capacity;
+    //for i := 0 to fL.Count - 1 do
+    //   (result as TVList).fL.Add((fL[i] as TValue).Copy);
 end;
 
-function TVList.Phantom_Copy: TVList;
-var i: integer;
-begin
-  result := TVList.CreatePhantom;
-  result.fL.Capacity := fL.Capacity;
-  for i := 0 to fL.Count - 1 do
-    result.fL.Add(fL[i]);
-end;
+//function TVList.Phantom_Copy: TVList;
+//var i: integer;
+//begin
+//  result := TVList.CreatePhantom;
+//  result.fL.Capacity := fL.Capacity;
+//  for i := 0 to fL.Count - 1 do
+//    result.fL.Add(fL[i]);
+//end;
 
 function TVList.AsString: unicodestring;
 var i: integer;
@@ -2753,26 +2788,32 @@ end;
 
 constructor TVList.Create;
 begin
-  fL := TObjectList.Create(true);
+  fL := TListBody.Create(true);
 end;
 
 constructor TVList.Create(VL: array of TValue);
 var i :integer;
 begin
-    fL := TObjectList.Create(true);
+    fL := TListBody.Create(true);
     fL.Capacity:=length(VL);
     for i:=0 to length(VL)-1 do fL.Add(VL[i]);
 end;
 
-constructor TVList.CreatePhantom;
+constructor TVList.Create(body: TListBody);
 begin
-    fL := TObjectList.create(false);
+    fL := body;
 end;
+
+//constructor TVList.CreatePhantom;
+//begin
+//    fL := TListBody.create(false);
+//end;
 
 destructor TVList.Destroy;
 begin
-  fL.Free;
-  inherited;
+    Dec(fl.ref_count);
+    if fL.ref_count=0 then fL.Free;
+    inherited;
 end;
 
 function TVList.GetItem(index: integer): TValue;
@@ -2782,6 +2823,7 @@ end;
 
 procedure TVList.SetItem(index: integer; _V: TValue);
 begin
+    CopyOnWrite;
     fL[Index] := _V;
 end;
 
@@ -2800,24 +2842,40 @@ begin
         (result as TVList).fL.Add((fL[i] as TValue).Copy);
 end;
 
-function TVList.phantom_subseq(istart: integer; iend: integer): TVList;
-var i: integer;
+//function TVList.phantom_subseq(istart: integer; iend: integer): TVList;
+//var i: integer;
+//begin
+//    if iend<0 then iend := fL.Count;
+//    result := TVList.CreatePhantom;
+//    result.fL.Capacity := iend - istart;
+//    for i := istart to iend - 1 do
+//        result.fL.Add(fL[i]);
+//end;
+
+function TVList.CopyOnWrite: boolean;
+var i: integer; fL_old: TListBody;
 begin
-    if iend<0 then iend := fL.Count;
-    result := TVList.CreatePhantom;
-    result.fL.Capacity := iend - istart;
-    for i := istart to iend - 1 do
-        result.fL.Add(fL[i]);
+    if fL.ref_count>1 then begin
+        fL_old := fL;
+        fL := TListBody.Create(true);
+        fL.Capacity := fL_old.Count;
+        for i := 0 to fL_old.Count-1 do fL.Add((fL_old[i] as TValue).Copy);
+        Dec(fL_old.ref_count);
+        result := true;
+    end
+    else result := false;
 end;
 
 function TVList.POP: TValue;
 begin
+    CopyOnWrite;
     result := (fL.Last as TValue).Copy();
     fL.Delete(fL.Count-1);
 end;
 
 procedure TVList.Clear;
 begin
+    CopyOnWrite;
     fL.Clear;
 end;
 
@@ -2850,12 +2908,12 @@ begin
     for i:=1 to fL.Count-1 do result.Add((fL[i] as TValue).Copy());
 end;
 
-function TVList.Phantom_CDR: TVList;
-var i: integer;
-begin
-    result := TVList.CreatePhantom;
-    result.fL.Capacity:= fL.Count - 1;
-    for i:=1 to fL.Count-1 do result.fL.Add(fL[i]);
-end;
+//function TVList.Phantom_CDR: TVList;
+//var i: integer;
+//begin
+//    result := TVList.CreatePhantom;
+//    result.fL.Capacity:= fL.Count - 1;
+//    for i:=1 to fL.Count-1 do result.fL.Add(fL[i]);
+//end;
 
 end.

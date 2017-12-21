@@ -23,8 +23,8 @@ procedure print_ln(V:TValue; stream: TStream);
 
 implementation
 
-const special_keywords: array[1..4] of unicodestring = (
-    '_', 'ELSE', 'EXCEPTION', 'THEN');
+const special_keywords: array[1..3] of unicodestring = (
+    'ELSE', 'EXCEPTION', 'THEN');
 
 type TSS = record
         s: unicodestring;

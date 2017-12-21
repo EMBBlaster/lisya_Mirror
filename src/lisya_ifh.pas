@@ -227,6 +227,9 @@ begin
                                 else
                                     type_v := any;
 
+   // WriteLn('A>> ', A.AsString);
+   // WriteLn('B>> ', B.AsString);
+
     case type_v of
         int: result := (A as TVInteger).fI=(B as TVInteger).fI;
         num: result := (A as TVReal).F=(B as TVReal).F;
