@@ -1918,9 +1918,7 @@ begin
     case params_is(PL, result, [
         vpIntegerNotNegative,  tpNIL,
         vpIntegerNotNegative,  vpIntegerNotNegative]) of
-        1: result := TVString.Create(IntToHex(PL.I[0], 16));
-                        //round(math.logn(16, PL.I[0]))));
-                        //TODO: этот код вызывает ошибку арифметики
+        1: result := TVString.Create(IntToHex(PL.I[0], 0));
         2: result := TVString.Create(IntToHex(PL.I[0], PL.I[1]));
     end;
 end;
