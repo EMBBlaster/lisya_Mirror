@@ -61,6 +61,7 @@ type
         function op_error(PL: TVList): TValue;
         function op_execute_file(PL: TVList): TValue;
         function op_filter(PL: TVList): TValue;
+        function op_fold(PL: TVList): TValue;
         function op_for(PL: TVList): TValue;
         function op_goto(PL: TVList): TValue;
         function op_if(PL: TVList): TValue;
@@ -387,7 +388,9 @@ function ifh_write_string(stream: TVStreamPointer; s: unicodestring): boolean;
 var i: integer;
 begin
     result := true;
+    try stream.lock;
     for i := 1 to Length(s) do result := stream.stream.write_char(s[i]);
+    finally stream.unlock; end;
 end;
 
 function ifh_quote(const V: TValue): TVList;
@@ -1557,7 +1560,9 @@ begin
     case params_is(PL, result, [
         tpStreamPointer]) of
         1: begin
+            (PL.look[0] as TVStreamPointer).lock;
             (PL.look[0] as TVStreamPointer).close_stream;
+            (PL.look[0] as TVStreamPointer).unlock;
             result := TVT.Create;
         end;
     end;
@@ -1769,14 +1774,19 @@ begin
         tpNIL]) of
         1: begin
             s := '';
-            while (PL.look[0] as TVStreamPointer).stream.read_char(ch) do
-                case ch of
-                    #13,#10: if s<>'' then break;
-                    else s := s + ch;
-                end;
-                if s<>''
-                then result := TVString.Create(s)
-                else result := TVList.Create;
+            try
+                (PL.look[0] as TVStreamPointer).lock;
+                while (PL.look[0] as TVStreamPointer).stream.read_char(ch) do
+                    case ch of
+                        #13,#10: if s<>'' then break;
+                        else s := s + ch;
+                    end;
+            finally
+                (PL.look[0] as TVStreamPointer).unlock;
+            end;
+            if s<>''
+            then result := TVString.Create(s)
+            else result := TVList.Create;
         end;
         2: begin
             System.ReadLn(s);
@@ -1845,13 +1855,9 @@ begin
         vpStreamPointerActive, tpAny,
         tpNIL,           tpAny]) of
         1: begin
-                dlisp_read.print(
-                    PL.look[1],
-                    PL.look[0] as TVStreamPointer);
-                for i := 1 to Length(new_line) do
-                    (PL.look[0] as TVStreamPointer).stream.write_char(new_line[i]);
-                result := TVT.Create;
-                //TODO: не возвращается ошибка при записи в файл
+            dlisp_read.print(PL.look[1], PL.look[0] as TVStreamPointer);
+            result := TVT.Create;
+            //TODO: не возвращается ошибка при записи в файл
         end;
         2: begin
             result := TVT.Create;
@@ -1868,14 +1874,11 @@ begin
             tpNIL,                 tpAny,
             vpKeyword_RESULT,      tpAny]) of
             1: begin
-                print(PL.look[1], PL.look[0] as TVStreamPointer);
-                for i := 1 to Length(new_line) do
-                    (PL.look[0] as TVStreamPointer).stream.write_char(new_line[i]);
+                print(PL.look[1], PL.look[0] as TVStreamPointer, true);
                 result := TVT.Create;
             end;
             2: begin
-                print(PL.look[1], nil);
-                System.WriteLn('');
+                print(PL.look[1], nil, true);
                 result := TVT.Create;
             end;
             3: result := TVString.Create(PL[1].AsString);
@@ -1895,7 +1898,9 @@ begin
             result := TVT.Create;
         end;
         2: begin
+            try EnterCriticalSection(console_mutex);
             System.Write(ifh_format(PL.L[1]));
+            finally LeaveCriticalSection(console_mutex);end;
             result := TVT.Create;
         end;
         3,4: result := TVString.Create(ifh_format(PL.L[1]));
@@ -1907,7 +1912,9 @@ begin
     case params_is(PL, result, [
         tpList]) of
         1: begin
+            try EnterCriticalSection(console_mutex);
             System.WriteLn(ifh_format(PL.L[0]));
+            finally LeaveCriticalSection(console_mutex);end;
             result := TVT.Create;
         end;
     end;
@@ -2350,6 +2357,7 @@ begin
             //oeEXCEPTION : op('EXCEPTION');
             oeEXECUTE_FILE: op('EXECUTE-FILE');
             oeFILTER    : op('FILTER');
+            oeFOLD      : op('FOLD');
             oeFOR       : op('FOR');
             oeGOTO      : op('GOTO');
             oeIF        : op('IF');
@@ -2770,7 +2778,12 @@ try
     if CP.constant then raise ELE.Create('target is not variable');
     if not tpList(CP.look) then raise ELE.Create('target is not list');
     CP.CopyOnWrite;
-    for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
+    try
+        CP.enter_critical_section;
+        for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
+    finally
+        CP.leave_critical_section;
+    end;
     result := TVT.Create;
 finally
     CP.Free;
@@ -2797,7 +2810,9 @@ try
     if CP.constant then raise ELE.Create('target is not variable');
     if not tpList(CP.look) then raise ELE.Create('target is not list');
     CP.CopyOnWrite;
+    CP.enter_critical_section;
     result := (cp.look as TVList).POP;
+    CP.leave_critical_section;
 finally
     CP.Free;
 end;
@@ -2837,6 +2852,12 @@ begin
         else stack.Print;
         exit;
     end;
+
+    if (PL.Count>=2) and vpKeyword_THREADS_COUNT(PL.look[1]) then begin
+        if (PL.Count=3) and vpIntegerNotNegative(PL.look[2])
+        then set_threads_count(PL.I[2]);
+        exit;
+    end;
 end;
 
 function TEvaluationFlow.op_default                 (PL: TVList): TValue;
@@ -2852,9 +2873,12 @@ try
         if CP.constant
         then //stack.new_var(PL.uname[1], eval(PL[2]), true)
             stack.new_var(PL.SYM[1], eval(PL[2]), true)
-        else begin
+        else try
             CP.CopyOnWrite;
+            CP.enter_critical_section;
             CP.set_target(eval(PL[2]));
+        finally
+            CP.leave_critical_section;
         end;
 
     result := TVT.Create;
@@ -2991,6 +3015,30 @@ finally
 end;
 end;
 
+function TEvaluationFlow.op_fold(PL: TVList): TValue;
+var data, expr: TVList; head, tail: TValue;
+begin
+
+    if (PL.Count<>3) then raise ELE.Malformed('FOLD');
+try
+    head := nil;
+    tail := nil;
+    head := eval(PL[1]);
+    tail := eval(PL[2]);
+    if not (tpSubprogram(head) and tpList(tail)) then raise ELE.InvalidParameters;
+    data := tail as TVList;
+
+    if data.Count=0 then begin result := TVList.Create; exit; end;
+    if data.Count=1 then begin result := data[0]; exit; end;
+
+    result := ifh_fold(call, head as TVSubprogram, data, 0, data.high);
+
+finally
+    tail.Free;
+    head.Free;
+end;
+end;
+
 function TEvaluationFlow.op_val                     (PL: TVList): TValue;
 begin
     if PL.Count<>2 then raise ELE.malformed('VAL');
@@ -3008,7 +3056,12 @@ begin try
     CP := eval_link(PL.look[1]);
     if CP.constant then raise ELE.Create('target is not variable');
     CP.CopyOnWrite;
-    CP.set_target(eval(PL[2]));
+    try
+        CP.enter_critical_section;
+        CP.set_target(eval(PL[2]));
+    finally
+        CP.leave_critical_section;
+    end;
     result := TVT.Create;
 finally
     FreeAndNil(CP);
@@ -3323,45 +3376,62 @@ end;
 var th: boolean = false;
 
 function TEvaluationFlow.op_map_th                  (PL: TVList): TValue;
-var expr: TVList; i,j: integer;
-    min_count: integer; PLI: TVList;
-    th1, th2: TEvaluationThread;
+var expr: TVList; i,j, tc: integer;
+    min_count: integer; data: TVList;
+    n, destr: integer;
+    emsg,eclass,estack: unicodestring;
+    head: TValue;
 begin
     if PL.Count<3 then raise ELE.Malformed('MAP');
     result := nil;
     expr := nil;
-    PLI := TVList.Create;
-    PLI.SetCapacity(PL.Count-1);
+    head := nil;
+    data := TVList.Create;
+    data.SetCapacity(PL.Count-2);
 try
-    for i := 1 to PL.High do PLI.Add(eval(PL[i]));
+    for i := 2 to PL.High do data.Add(eval(PL[i]));
+    head := eval(PL[1]);
 
-    if not (tpSubprogram(PLI.look[0]) and not tpOperator(PLI.look[0]))
+    if not (tpSubprogram(head) and not tpOperator(head))
     then raise ELE.InvalidParameters;
-    for i := 1 to PLI.high do
-        if not tpList(PLI.look[i]) then raise ELE.InvalidParameters;
+    if not tpListOfLists(data) then raise ELE.InvalidParameters;
 
-    min_count := min_list_length(PLI, 1);
-try
+    min_count := min_list_length(data, 0);
+    //это не обзательно, но позволит избежать довычисления процедуры
+    //каждым из потоков
+    if tpProcedure(head) then (head as TVProcedure).Complement;
+///
     th := true;
-    th1 := nil;
-    th2 := nil;
-    th1 := TEvaluationThread.Create(true);
-    th2 := TEvaluationThread.Create(true);
-    th1.eval_map(PLI, 0, min_count div 2 );
-    //th1.eval_map(PLI, 0, min_count -1 );
-    th2.eval_map(PLI, min_count div 2 + 1, min_count - 1);
-    result := th1.WaitResult;
-    (result as TVList).Append(th2.WaitResult);
-except
-    //удалить результаты предыдущих итераций если текущая завершилась
-    // с ошибкой
-    FreeAndNil(result);
-    raise;
-end;
+    tc := Length(map_threads_pool);
+
+    destr := 0;
+    for i := 0 to tc-1 do begin
+        if i<(min_count mod tc) then n := (min_count div tc)+1 else n := (min_count div tc);
+        map_threads_pool[i].eval(ifh_map, head as TVSubprogram, data,
+            destr, destr+n-1);
+
+        destr := destr+n;
+    end;
+
+    result := TVList.Create;
+    emsg := ''; eclass := ''; estack := '';
+    for i := 0 to tc-1 do try
+        (result as TVList).Append(map_threads_pool[i].WaitResult as TVList);
+        except
+            on E: ELE do begin
+                emsg := emsg+'; '+E.Message;
+                eclass := eclass+'; '+E.EClass;
+                estack := estack+';'+new_line+E.EStack;
+            end;
+        end;
+
+    if emsg<>'' then begin
+        FreeAndNil(result);
+        raise ELE.Create(emsg, eclass, estack);
+    end;
 finally
-    PLI.Free;
-    th1.Free;
-    th2.Free;
+    data.Free;
+    head.Free;
     th := false;
 end;
 end;
@@ -3458,7 +3528,6 @@ end;
 end;
 
 
-
 function TEvaluationFlow.op_append(PL: TVList): TValue;
 var CP: TVChainPointer; i: integer;
 begin try
@@ -3472,24 +3541,28 @@ begin try
 
     CP := eval_link(PL.look[1]);
     if CP.constant then raise ELE.Create('target is not variable');
-    if CP.look is TVString
-    then
-        for i := 2 to PL.high do
-            (CP.look as TVString).S := (CP.look as TVString).S + PL.S[i]
-    else
-        if CP.look is TVList
+    try
+        CP.enter_critical_section;
+        if CP.look is TVString
+        then
+            for i := 2 to PL.high do
+                (CP.look as TVString).S := (CP.look as TVString).S + PL.S[i]
+
+        else if CP.look is TVList
         then begin
             CP.CopyOnWrite;
-            for i := 2 to PL.high do
-                (CP.look as TVList).Append(PL[i] as TVList)
+            for i := 2 to PL.high do (CP.look as TVList).Append(PL[i] as TVList)
         end
-        else
-            if CP.look is TVByteVector
-            then
-                for i := 2 to PL.high do
-                    (CP.look as TVByteVector).append(PL[i] as TVByteVector)
-            else raise ELE.InvalidParameters;
 
+        else if CP.look is TVByteVector
+        then
+            for i := 2 to PL.high do
+                (CP.look as TVByteVector).append(PL[i] as TVByteVector)
+
+        else raise ELE.InvalidParameters;
+    finally
+        CP.leave_critical_section;
+    end;
 
     result := TVT.Create;
 finally
@@ -3830,6 +3903,7 @@ begin
         oeEXECUTE_FILE: result := op_execute_file(PL);
         oeFILTER    : result := op_filter(PL);
         oeFOR       : result := op_for(PL);
+        oeFOLD      : result := op_fold(PL);
         oeGOTO      : result := op_goto(PL);
         oeIF        : result := op_if(PL);
         oeIF_NIL    : result := op_if_nil(PL);
@@ -3837,8 +3911,9 @@ begin
         oeLET       : result := op_let(PL);
         oeMACRO     : result := op_procedure(PL);
         oeMACRO_SYMBOL: result := op_macro_symbol(PL);
-        //oeMAP       : if th then result := op_map(PL) else result := op_map_th(PL);
-        oeMAP       : result := op_map(PL);
+        oeMAP       : if th or (Length(map_threads_pool)=0)
+                        then result := op_map(PL) else result := op_map_th(PL);
+        //oeMAP       : result := op_map(PL);
         oeOR        : result := op_OR(PL);
         oePACKAGE   : result := op_package(PL);
         oePOP       : result := op_pop(PL);
@@ -4269,6 +4344,7 @@ initialization
     quote_operator := root_evaluation_flow.eval(TVSymbol.Create('QUOTE')) as TVOperator;
     T := TVT.Create;
     NULL := TVList.Create;
+    set_threads_count(4);
 
 finalization
     NULL.Free;

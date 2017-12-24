@@ -14,11 +14,11 @@ uses
 
 function read(str: TVStreamPointer): TValue; overload;
 function read_from_string(s: unicodestring): TValue;
-procedure print_stdout(V:TValue);
-procedure print_stdout_ln(V: TValue);
-procedure print_s(V:TValue; stream: TStream); overload;
-procedure print(V:TValue; stream: TVStreamPointer); overload;
-procedure print_ln(V:TValue; stream: TStream);
+//procedure print_stdout(V:TValue);
+//procedure print_stdout_ln(V: TValue);
+//procedure print_s(V:TValue; stream: TStream); overload;
+procedure print(V:TValue; stream: TVStreamPointer; line_end: boolean = false); overload;
+//procedure print_ln(V:TValue; stream: TStream);
 
 
 implementation
@@ -403,8 +403,10 @@ end;
 
 function read(str: TVStreamPointer): TValue;
 begin
+    assert(str <> nil, 'чтение из потока');
+    str.lock;
     result := read_u(str);
-
+    str.unlock;
 end;
 
 function read_from_string(s: unicodestring): TValue;
@@ -421,78 +423,78 @@ end;
 const screen_width = 50;
 var ind: integer = 0;
 
-procedure print_stdout(V:TValue);
-var  i: integer;
-    procedure indent;
-    var i: integer;
-    begin for i:=1 to ind do write('  '); end;
-begin
-    if not (V is TVList)
-    then Write(V.AsString())
-    else
-        if (V as TVList).count=0
-        then write('NIL')
-        else
-            if (Length((V as TVList).AsString())+ind*2)<=screen_width
-            then Write((V as TVList).AsString())
-            else begin
-                Inc(ind);
-                Write('( ');
-                print_stdout((V as TVList)[0]);
-                for i:=1 to (V as TVList).count-1 do begin
-                    writeln('');
-                    indent;
-                    print_stdout((V as TVList)[i]);
-                end;
-                write(')');
-                Dec(ind);
-            end;
-end;
+//procedure print_stdout(V:TValue);
+//var  i: integer;
+//    procedure indent;
+//    var i: integer;
+//    begin for i:=1 to ind do write('  '); end;
+//begin
+//    if not (V is TVList)
+//    then Write(V.AsString())
+//    else
+//        if (V as TVList).count=0
+//        then write('NIL')
+//        else
+//            if (Length((V as TVList).AsString())+ind*2)<=screen_width
+//            then Write((V as TVList).AsString())
+//            else begin
+//                Inc(ind);
+//                Write('( ');
+//                print_stdout((V as TVList)[0]);
+//                for i:=1 to (V as TVList).count-1 do begin
+//                    writeln('');
+//                    indent;
+//                    print_stdout((V as TVList)[i]);
+//                end;
+//                write(')');
+//                Dec(ind);
+//            end;
+//end;
 
 
-procedure print_stdout_ln(V: TValue);
-begin
-    print_stdout(V);
-    WriteLn();
-end;
+//procedure print_stdout_ln(V: TValue);
+//begin
+//    print_stdout(V);
+//    WriteLn();
+//end;
 
 
-procedure print_s(V:TValue; stream: TStream);
-var  i: integer;
-    procedure wr(s: unicodestring);
-    begin
-        stream.Write(s[1],Length(S));
-//        stream.w
-    end;
-    procedure indent;
-    var i: integer;
-    begin for i:=1 to ind do wr('  '); end;
-begin
-    if not (V is TVList)
-    then wr(V.AsString())
-    else
-        if (V as TVList).count=0
-        then wr('NIL')
-        else
-            if (Length((V as TVList).AsString())+ind*2)<=screen_width
-            then wr((V as TVList).AsString())
-            else begin
-                Inc(ind);
-                wr('( ');
-                print_s((V as TVList).look[0], stream);
-                for i:=1 to (V as TVList).count-1 do begin
-                    //S.writeln('');
-                    //wr(#13+#10);
-                    Stream.writebyte(13); Stream.writebyte(10);
-                    indent;
-                    print_s((V as TVList).look[i], stream);
-                end;
-                wr(') ');
-                Dec(ind);
-            end;
-end;
+//procedure print_s(V:TValue; stream: TStream);
+//var  i: integer;
+//    procedure wr(s: unicodestring);
+//    begin
+//        stream.Write(s[1],Length(S));
+////        stream.w
+//    end;
+//    procedure indent;
+//    var i: integer;
+//    begin for i:=1 to ind do wr('  '); end;
+//begin
+//    if not (V is TVList)
+//    then wr(V.AsString())
+//    else
+//        if (V as TVList).count=0
+//        then wr('NIL')
+//        else
+//            if (Length((V as TVList).AsString())+ind*2)<=screen_width
+//            then wr((V as TVList).AsString())
+//            else begin
+//                Inc(ind);
+//                wr('( ');
+//                print_s((V as TVList).look[0], stream);
+//                for i:=1 to (V as TVList).count-1 do begin
+//                    //S.writeln('');
+//                    //wr(#13+#10);
+//                    Stream.writebyte(13); Stream.writebyte(10);
+//                    indent;
+//                    print_s((V as TVList).look[i], stream);
+//                end;
+//                wr(') ');
+//                Dec(ind);
+//            end;
+//end;
 
-procedure print(V:TValue; stream: TVStreamPointer);
+procedure print(V:TValue; stream: TVStreamPointer; line_end: boolean);
 var  i: integer; sn: unicodestring;
     procedure wr(s: unicodestring);
     var i: integer;
@@ -504,7 +506,8 @@ var  i: integer; sn: unicodestring;
     procedure indent;
     var i: integer;
     begin for i:=1 to ind do wr(' '); end;
-begin
+begin try
+    if stream=nil then EnterCriticalSection(console_mutex) else stream.lock;
     //TODO: нужен специальный код для печати списков ключ-значение, чтобы пара помещалась на одной строке
     if (V is TVList) then begin
         if (V as TVList).count=0
@@ -578,13 +581,17 @@ begin
                 wr(')');
                 Dec(ind);
             end;
+    if line_end then wr(new_line);
+finally
+    if stream=nil then LeaveCriticalSection(console_mutex) else stream.unlock;
+end;
 end;
 
-procedure print_ln(V:TValue; stream: TStream);
-begin
-    print_s(V, stream);
-    Stream.writebyte(13); Stream.writebyte(10);
-end;
+//procedure print_ln(V:TValue; stream: TStream);
+//begin
+//    print_s(V, stream);
+//    Stream.writebyte(13); Stream.writebyte(10);
+//end;
 
 
 end.

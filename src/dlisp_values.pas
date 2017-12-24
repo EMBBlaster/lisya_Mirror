@@ -48,7 +48,7 @@ type
     TValue = class
         function Copy(): TValue; virtual; abstract;
         function AsString(): unicodestring; virtual; abstract;
-        function hash: Int64; virtual;
+        function hash: Int64; virtual; abstract;
     end;
     TValueList = array of TValue;
 
@@ -61,11 +61,16 @@ type
 
     /////  Stack /////////////////////
 
+    { TVariable }
+
     TVariable = record
         V: TValue;
         constant: boolean;
     private
         ref_count: integer;
+        critical_section: TRTLCriticalSection;
+        procedure enter_critical_section;
+        procedure leave_critical_section;
     end;
     PVariable = ^TVariable;
 
@@ -294,6 +299,8 @@ type
         procedure add_index(i: integer);
         procedure set_target(_V: TValue);
         procedure CopyOnWrite;
+        procedure enter_critical_section;
+        procedure leave_critical_section;
         procedure set_last_index(i: integer);
     end;
 
@@ -354,7 +361,11 @@ type
 
     TListBody = class (TObjectList)
         ref_count: integer;
+        critical_section: TRTLCriticalSection;
         constructor Create(free_objects: boolean);
+        destructor Destroy;
+        procedure enter_critical_section;
+        procedure leave_critical_section;
     end;
 
     TVList = class (TVCompoundIndexed)
@@ -645,6 +656,7 @@ type
             //oeEXCEPTION,
             oeEXECUTE_FILE,
             oeFILTER,
+            oeFOLD,
             oeFOR,
             oeGOTO,
             oeIF,
@@ -694,7 +706,11 @@ type
     TVStream = class (TValue)
         fstream: TStream;
         encoding: TStreamEncoding;
+        mutex: TRTLCriticalSection;
+        external_mutex: boolean;
 
+        constructor Create; overload;
+        constructor Create(m: TRTLCriticalSection); overload;
         destructor Destroy; override;
         function Copy: TValue; override;
 
@@ -762,7 +778,7 @@ type
         function AsString: unicodestring;
     end;
 
-    { TVStreamPointer2 }
+    { TVStreamPointer }
 
     TVStreamPointer = class (TValue)
         body: PVariable;
@@ -776,6 +792,8 @@ type
         function hash: int64; override;
 
         procedure close_stream;
+        procedure lock;
+        procedure unlock;
     end;
 
 
@@ -788,6 +806,9 @@ function RefVariable(P: PVariable): PVariable;
 procedure ReleaseVariable(var P: PVariable);
 
 var symbols: array of unicodestring;
+    symbols_mutex: TRTLCriticalSection;
+    console_mutex: TRTLCriticalSection;
+
 
 implementation
 
@@ -801,31 +822,34 @@ begin
     result.ref_count:=1;
     result.constant := _constant;
     result.V := _V;
+    InitCriticalSection(result.critical_section);
 
    // WriteLn('NewVariable>> ', IntToHex(qword(result),8));
 end;
 
 function RefVariable(P: PVariable): PVariable;
 begin
-
-   // WriteLn('RefVariable>> ', IntToHex(qword(p),8));
     if P<> nil then begin
+        P.enter_critical_section;
         Inc(P.ref_count);
+        P.leave_critical_section;
         result := P;
     end
     else
         result := nil;
-
 end;
 
 procedure ReleaseVariable(var P: PVariable);
+var no_refs: boolean;
 begin
-    //WriteLn('ReleaseVariable>> ', IntToHex(qword(p),8));
     if P<>nil then begin
-      //  WriteLn('ref_count = ',P.ref_count);
+        P.enter_critical_section;
         Dec(P.ref_count);
-        if P.ref_count<=0 then begin
+        no_refs := P.ref_count<=0;
+        P.leave_critical_section;
+        if no_refs then begin
             P.V.Free;
+            DoneCriticalSection(P.critical_section);
             Dispose(P);
             P:= nil;
         end;
@@ -845,21 +869,40 @@ begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
 
+procedure TVariable.enter_critical_section;
+begin
+    EnterCriticalSection(critical_section);
+end;
+
+procedure TVariable.leave_critical_section;
+begin
+    LeaveCriticalSection(critical_section);
+end;
+
 { TListBody }
 
 constructor TListBody.Create(free_objects: boolean);
 begin
     inherited Create(free_objects);
     ref_count := 1;
+    InitCriticalSection(critical_section);
 end;
 
-
-{ TValue }
-
-function TValue.hash: Int64;
+destructor TListBody.Destroy;
 begin
-    raise ELE.Create('hash not implemented');
+    DoneCriticalSection(critical_section);
 end;
+
+procedure TListBody.enter_critical_section;
+begin
+    EnterCriticalSection(critical_section);
+end;
+
+procedure TListBody.leave_critical_section;
+begin
+    leaveCriticalSection(critical_section);
+end;
+
 
 { TVDeflateStream }
 
@@ -871,6 +914,7 @@ begin
     //WriteLn('inflate>> ',target.V.AsString());
     fStream := TCompressionStream.create(clDefault,
         (target.V as TVStream).fstream, not head);
+    inherited Create((target.V as TVStream).mutex);
 end;
 
 destructor TVDeflateStream.Destroy;
@@ -890,6 +934,7 @@ constructor TVMemoryStream.Create;
 begin
     encoding := seUTF8;
     fstream := TMemoryStream.Create;
+    inherited Create;
 end;
 
 constructor TVMemoryStream.Create(const bb: TBytes);
@@ -898,6 +943,7 @@ begin
     encoding := seUTF8;
     fstream := TMemoryStream.Create;
     for i := 0 to high(bb) do fstream.WriteByte(bb[i]);
+    inherited Create;
 end;
 
 constructor TVMemoryStream.Create(const s: unicodestring);
@@ -906,6 +952,7 @@ begin
     encoding := seUTF8;
     fstream := TMemoryStream.Create;
     for i := 1 to Length(s) do self.write_char(s[i]);
+    inherited Create;
 end;
 
 function TVMemoryStream.AsString: unicodestring;
@@ -1052,6 +1099,16 @@ begin
     stream := nil;
 end;
 
+procedure TVStreamPointer.lock;
+begin
+    EnterCriticalSection((body.V as TVStream).mutex);
+end;
+
+procedure TVStreamPointer.unlock;
+begin
+    LeaveCriticalSection((body.V as TVStream).mutex);
+end;
+
 { TVInflateStream }
 
 constructor TVInflateStream.Create(_target: PVariable; enc: TStreamEncoding = seUTF8;
@@ -1061,6 +1118,7 @@ begin
     target := _target;
     //WriteLn('inflate>> ',target.V.AsString());
     fStream := TDecompressionStream.create((target.V as TVStream).fstream, not head);
+    inherited Create((target.V as TVStream).mutex);
 end;
 
 destructor TVInflateStream.Destroy;
@@ -1085,6 +1143,7 @@ end;
 constructor TVFileStream.Create(fn: unicodestring; mode: TFileMode;
     enc: TStreamEncoding = seUTF8);
 begin
+    inherited Create;
     file_name := fn;
     case mode of
         fmRead: begin
@@ -1111,9 +1170,22 @@ end;
 
 { TVStream }
 
+constructor TVStream.Create;
+begin
+    InitCriticalSection(mutex);
+    external_mutex := false;
+end;
+
+constructor TVStream.Create(m: TRTLCriticalSection);
+begin
+    mutex := m;
+    external_mutex := true;
+end;
+
 destructor TVStream.Destroy;
 begin
     fstream.Free;
+    if not external_mutex then DoneCriticalSection(mutex);
     inherited Destroy;
 end;
 
@@ -1132,17 +1204,23 @@ function TVStream.read_byte(out b: byte): boolean;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
 try
+    //EnterCriticalSection(mutex);
+try
     b := fstream.ReadByte;
     result := true;
 except
     on E:EStreamError do result := false;
 end;
+finally
+    //LeaveCriticalSection(mutex);
+end;
 end;
 
 function TVStream.read_bytes(var bb: TBytes; count: integer): boolean;
 var i: integer;
-begin
+begin try
     Assert(fstream<>nil, 'operation on closed stream');
+    //EnterCriticalSection(mutex);
     if count>0 then begin
         SetLength(bb, count);
         for i := 0 to count-1 do bb[i] := fStream.ReadByte;
@@ -1154,15 +1232,23 @@ begin
         //WriteLn('size>> ', fStream.Size, '   ', fStream.Position);
         SetLength(bb, fStream.Size - fStream.Position);
         for i := 0 to fStream.Size - fStream.Position - 1 do bb[i] := fStream.ReadByte;
-        fStream.ReadBuffer(bb, fStream.Size - fStream.Position);
+        //fStream.ReadBuffer(bb, fStream.Size - fStream.Position);
         result := true;
     end;
+finally
+    //LeaveCriticalSection(mutex);
+end;
 end;
 
 function TVStream.write_byte(b: byte): boolean;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
-    fstream.WriteByte(b);
+    try
+       // EnterCriticalSection(mutex);
+        fstream.WriteByte(b);
+    finally
+      //  LeaveCriticalSection(mutex);
+    end;
     result := true;
 end;
 
@@ -1171,7 +1257,12 @@ var i: integer;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
 //    WriteLn('write_bytes>> ', Length(bb));
-    for i := 0 to high(bb) do fStream.WriteByte(bb[i]);
+    try
+       // EnterCriticalSection(mutex);
+        for i := 0 to high(bb) do fStream.WriteByte(bb[i]);
+    finally
+       // LeaveCriticalSection(mutex);
+    end;
     //TODO: writeBuffer глючит так же как readbuffer
     //fStream.WriteBuffer(bb, Length(bb));
     result := true;
@@ -1474,11 +1565,21 @@ procedure TVChainPointer.CopyOnWrite;
 var obj: TValue; i: integer;
 begin
     obj := self.V.V;
-    if (obj is TVList) and (obj as TVList).CopyOnWrite then Exit;
-    for i := 0 to high(index) do begin
+    if (obj is TVList) then (obj as TVList).CopyOnWrite;
+    for i := 0 to high(index)-1 do begin
         obj := (obj as TVCompound).look[index[i]];
-        if (obj is TVList) and (obj as TVList).CopyOnWrite then Exit;
+        if (obj is TVList) then (obj as TVList).CopyOnWrite;
     end;
+end;
+
+procedure TVChainPointer.enter_critical_section;
+begin
+    V.enter_critical_section;
+end;
+
+procedure TVChainPointer.leave_critical_section;
+begin
+    V.leave_critical_section;
 end;
 
 procedure TVChainPointer.set_last_index(i: integer);
@@ -1811,8 +1912,10 @@ begin
 
     if stack[n].V.constant
     then raise ELE.Create('stack element '+IntToStr(n)+' is constant');
+    stack[n].V.enter_critical_section;
     stack[n].V.V.Free;
     stack[n].V.V := V;
+    stack[n].V.leave_critical_section;
     result := true;
 end;
 
@@ -1895,7 +1998,11 @@ begin
     //print(_n);
     for i := high(stack) downto _n do
         if (stack[i].V<>nil) and (stack[i].V.ref_count>1) and (stack[i].V.V is TVProcedure)
-        then (stack[i].V.V as TVProcedure).Complement;
+        then begin
+            stack[i].V.enter_critical_section;
+            (stack[i].V.V as TVProcedure).Complement;
+            stack[i].V.leave_critical_section;
+        end;
 
     for i := high(stack) downto _n do ReleaseVariable(stack[i].V);
 
@@ -2609,6 +2716,7 @@ var i: integer; uname: unicodestring;
 begin
     uname := UpperCaseU(n);
     result := -1;
+    EnterCriticalSection(symbols_mutex);
     for i := high(symbols) downto 0 do
         if symbols[i] = uname then begin
             result := i;
@@ -2620,6 +2728,7 @@ begin
         result := high(symbols);
         symbols[high(symbols)] := uname;
     end;
+    LeaveCriticalSection(symbols_mutex);
 end;
 
 constructor TVSymbol.CreateEmpty;
@@ -2629,7 +2738,9 @@ end;
 
 function TVSymbol.fGetUname: unicodestring;
 begin
+    EnterCriticalSection(symbols_mutex);
     result := symbols[fN];
+    LeaveCriticalSection(symbols_mutex);
 end;
 
 constructor TVSymbol.Create(S: unicodestring);
@@ -2657,9 +2768,14 @@ var
 begin
     CopyOnWrite;
     fL.Capacity := fL.Capacity + VL.fL.Capacity;
-    for i := 0 to VL.fL.Count - 1 do begin
-        fL.Add((VL.fL[i] as TValue).Copy);
-    end;
+    if false //VL.fL.ref_count=1
+    then begin
+        VL.fL.OwnsObjects:=false;
+        for i := 0 to VL.fL.Count - 1 do fL.Add(VL.fL[i]);
+    end
+    else
+        for i := 0 to VL.fL.Count - 1 do fL.Add((VL.fL[i] as TValue).Copy);
+
     VL.Free;
 end;
 
@@ -2722,6 +2838,7 @@ end;
 
 function TVList.Count: integer;
 begin
+    //WriteLn('count>>');
     result := fL.Count;
 end;
 
@@ -2747,7 +2864,9 @@ end;
 function TVList.Copy: TValue;
 var i: integer;
 begin
+    fL.enter_critical_section;
     Inc(fL.ref_count);
+    fL.leave_critical_section;
     result := TVList.Create(fL);
     //(result as TVList).fL.Capacity := fL.Capacity;
     //for i := 0 to fL.Count - 1 do
@@ -2810,9 +2929,13 @@ end;
 //end;
 
 destructor TVList.Destroy;
+var no_refs: boolean;
 begin
+    fL.enter_critical_section;
     Dec(fl.ref_count);
-    if fL.ref_count=0 then fL.Free;
+    no_refs := fL.ref_count=0;
+    fL.leave_critical_section;
+    if no_refs then fL.Free;
     inherited;
 end;
 
@@ -2853,14 +2976,18 @@ end;
 //end;
 
 function TVList.CopyOnWrite: boolean;
-var i: integer; fL_old: TListBody;
+var i: integer; fL_old: TListBody; no_refs: boolean;
 begin
     if fL.ref_count>1 then begin
         fL_old := fL;
         fL := TListBody.Create(true);
         fL.Capacity := fL_old.Count;
         for i := 0 to fL_old.Count-1 do fL.Add((fL_old[i] as TValue).Copy);
+        fL_old.enter_critical_section;
         Dec(fL_old.ref_count);
+        no_refs := fL_old.ref_count<=0;
+        fL_old.leave_critical_section;
+        if no_refs then fL_old.Free;
         result := true;
     end
     else result := false;
@@ -2915,5 +3042,10 @@ end;
 //    result.fL.Capacity:= fL.Count - 1;
 //    for i:=1 to fL.Count-1 do result.fL.Add(fL[i]);
 //end;
-
+initialization
+    InitCriticalSection(symbols_mutex);
+    InitCriticalSection(console_mutex);
+finalization
+    DoneCriticalSection(symbols_mutex);
+    DoneCriticalSection(console_mutex);
 end.

@@ -186,6 +186,8 @@ function vpKeyword_RIGHT                            (V: TValue): boolean;
 
 function vpKeyword_SECOND                           (V: TValue): boolean;
 
+function vpKeyword_THREADS_COUNT                    (V: TValue): boolean;
+
 function vpKeyword_UTF16BE                          (V: TValue): boolean;
 
 function vpKeyword_UTF16LE                          (V: TValue): boolean;
@@ -761,6 +763,11 @@ end;
 function vpKeyword_SECOND                           (V: TValue): boolean;
 begin
     result := (V is TVKeyword) and ((V as TVSymbol).uname = ':SECOND');
+end;
+
+function vpKeyword_THREADS_COUNT(V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':THREADS-COUNT');
 end;
 
 function vpKeyword_UTF16BE                          (V: TValue): boolean;

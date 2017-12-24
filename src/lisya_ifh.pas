@@ -28,6 +28,9 @@ function ifh_union1             (const L: TVList): TVList;
 
 function ifh_intersection       (const L: TVList): TVList;
 
+function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
+function ifh_fold(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
+
 implementation
 
 type THashes = array of DWORD;
@@ -357,17 +360,13 @@ var hashes: array of array of DWORD;
 begin
     //TODO: intersection может быть ускорена если предварительно отсортировать
     //множества по длине
-    //левая свёртка этой функцией работает на 10% быстрее чем сама функция от множества аргументов
+    //левая свёртка этой функцией работает на 10% быстрее чем сама функция
+    //от множества аргументов
     result := TVList.Create;
     if (L.Count=0) then Exit;
 
     //вычисление хэшей
     ifhh_hash_lists(L, hashes);
-    //setLength(hashes, L.Count);
-    //for i := 0 to L.high do begin
-    //    SetLength(hashes[i], L.L[i].Count);
-    //    for j := 0 to L.L[i].high do hashes[i][j] := L.L[i].look[j].hash;
-    //end;
 
     //результат не может быть больше самого маленького из множеств
     min_length := Length(hashes[0]);
@@ -388,6 +387,46 @@ begin
     for i := 0 to high(hashes) do SetLength(hashes[i], 0);
     SetLength(hashes, 0);
     SetLength(res, 0);
+end;
+////////////////////////////////////////////////////////////////////////////////
+/// threads ////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+function ifh_fold(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
+var expr: TVList; tmp: TValue; i: integer;
+begin try
+    expr := TVList.Create([P.Copy, PL[b], PL[b+1]]);
+    result := call(expr);
+    for i := b+2 to e do begin
+        expr[1] := result;
+        expr[2] := PL[i];
+        result := call(expr);
+    end;
+finally
+    expr.Free;
+end;
+end;
+//------------------------------------------------------------------------------
+function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
+var expr: TVList;
+    i, j: integer;
+begin try try
+    result := TVList.Create;
+    (result as TVList).SetCapacity(e-b+1);
+
+    expr := TVList.Create([P.Copy]);
+    for i := 0 to PL.high do expr.Add(nil);
+    for i := b to e do begin
+        for j := 0 to PL.high do expr[j+1] := PL.L[j][i];
+        //WriteLn('ifh_map>> ', expr.AsString);
+        (result as TVList).Add(call(expr));
+    end;
+except
+    FreeAndNil(result);
+    raise;
+end;
+finally
+    expr.Free;
+end;
 end;
 
 end.
