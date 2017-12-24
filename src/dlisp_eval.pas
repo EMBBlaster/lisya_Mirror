@@ -644,7 +644,8 @@ end;
 function if_symbol              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpString]) of
+        tpString,
+        tpNIL]) of
         1: begin
             result := read_from_string(PL.S[0]);
             if not tpSymbol(result) then begin
@@ -652,6 +653,7 @@ begin
                 raise ELE.Create('invalid symbol name', 'syntax');
             end;
         end;
+        2: result := TVSymbol.Gensym;
     end;
 end;
 
@@ -2201,7 +2203,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SQRT';                  f:if_sqrt;                  s:'(a)'),
 (n:'ROUND';                 f:if_round;                 s:'(a)'),
 (n:'RANGE';                 f:if_range;                 s:'(l :optional h)'),
-(n:'SYMBOL';                f:if_symbol;                s:'(n)'),
+(n:'SYMBOL';                f:if_symbol;                s:'(:optional n)'),
 (n:'RANDOM';                f:if_random;                s:'(:optional r)'),
 (n:'RE';                    f:if_re;                    s:'(a)'),
 (n:'IM';                    f:if_im;                    s:'(a)'),

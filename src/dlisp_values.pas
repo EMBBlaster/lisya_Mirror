@@ -203,6 +203,7 @@ type
         property N: integer read fN;
 
         constructor Create(S: unicodestring);
+        constructor Gensym;
         constructor CreateEmpty;
         destructor Destroy; override;
         function Copy(): TValue; override;
@@ -811,6 +812,8 @@ var symbols: array of unicodestring;
 
 
 implementation
+
+var gensym_n: Int64 = -1;
 
 
 
@@ -2742,6 +2745,16 @@ begin
     LeaveCriticalSection(symbols_mutex);
 end;
 
+constructor TVSymbol.Gensym;
+var negN: Int64;
+begin
+    EnterCriticalSection(symbols_mutex);
+    fN := gensym_n;
+    Dec(gensym_n);
+    LeaveCriticalSection(symbols_mutex);
+    fName := '#G'+IntToStr(fN);
+end;
+
 constructor TVSymbol.CreateEmpty;
 begin
 
@@ -2749,9 +2762,13 @@ end;
 
 function TVSymbol.fGetUname: unicodestring;
 begin
-    EnterCriticalSection(symbols_mutex);
-    result := symbols[fN];
-    LeaveCriticalSection(symbols_mutex);
+    if fN<0
+    then result := fname
+    else begin
+        EnterCriticalSection(symbols_mutex);
+        result := symbols[fN];
+        LeaveCriticalSection(symbols_mutex);
+    end;
 end;
 
 constructor TVSymbol.Create(S: unicodestring);
