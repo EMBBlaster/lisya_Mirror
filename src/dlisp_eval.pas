@@ -3376,7 +3376,7 @@ end;
 var th: boolean = false;
 
 function TEvaluationFlow.op_map_th                  (PL: TVList): TValue;
-var expr: TVList; i,j, tc: integer;
+var i,j, tc: integer;
     min_count: integer; data: TVList;
     n, destr: integer;
     emsg,eclass,estack: unicodestring;
@@ -3384,7 +3384,6 @@ var expr: TVList; i,j, tc: integer;
 begin
     if PL.Count<3 then raise ELE.Malformed('MAP');
     result := nil;
-    expr := nil;
     head := nil;
     data := TVList.Create;
     data.SetCapacity(PL.Count-2);
