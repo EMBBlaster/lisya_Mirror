@@ -178,6 +178,8 @@ function vpKeyword_READ                             (V: TValue): boolean;
 
 function vpKeyword_RESET_STACK                      (V: TValue): boolean;
 
+function vpKeyword_RESET_PACKAGES                   (V: TValue): boolean;
+
 function vpKeyword_REST                             (V: TValue): boolean;
 
 function vpKeyword_RESULT                           (V: TValue): boolean;
@@ -230,14 +232,6 @@ function vpListKeywordValue                         (V: TValue): boolean;
 function vpListOfByte                               (V: Tvalue): boolean;
 
 function vpListOfSymbolValuePairs                   (V: TValue): boolean;
-
-function vpListOpCall_ELSE                          (V: TValue): boolean;
-
-function vpListOpCall_ELT                           (V: TValue): boolean;
-
-function vpListOpCall_EXCEPTION                     (V: TValue): boolean;
-
-function vpListOpCall_THEN                          (V: TValue): boolean;
 
 function vpListSymbolValue                          (V: TValue): boolean;
 
@@ -743,6 +737,11 @@ begin
     result := vphKeywordName(V, ':RESET-STACK');
 end;
 
+function vpKeyword_RESET_PACKAGES(V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':RESET-PACKAGES');
+end;
+
 function vpKeyword_REST                             (V: TValue): boolean;
 begin
     //result := (V is TVKeyword) and ((V as TVSymbol).uname = ':REST');
@@ -916,26 +915,6 @@ begin
     end
     else exit;
     result := true;
-end;
-
-function vpListOpCall_ELSE                          (V: TValue): boolean;
-begin
-    //result := vphListOpCall(V, 'ELSE', oeELSE);
-end;
-
-function vpListOpCall_ELT                           (V: TValue): boolean;
-begin
-    result := vphListOpCall(V, 'ELT', oeELT);
-end;
-
-function vpListOpCall_EXCEPTION                     (V: TValue): boolean;
-begin
-    //result := vphListOpCall(V, 'EXCEPTION', oeEXCEPTION);
-end;
-
-function vpListOpCall_THEN                          (V: TValue): boolean;
-begin
-    //result := vphListOpCall(V, 'THEN', oeTHEN);
 end;
 
 function vpListSymbolValue                          (V: TValue): boolean;

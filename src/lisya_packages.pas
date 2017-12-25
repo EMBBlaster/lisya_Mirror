@@ -27,6 +27,7 @@ type
 
 procedure AddPackage(P: TPackage);
 function FindPackage(name: unicodestring): TPackage;
+procedure FreePackages;
 
 //TODO: в пакете хранится его стэк целиком (хотя он не нужен)
 //и перечень экспортируемых переменных отдельно

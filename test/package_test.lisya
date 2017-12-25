@@ -8,6 +8,7 @@
             counter)
         (procedure reset ()
             (set counter 0)))
+    (with P1)
     (assertion (= 1 (P1:NEXT)) "package 1")
 )
 

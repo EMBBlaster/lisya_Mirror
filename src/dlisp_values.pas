@@ -678,6 +678,7 @@ type
             oeRETURN,
             oeSET,
             //oeTHEN,
+            oeUSE,
             oeVAL,
             oeVAR,
             oeWHEN,
@@ -2428,37 +2429,22 @@ function TVProcedure.Copy: TValue;
 var i: integer;
 begin
     //TODO: копирование процедуры ненадёжно может приводить к утечкам
-    //case self.CreateEmpty of
-    //if self.ClassType = TVProcedure then result := TVProcedure.CreateEmpty
-    //else
-    //    if self.ClassType = TVMacro then result := TVMacro.CreateEmpty
-    //    else
-    //        if self.ClassType = TVMacroSymbol then result := TVMacroSymbol.CreateEmpty;
-    //
+    self.Complement;
+
     result := self.ClassType.Create as TValue;
 
-    //    TVProcedure: result := TVProcedure.CreateEmpty;
-    //    TVMacro: result := TVMacro.CreateEmpty;
-    //    TVMacroSymbol: result := TVMacroSymbol.CreateEmpty;
-    //end;
-
-//    result := TVProcedure.CreateEmpty;
     (result as TVProcedure).body := body.Copy() as TVList;
     (result as TVProcedure).stack := stack.Copy as TVSymbolStack;
 
     (result as TVProcedure).home_stack := home_stack;
 
     (result as TVProcedure).evaluated := evaluated;
-    //setLength((result as TVProcedure).fsignature, Length(fsignature));
-    //for i := 0 to high(fsignature) do
-    //    (result as TVProcedure).fsignature[i] := fsignature[i];
 
     (result as TVProcedure).sign := sign.Copy as TVList;
 
     (result as TVProcedure).stack_pointer := stack_pointer;
 
-    //(result as tVProcedure).is_macro:=is_macro;
-    //(result as tVProcedure).is_macro_symbol:=is_macro_symbol;
+
     (result as tVProcedure).nN := nN;
 end;
 

@@ -2,7 +2,7 @@
 
 (block
     (assertion (= (map - \(4 5 6) \(1 2 3)) \(3 3 3)) "map int fun")
-    (assertion (= (map if \(t nil) \(1 1) \(2 2)) \(1 2)) "map op")
+    ;(assertion (= (map if \(t nil) \(1 1) \(2 2)) \(1 2)) "map op")
     (assertion (= (map (procedure (x) (+ 1 x)) \(1 2)) \(2 3)) "map proc"))
 
 
@@ -11,7 +11,9 @@
     (var b \(3 2 1 0))
     (var c (list a a a a))
 
-    (assertion (= \("d" "c" "b" "a") (map elt c b)) "map"))
+    ;нужно решить что делать с отображениями-операторами
+    ;(assertion (= \("d" "c" "b" "a") (map elt c b)) "map")
+    )
 
 (block
     (var a \(1))
@@ -20,6 +22,11 @@
     (var d (list b c))
 
     (assertion (= \(1 2 3) (apply concatenate a d)) "apply"))
+
+(block "свёртка"
+    (var L \(1 2 3))
+    (assertion (= 6 (fold + L)) "fold +")
+    (assertion (= 1 (fold (procedure (a b) 1) L)) "fold 1"))
 
 
 (log " успешно")

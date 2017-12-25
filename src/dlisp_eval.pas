@@ -44,6 +44,7 @@ type
         function oph_bind_to_list(s, P: TVList): TVList;
         procedure oph_execute_file(fn: unicodestring);
         function oph_map(PL: TVList; P: TVSubprogram; b, e: integer): TValue;
+        procedure oph_bind_package(name: unicodestring; import: boolean = false);
 
         function opl_elt(PL: TVList): TVChainPointer;
         function opl_last(PL: TVList): TVChainPointer;
@@ -76,7 +77,6 @@ type
         function op_pop(PL: TVList): TValue;
         function op_procedure(PL: TVList): TValue;
         function op_push(PL: TVList): TValue;
-        function op_secondary_error(PL: TVList): TValue;
         function op_set(PL: TVList): TValue;
         function op_record(PL: TVList): TValue;
         function op_record_as(PL: TVList): TValue;
@@ -85,7 +85,7 @@ type
         function op_var(PL: TVList): TValue;
         function op_when(PL: TVList): TValue;
         function op_while(PL: TVList): TValue;
-        function op_with(PL: TVList): TValue;
+        function op_with(PL: TVList; export_symbols: boolean): TValue;
 
 
         function extract_body_symbols(body: TVList): TVList;
@@ -2380,6 +2380,7 @@ begin
             oeRETURN    : op('RETURN');
             oeSET       : op('SET');
             //oeTHEN      : op('THEN');
+            oeUSE       : op('USE');
             oeVAL       : op('VAL');
             oeVAR       : op('VAR');
             oeWHEN      : op('WHEN');
@@ -2618,6 +2619,31 @@ begin
     end;
 end;
 
+procedure TEvaluationFlow.oph_bind_package(name: unicodestring; import: boolean);
+var pack: TPackage; prefix: unicodestring;
+    procedure bind_pack;
+    var i: integer;
+    begin
+        for i := 0 to pack.export_list.high do
+            stack.new_ref(
+                prefix+pack.export_list.uname[i],
+                pack.stack.find_ref(pack.export_list.SYM[i]));
+    end;
+begin
+    if import then prefix := '' else prefix := name+':';
+    pack := FindPackage(name);
+    if pack<>nil
+    then bind_pack
+    else
+        if FileExists(name+'.lisya')
+        then begin oph_execute_file(name+'.lisya'); bind_pack; end
+        else
+            if FileExists(name+'.лися')
+            then begin oph_execute_file(name+'.лися'); bind_pack; end
+            else
+                raise ELE.Create('package '+name+' not found');
+end;
+
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
 var i: integer; tmp: TValue; ind: TValue;
 begin
@@ -2792,17 +2818,6 @@ finally
 end;
 end;
 
-function TEvaluationFlow.op_secondary_error(PL: TVList): TValue;
-begin
-   // case (PL.look[0] as TVOperator).op_enum of
-        //oeTHEN : raise ELE.Create('THEN not inside IF', 'syntax');
-        //oeELSE : raise ELE.Create('ELSE not inside IF', 'syntax');
-        //oeEXCEPTION : raise ELE.Create('EXCEPTION not inside block', 'syntax');
-   //     else raise ELE.Create('secondary op error');
-  //  end;
-    result := TVT.Create;
-end;
-
 function TEvaluationFlow.op_pop                     (PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
@@ -2845,6 +2860,11 @@ begin
         main_stack.Free;
         main_stack := base_stack.Copy as TVSymbolStack;
         stack := main_stack;
+        exit;
+    end;
+
+     if (PL.Count=2) and vpKeyword_RESET_PACKAGES(PL.look[1]) then begin
+        FreePackages;
         exit;
     end;
 
@@ -3504,13 +3524,13 @@ begin
 try
     result := oph_block(PL, 3, false);
 
-    for i := 0 to PL.L[2].high do begin
-        //P := package_stack.find_ref_or_nil(PL.L[2].uname[i]);
-        P := package_stack.find_ref_or_nil(PL.L[2].SYM[i]);
-        if P=nil then raise ELE.Create(PL.L[2].uname[i]+
-            ' not bound in package '+PL.uname[1], 'symbol not bound');
-        external_stack.new_ref(PL.uname[1]+':'+PL.L[2].uname[i], P);
-    end;
+    //for i := 0 to PL.L[2].high do begin
+    //    //P := package_stack.find_ref_or_nil(PL.L[2].uname[i]);
+    //    P := package_stack.find_ref_or_nil(PL.L[2].SYM[i]);
+    //    if P=nil then raise ELE.Create(PL.L[2].uname[i]+
+    //        ' not bound in package '+PL.uname[1], 'symbol not bound');
+    //    external_stack.new_ref(PL.uname[1]+':'+PL.L[2].uname[i], P);
+    //end;
 
     //  сохранение пакета
     pack := TPackage.Create;
@@ -3705,10 +3725,8 @@ end;
 
 end;
 
-function TEvaluationFlow.op_with(PL: TVList): TValue;
-var i, j: integer;
-    pack: TPackage;
-    fn: unicodestring;
+function TEvaluationFlow.op_with(PL: TVList; export_symbols: boolean): TValue;
+var i: integer;
 begin
     if (PL.Count<2) then raise ELE.Malformed('WITH');
     for i := 1 to PL.high do
@@ -3717,44 +3735,11 @@ begin
 
     result := nil;
 
-    for i := 0 to PL.high do
-    begin
-        if tpSymbol(PL.look[i])
-        then begin
-            pack := FindPackage(PL.uname[i]);
-            if pack<>nil
-            then begin
-                for j := 0 to pack.export_list.high do
-                    stack.new_ref(pack.uname+':'+pack.export_list.uname[j],
-                        //pack.stack.find_ref(pack.export_list.uname[j])
-                        pack.stack.find_ref(pack.export_list.SYM[j])
-                        );
-            end
-            else begin
-                fn := PL.name[i]+'.lisya';
-                if FileExists(fn)
-                then begin
-                    oph_execute_file(fn);
-                end
-                else begin
-                    raise ELE.Create('package '+PL.name[i]+' not found');
-                end;
-            end;
-        end;
-        if tpString(PL.look[i])
-        then begin
-            fn := DirSep(PL.S[i]);
-            if FileExists(fn)
-            then begin
-                oph_execute_file(fn);
-            end
-            else begin
-                raise ELE.Create('package "'+fn+'" not found');
-            end;
-        end;
+    for i := 1 to PL.high do begin
+        oph_bind_package(PL.name[i], false);
+        if export_symbols then oph_bind_package(PL.name[i], true);
     end;
 
-    result.Free;
     result := TVT.Create;
 end;
 
@@ -3927,11 +3912,12 @@ begin
         oeRETURN    : result := op_return(PL);
         oeSET       : result := op_set(PL);
         //oeTHEN      : result := op_secondary_error(PL);
+        oeUSE       : result := op_with(PL, true);
         oeVAL       : result := op_val(PL);
         oeVAR       : result := op_var(PL);
         oeWHEN      : result := op_when(PL);
         oeWHILE     : result := op_while(PL);
-        oeWITH      : result := op_with(PL);
+        oeWITH      : result := op_with(PL, false);
         else raise ELE.Create('неизвестный оператор');
     end;
 end;
