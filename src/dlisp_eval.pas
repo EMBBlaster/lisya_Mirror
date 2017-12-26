@@ -1114,18 +1114,37 @@ begin
 end;
 
 function if_curry               (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i, _: integer; f: TVProcedure; bind: TBindings;
+var i: integer; f: TVProcedure; bind: TBindings; _: TVSymbol; P: PVariable;
+    procedure del_sym(L: TVList; n: integer);
+    var i: integer;
+    begin
+        for i := L.high downto 0 do
+            if tpList(L.look[i]) then del_sym(L.L[i], n)
+            else
+                if L.SYM[i].N=n then L.delete(i);
+    end;
+
 begin
     case params_is(PL, result, [
         tpProcedure, tpList]) of
-        1: begin
-            _ := TVSymbol.symbol_n('_');
+        1: try
             result := PL[0];
             f := result as TVProcedure;
+            f.sign.CopyOnWrite;
             bind := ifh_bind(f.sign,PL.L[1]);
             for i := 0 to high(bind) do begin
-                raise ELE.Create('not impl');
+                if vpSymbol__(bind[i].V)
+                then bind[i].V.Free
+                else begin
+                    if bind[i].rest
+                    then (f.stack.look_var(bind[i].nN).V as TVList).Append(bind[i].V as TVList)
+                    else begin
+                        f.stack.new_var(bind[i].nN, bind[i].V, true);
+                        del_sym(f.sign, bind[i].nN);
+                    end;
+                end;
             end;
+        finally
 
         end;
     end;
@@ -3882,15 +3901,20 @@ function TEvaluationFlow.call_procedure(PL: TVList): TValue;
 var proc: TVProcedure; params: TVList; tmp_stack, proc_stack: TVSymbolStack;
     tmp: TValue;
 begin try
-    //WriteLn('call\-proc');
+
     params := nil;
     proc_stack := nil;
     proc := PL.look[0] as TVProcedure;
     proc.Complement;
+
+    WriteLn('call-proc>> ', proc.sign.AsString());
+
     proc_stack := proc.stack.Copy as TVSymbolStack;
     //params := PL.Phantom_CDR;
     params := PL.CDR;
     oph_bind(proc.sign, params, true, proc_stack);
+
+
 
     tmp_stack := stack;
     stack := proc_stack;

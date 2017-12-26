@@ -533,6 +533,7 @@ type
         //function find_ref(name: unicodestring): PVariable; overload;
         function find_ref(symbol: TVSymbol): PVariable; overload;
         function find_ref(N: integer): PVariable; overload;
+        function look_var(N: integer): PVariable;
         procedure new_ref(name: unicodestring; P: PVariable); overload;
         procedure new_ref(symbol: TVSymbol; P: PVariable); overload;
 
@@ -2049,6 +2050,11 @@ end;
 function TVSymbolStack.find_ref(N: integer): PVariable;
 begin
     result := RefVariable(stack[index_of(N)].V);
+end;
+
+function TVSymbolStack.look_var(N: integer): PVariable;
+begin
+    result := stack[index_of(N)].V;
 end;
 
 procedure TVSymbolStack.new_ref(name: unicodestring; P: PVariable);
