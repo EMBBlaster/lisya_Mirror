@@ -532,6 +532,7 @@ type
         procedure bind_var(symbol, target: TVSymbol); overload;
         //function find_ref(name: unicodestring): PVariable; overload;
         function find_ref(symbol: TVSymbol): PVariable; overload;
+        function find_ref(N: integer): PVariable; overload;
         procedure new_ref(name: unicodestring; P: PVariable); overload;
         procedure new_ref(symbol: TVSymbol; P: PVariable); overload;
 
@@ -649,6 +650,7 @@ type
             oeCOND,
             oeCONST,
             oeCONTINUE,
+            oeCURRY,
             oeDEBUG,
             oeDEFAULT,
             //oeELSE,
@@ -2042,6 +2044,11 @@ end;
 function TVSymbolStack.find_ref(symbol: TVSymbol): PVariable;
 begin
     result := RefVariable(stack[index_of(symbol.N)].V);
+end;
+
+function TVSymbolStack.find_ref(N: integer): PVariable;
+begin
+    result := RefVariable(stack[index_of(N)].V);
 end;
 
 procedure TVSymbolStack.new_ref(name: unicodestring; P: PVariable);

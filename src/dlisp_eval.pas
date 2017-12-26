@@ -56,6 +56,7 @@ type
         function op_case(PL: TVList): TValue;
         function op_cond(PL: TVList): TValue;
         function op_const(PL: TVList): TValue;
+        function op_curry(PL: TVList): TValue;
         function op_debug(PL: TVList): TValue;
         function op_default(PL: TVList): TValue;
         function op_elt(PL: TVList): TValue;
@@ -1111,6 +1112,25 @@ begin
         end;
     end;
 end;
+
+function if_curry               (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i, _: integer; f: TVProcedure; bind: TBindings;
+begin
+    case params_is(PL, result, [
+        tpProcedure, tpList]) of
+        1: begin
+            _ := TVSymbol.symbol_n('_');
+            result := PL[0];
+            f := result as TVProcedure;
+            bind := ifh_bind(f.sign,PL.L[1]);
+            for i := 0 to high(bind) do begin
+                raise ELE.Create('not impl');
+            end;
+
+        end;
+    end;
+end;
+
 
 function if_union               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2187,7 +2207,7 @@ begin
     end;
 end;
 
-const int_fun_count = 100;
+const int_fun_count = 101;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2242,6 +2262,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SUBSEQ';                f:if_subseq;                s:'(s b :optional e)'),
 (n:'SORT';                  f:if_sort;                  s:'(s :optional p)'),
 (n:'SLOTS';                 f:if_slots;                 s:'(r)'),
+(n:'ШФ';                    f:if_curry;                 s:'(f :rest p)'),
 
 (n:'UNION';                 f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION';          f:if_intersection;          s:'(:rest a)'),
@@ -2351,6 +2372,7 @@ begin
             oeCOND      : op('COND');
             oeCONST     : op('CONST');
             oeCONTINUE  : op('CONTINUE');
+            oeCURRY     : op('CURRY');
             oeDEBUG     : op('DEBUG');
             oeDEFAULT   : op('DEFAULT');
             oeELT       : op('ELT');
@@ -2545,14 +2567,20 @@ end;
 
 procedure TEvaluationFlow.oph_bind(s, P: TValue; constant: boolean;
     st: TVSymbolStack);
-var bind: TBindings; i: integer; _: integer; curry: boolean;
+var bind: TBindings; i, _: integer; restV: PVariable;
 begin
     if st=nil then st := stack;
     bind := ifh_bind(s, p);
     _ := TVSymbol.symbol_n('_');
     for i := 0 to high(bind) do begin
         if not (_ = bind[i].nN)
-        then st.new_var(bind[i].nN, bind[i].V, constant)//bind[i].c)
+        then begin
+            if bind[i].rest then begin
+                restV := st.find_ref(bind[i].nN);
+                (restV.V as TVList).Append(bind[i].V as TVList);
+            end
+            else st.new_var(bind[i].nN, bind[i].V, constant)
+        end
         else bind[i].V.Free;
     end;
 end;
@@ -2624,13 +2652,15 @@ var pack: TPackage; prefix: unicodestring;
     procedure bind_pack;
     var i: integer;
     begin
+        pack := FindPackage(name);
+        if pack=nil then raise ELE.Create('package '+name+' not found');
         for i := 0 to pack.export_list.high do
             stack.new_ref(
                 prefix+pack.export_list.uname[i],
                 pack.stack.find_ref(pack.export_list.SYM[i]));
     end;
 begin
-    if import then prefix := '' else prefix := name+':';
+    if import then prefix := '' else prefix := UpperCaseU(name)+':';
     pack := FindPackage(name);
     if pack<>nil
     then bind_pack
@@ -2850,6 +2880,19 @@ begin
     end;
 
     result := TVT.Create;
+end;
+
+function TEvaluationFlow.op_curry(PL: TVList): TValue;
+var head: TValue; P: TVProcedure; fi: TVInternalFunction; params: TVList;
+    i: integer;
+begin
+    if PL.Count<2 then raise ELE.Malformed('CURRY');
+    head := nil;
+    params := nil;
+
+    raise ELE.Create('not impl');
+
+
 end;
 
 function TEvaluationFlow.op_debug(PL: TVList): TValue;
@@ -3618,8 +3661,22 @@ end;
 end;
 
 function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
-var proc: TVProcedure; sl: TVList;
-    sign_pos: integer;
+var proc: TVProcedure; sl, rl: TVList;
+    sign_pos, i: integer;
+    function rest_names(L: TVList): TVList;
+    var i: integer;
+    begin
+        result := TVList.Create;
+        for i := 0 to L.high do begin
+            if tpList(L.look[i]) then result.Append(rest_names(L.L[i]));
+            if vpKeyword_REST(L.look[i]) then begin
+                if L.high=(i+1)
+                then result.Add(L[i+1])
+                else raise ELE.Malformed(L.AsString);
+            end;
+        end;
+    end;
+
 begin
     result := nil;
 
@@ -3649,10 +3706,14 @@ begin
 
     proc.stack := TVSymbolStack.Create(nil);
     try
+        rl := nil;
         sl := extract_body_symbols(proc.body);
         fill_subprogram_stack(proc, sl);
+        rl := rest_names(proc.sign);
+        for i := 0 to rl.high do proc.stack.new_var(rl.SYM[i], TVList.Create, true);
     finally
         FreeAndNil(sl);
+        FreeAndNil(rl);
     end;
 
     if sign_pos=2 then //stack.new_var(PL.uname[1],result.Copy, true);
@@ -3880,6 +3941,7 @@ begin
         oeCOND      : result := op_cond(PL);
         oeCONST     : result := op_const(PL);
         oeCONTINUE  : result := TVContinue.Create;
+        oeCURRY     : result := op_curry(PL);
         oeDEBUG     : result := op_debug(PL);
         oeDEFAULT   : result := op_default(PL);
         oeELT       : result := op_elt(PL);
