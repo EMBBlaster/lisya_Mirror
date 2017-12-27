@@ -1123,7 +1123,6 @@ var i: integer; f: TVProcedure; bind: TBindings; _: TVSymbol; P: PVariable;
             else
                 if L.SYM[i].N=n then L.delete(i);
     end;
-
 begin
     case params_is(PL, result, [
         tpProcedure, tpList]) of
@@ -1542,13 +1541,33 @@ end; end;
 
 function if_run_command         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var output: string;
+    function to866(S: unicodestring): ansistring;
+    var i: integer;
+    begin
+        for i := 1 to Length(S) do begin
+            for j := 0 to 255 do
+                if cp866_cp[j]=S[i] then
+                begin
+                    result := result + AnsiChar(j);
+                    break;
+                end;
+            result := result + '?';
+        end;
+    end;
+
+    end;
 begin
     result := nil;
     case params_is(PL, result, [
         tpString, tpString,
         tpString, tpNIL]) of
+        {$IFDEF WIN}
+        1: {%H-}process.RunCommandInDir(to866(PL.S[1]), to866(PL.S[0]), output{%H-});
+        2: {%H-}process.RunCommand(to866(PL.S[0]), output);
+        {$ELSE}
         1: {%H-}process.RunCommandInDir(PL.S[1], PL.S[0], output{%H-});
         2: {%H-}process.RunCommand(PL.S[0], output);
+        {$END}
     end;
     result := TVString.Create(output);
 end;
