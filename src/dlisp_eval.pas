@@ -10,6 +10,9 @@
 interface
 
 uses
+    {$IFDEF WINDOWS}
+    ShellApi,
+    {$ENDIF}
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
@@ -18,6 +21,7 @@ uses
     lisya_packages
     ,lisya_predicates
     ,lisya_ifh
+    ,lisia_charset
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -40,7 +44,8 @@ type
         destructor Destroy; override;
 
         function oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
-        procedure oph_bind(s, P: TValue; constant: boolean; st: TVSymbolStack=nil);
+        procedure oph_bind(s, P: TValue; constant: boolean;
+                        st: TVSymbolStack=nil; rests: TVRecord=nil);
         function oph_bind_to_list(s, P: TVList): TVList;
         procedure oph_execute_file(fn: unicodestring);
         function oph_map(PL: TVList; P: TVSubprogram; b, e: integer): TValue;
@@ -192,7 +197,8 @@ const offset = 0;  //передаваемый список параметров 
 
 begin
     //TODO: bind_parameters_list не проверяет переданный список на наличие лишнего
-    //print_stdout_ln(PL);
+    //WriteLn('PL>> ',PL.AsString(), ' --> ', sign.AsString());
+
     //print_stdout_ln(sign);
     result := TVList.Create;
     mode := spmNec;
@@ -211,7 +217,6 @@ begin
             case mode of
                 spmNec:
                     if (i+offset)<PL.Count
-                    //then result.Add_phantom(PL.look[i+offset])
                     then result.Add(PL[i+offset])
                     else raise ELE.Create('insufficient parameters count', 'invalid parameters');
                 spmOpt:
@@ -1136,7 +1141,7 @@ begin
                 then bind[i].V.Free
                 else begin
                     if bind[i].rest
-                    then (f.stack.look_var(bind[i].nN).V as TVList).Append(bind[i].V as TVList)
+                    then (f.rests.LookSlot(bind[i].nN) as TVList).Append(bind[i].V as TVList)
                     else begin
                         f.stack.new_var(bind[i].nN, bind[i].V, true);
                         del_sym(f.sign, bind[i].nN);
@@ -1541,33 +1546,58 @@ end; end;
 
 function if_run_command         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var output: string;
-    function to866(S: unicodestring): ansistring;
-    var i: integer;
+    {$IFDEF WINDOWS}
+    procedure run(cmdln, dir: unicodestring);
+    var cmd, params: unicodestring; p, i, h: integer; q: boolean;
     begin
-        for i := 1 to Length(S) do begin
-            for j := 0 to 255 do
-                if cp866_cp[j]=S[i] then
-                begin
-                    result := result + AnsiChar(j);
-                    break;
+        q := false;
+        p := Length(cmdln)-1;
+        for i := 1 to length(cmdln) do
+            case cmdln[i] of
+                '"': q := not q;
+                ' ': if not q then begin
+                    p := i;
+                    Break;
                 end;
-            result := result + '?';
+            end;
+        cmd := cmdln[1..p-1];
+        params := cmdln[p+1..length(cmdln)];
+        if dir<>''
+        then h := ShellExecuteW(0, nil, PWideChar(cmd), PWideChar(params), PWideChar(dir), 4)
+        else h := ShellExecuteW(0, nil, PWideChar(cmd), PWideChar(params), nil, 4);
+
+        case h of
+            0: raise ELE.Create('0', 'ShellExecute');
+            ERROR_FILE_NOT_FOUND: raise ELE.Create('ERROR_FILE_NOT_FOUND', 'ShellExecute');
+            ERROR_PATH_NOT_FOUND: raise ELE.Create('ERROR_PATH_NOT_FOUND', 'ShellExecute');
+            ERROR_BAD_FORMAT: raise ELE.Create('ERROR_BAD_FORMAT', 'ShellExecute');
+            SE_ERR_ACCESSDENIED : raise ELE.Create('SE_ERR_ACCESSDENIED', 'ShellExecute');
+            SE_ERR_ASSOCINCOMPLETE: raise ELE.Create('SE_ERR_ASSOCINCOMPLETE', 'ShellExecute');
+            SE_ERR_DDEBUSY: raise ELE.Create('SE_ERR_DDEBUSY', 'ShellExecute');
+            SE_ERR_DDEFAIL: raise ELE.Create('SE_ERR_DDEFAIL', 'ShellExecute');
+            SE_ERR_DDETIMEOUT: raise ELE.Create('SE_ERR_DDETIMEOUT', 'ShellExecute');
+            SE_ERR_DLLNOTFOUND: raise ELE.Create('SE_ERR_DLLNOTFOUND', 'ShellExecute');
+            SE_ERR_FNF: raise ELE.Create('SE_ERR_FNF', 'ShellExecute');
+            SE_ERR_NOASSOC: raise ELE.Create('SE_ERR_NOASSOC', 'ShellExecute');
+            SE_ERR_OOM: raise ELE.Create('SE_ERR_OOM', 'ShellExecute');
+            SE_ERR_PNF: raise ELE.Create('SE_ERR_PNF', 'ShellExecute');
+            SE_ERR_SHARE: raise ELE.Create('SE_ERR_SHARE', 'ShellExecute');
         end;
     end;
+    {$ENDIF}
 
-    end;
 begin
     result := nil;
     case params_is(PL, result, [
         tpString, tpString,
         tpString, tpNIL]) of
-        {$IFDEF WIN}
-        1: {%H-}process.RunCommandInDir(to866(PL.S[1]), to866(PL.S[0]), output{%H-});
-        2: {%H-}process.RunCommand(to866(PL.S[0]), output);
+        {$IFDEF WINDOWS}
+        1: run(PL.S[0], PL.S[1]);
+        2: run(PL.S[0], '');
         {$ELSE}
         1: {%H-}process.RunCommandInDir(PL.S[1], PL.S[0], output{%H-});
         2: {%H-}process.RunCommand(PL.S[0], output);
-        {$END}
+        {$ENDIF}
     end;
     result := TVString.Create(output);
 end;
@@ -2604,8 +2634,8 @@ end;
 
 
 procedure TEvaluationFlow.oph_bind(s, P: TValue; constant: boolean;
-    st: TVSymbolStack);
-var bind: TBindings; i, _: integer; restV: PVariable;
+    st: TVSymbolStack; rests: TVRecord);
+var bind: TBindings; i, _: integer; restV: TVList;
 begin
     if st=nil then st := stack;
     bind := ifh_bind(s, p);
@@ -2613,9 +2643,10 @@ begin
     for i := 0 to high(bind) do begin
         if not (_ = bind[i].nN)
         then begin
-            if bind[i].rest then begin
-                restV := st.find_ref(bind[i].nN);
-                (restV.V as TVList).Append(bind[i].V as TVList);
+            if bind[i].rest and (rests<>nil) then begin
+                restV := rests.GetSlot(bind[i].nN) as TVList;
+                restV.Append(bind[i].V as TVList);
+                st.new_var(bind[i].nN, restV, true);
             end
             else st.new_var(bind[i].nN, bind[i].V, constant)
         end
@@ -3560,6 +3591,7 @@ begin
 //    proc.fsignature := nil;
     //proc.evaluated:=true;
     proc.sign := TVList.Create;
+    proc.rests := TVRecord.Create;
 
     proc.stack := TVSymbolStack.Create(nil);
     try
@@ -3748,7 +3780,10 @@ begin
         sl := extract_body_symbols(proc.body);
         fill_subprogram_stack(proc, sl);
         rl := rest_names(proc.sign);
-        for i := 0 to rl.high do proc.stack.new_var(rl.SYM[i], TVList.Create, true);
+        proc.rests := TVRecord.Create;
+        //for i := 0 to rl.high do proc.stack.new_var(rl.SYM[i], TVList.Create, true);
+        for i := 0 to rl.high do //proc.rests.Add(TVList.Create([rl[i], TVList.Create));
+            proc.rests.AddSlot(rl.uname[i], TVList.Create);
     finally
         FreeAndNil(sl);
         FreeAndNil(rl);
@@ -3926,14 +3961,12 @@ begin try
     proc := PL.look[0] as TVProcedure;
     proc.Complement;
 
-    WriteLn('call-proc>> ', proc.sign.AsString());
+    //WriteLn('call-proc>> ', proc.sign.AsString());
 
     proc_stack := proc.stack.Copy as TVSymbolStack;
     //params := PL.Phantom_CDR;
     params := PL.CDR;
-    oph_bind(proc.sign, params, true, proc_stack);
-
-
+    oph_bind(proc.sign, params, true, proc_stack, proc.rests);
 
     tmp_stack := stack;
     stack := proc_stack;

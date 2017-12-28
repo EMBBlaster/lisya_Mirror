@@ -7,6 +7,19 @@
     (assertion (= \((2 1 0) (-1 -2) NIL) (group l not-neg not-pos)) "group int")
     (assertion (= \((2 1) (-1 -2) (0)) (group l positive? negative?)) "group"))
 
+
+(block "Шейкфинкелизация"
+    (procedure p (a b :rest c)
+        (concatenate (list a b) c))
+    (assertion (= \(1 2 3 4) (p 1 2 3 4)) "curry 1")
+    (const p1 (ШФ p _ 5 6 7))
+    (assertion (= \(8 5 6 7 9) (p1 8 9)) "curry 2")
+    (const p2 (ШФ p1 _ 10 11))
+    (assertion (= \("c" 5 6 7 10 11 12) (p2 "c" 12)) "curry 4")
+    (assertion (= \("a" 5 6 7 "b") (p1 "a" "b")) "curry 3")
+    )
+
+
 (log " успешно")
 
 

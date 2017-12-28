@@ -211,6 +211,7 @@ type
         function hash: DWORD; override;
 
         class function symbol_n(n: unicodestring): integer;
+        class function symbol_uname(nN: integer): unicodestring;
     end;
 
 
@@ -466,7 +467,8 @@ type
 
     TVRecord = class (TVCompound)
     private
-        unames: TStringList;
+        //unames: TStringList;
+        unames: array of integer;
         slots: TObjectList;
         function fGetSlot(index: unicodestring): TValue;
         procedure fSetSlot(index: unicodestring; V: TValue);
@@ -476,9 +478,10 @@ type
         procedure SetItem(index: integer; _V: TValue); override;
         function LookItem(index: integer): TValue; override;
 
+        function index_of(nN: integer): integer;
     public
         constructor Create(names: array of unicodestring); overload;
-        constructor Create(names: TStringList); overload;
+        //constructor Create(names: TStringList); overload;
         constructor Create; overload;
         destructor Destroy; override;
         function Copy: TValue; override;
@@ -490,7 +493,12 @@ type
         property look[index: integer]: TValue read LookItem;
         property look_name[n: unicodestring]: TValue read flook;
         function is_class(cl: TVRecord): boolean;
-        procedure AddSlot(name: unicodestring; V: TValue);
+        procedure AddSlot(name: unicodestring; V: TValue); overload;
+        procedure AddSlot(nN: integer; V: TValue); overload;
+        function GetSlot(nN: integer): TValue;
+        function LookSlot(nN: integer): TValue;
+
+
 
         function count: integer; override;
         function name_n(n: integer): unicodestring;
@@ -525,6 +533,7 @@ type
         procedure new_var(N: integer; V: TValue; c: boolean = false); overload;
         //function find_var(name: unicodestring): TValue; overload;
         function find_var(symbol: TVSymbol): TValue; overload;
+        function find_var(N: integer): TValue; overload;
         //procedure set_var(name: unicodestring; V: TValue); overload;
         procedure set_var(symbol: TVSymbol; V: TValue); overload;
         procedure clear_frame(n: integer = -1);
@@ -577,6 +586,7 @@ type
         sign: TVList;
         stack_pointer: integer;
         stack: TVSymbolStack;
+        rests: TVRecord;
         home_stack: TVSymbolStack;
         body: TVList;
         constructor Create;
@@ -1984,6 +1994,11 @@ begin
    result := stack[index_of(symbol.N)].V.V.Copy;
 end;
 
+function TVSymbolStack.find_var(N: integer): TValue;
+begin
+    result := stack[index_of(N)].V.V.Copy;
+end;
+
 //procedure TVSymbolStack.set_var(name: unicodestring; V: TValue);
 //begin
 //    set_n(index_of(name), V);
@@ -2153,18 +2168,21 @@ end;
 
 function TVRecord.fGetSlot(index: unicodestring): TValue;
 begin
-    result := (slots[unames.IndexOf(index)] as TValue).copy;
+    //result := (slots[unames.IndexOf(index)] as TValue).copy;
+    result := (slots[index_of(TVSymbol.symbol_n(index))] as TValue).copy;
 end;
 
 procedure TVRecord.fSetSlot(index: unicodestring; V: TValue);
 begin
-    slots[unames.IndexOf(index)] := V;
+    //slots[unames.IndexOf(index)] := V;
+    slots[index_of(TVSymbol.symbol_n(index))] := V;
 end;
 
 function TVRecord.flook(index: unicodestring): TValue;
 begin
     //TODO: обращение к несуществующему слоту структуры вызывает необрабатываемую ошибку
-    result := slots[unames.IndexOf(index)] as TValue;
+    //result := slots[unames.IndexOf(index)] as TValue;
+    result := slots[index_of(TVSymbol.symbol_n(index))] as TValue;
 end;
 
 function TVRecord.GetItem(index: integer): TValue;
@@ -2182,42 +2200,57 @@ begin
     result := slots[index] as TValue;
 end;
 
+function TVRecord.index_of(nN: integer): integer;
+var i: integer;
+begin
+    for i := 0 to high(unames) do
+        if unames[i]=nN then begin
+            result := i;
+            Exit;
+        end;
+    raise ELE.Create('slot '+TVSymbol.symbol_uname(nN)+' not found');
+end;
+
 constructor TVRecord.Create(names: array of unicodestring);
 var i: integer;
 begin
-    unames := TStringList.Create;
-    unames.Capacity := Length(names);
+//    unames := TStringList.Create;
+    SetLength(unames, Length(names));
+    //unames.Capacity := Length(names);
     slots := TObjectList.create(true);
     slots.Capacity := Length(names);
     for i := low(names) to high(names) do begin
-        unames.Add(UpperCaseU(names[i]));
+        //unames.Add(UpperCaseU(names[i]));
+        unames[i] := TVSymbol.symbol_n(names[i]);
         slots.Add(TVList.Create);
     end;
     //unames.Sort;
 end;
 
-constructor TVRecord.Create(names: TStringList);
-var i: integer;
-begin
-    unames := names;
-    slots := TObjectList.create(true);
-    slots.Capacity := names.Count;
-    for i := 0 to unames.Count-1 do begin
-        unames[i] := UpperCaseU(unames[i]);
-        slots.Add(TVList.Create);
-    end;
-    //unames.Sort;
-end;
+//constructor TVRecord.Create(names: TStringList);
+//var i: integer;
+//begin
+//    unames := names;
+//    slots := TObjectList.create(true);
+//    slots.Capacity := names.Count;
+//    for i := 0 to unames.Count-1 do begin
+//        unames[i] := UpperCaseU(unames[i]);
+//        slots.Add(TVList.Create);
+//    end;
+//    //unames.Sort;
+//end;
 
 constructor TVRecord.Create;
 begin
-    unames := TStringList.Create;
+    //unames := TStringList.Create;
+    SetLength(unames, 0);
     slots := TObjectList.Create(true);
 end;
 
 destructor TVRecord.Destroy;
 begin
-    unames.Free;
+//    unames.Free;
+    SetLength(unames, 0);
     slots.Free;
     inherited Destroy;
 end;
@@ -2227,10 +2260,12 @@ var i: integer;
 begin
     //WriteLn('>>', self.AsString);
     result := TVRecord.Create;
-    (result as TVRecord).unames.capacity := unames.count;
-    (result as TVRecord).slots.capacity := unames.count;
-    for i := 0 to unames.Count - 1 do begin
-        (result as TVRecord).unames.Add(unames[i]);
+    //(result as TVRecord).unames.capacity := unames.count;
+    SetLength((result as TVRecord).unames, Length(unames));
+    (result as TVRecord).slots.capacity := slots.count;
+    for i := low(unames) to high(unames) do begin
+        //(result as TVRecord).unames.Add(unames[i]);
+        (result as TVRecord).unames[i] := unames[i];
         (result as TVRecord).slots.Add((slots[i] as TValue).copy);
     end;
 end;
@@ -2240,55 +2275,75 @@ var i: integer;
 begin
     result := '#S(';
     if slots.Count>0
-    then result := result + unames[0] + ' ' + (slots[0] as TValue).AsString();
+    then result := result + TVSymbol.symbol_uname(unames[0]) + ' ' + (slots[0] as TValue).AsString();
     for i := 1 to slots.Count - 1 do
-    result := result + ' ' + unames[i] + ' ' + (slots[i] as TValue).AsString();
+    result := result + ' ' + TVSymbol.symbol_uname(unames[i]) + ' ' + (slots[i] as TValue).AsString();
     result := result + ')';
 end;
 
 function TVRecord.hash: DWORD;
-var i,j: integer; h, cp: DWORD;
+var i: integer;
 begin
     result := 0;
-    for i := 0 to unames.Count-1 do begin
-        h := 0;
-        for j := 1 to length(unames[i]) do begin
-            cp := ord(unames[i][j]);
-            h := crc32(h, @cp, SizeOf(cp));
-        end;
+    for i := 0 to high(unames) do
         result := result +
-            crc32((slots[i] as TValue).hash, @h, SizeOf(h)) div unames.Count;
-    end;
+            crc32((slots[i] as TValue).hash,@unames[i], SizeOf(unames[i]))
+            div Length(unames);
 end;
 
 function TVRecord.is_class(cl: TVRecord): boolean;
-var i: integer;
+var i, j: integer; m: boolean;
 begin
     result := false;
-    for i := 0 to cl.unames.Count-1 do
-        if unames.IndexOf(cl.unames[i])<0 then exit;
+    for i := 0 to High(cl.unames) do begin
+        m := false;
+        for j := 0 to high(unames) do if cl.unames[i]=unames[j] then m := true;
+        if not m then exit;
+    end;
     result := true;
 end;
 
 procedure TVRecord.AddSlot(name: unicodestring; V: TValue);
 begin
-    unames.Add(UpperCaseU(name));
+    //unames.Add(UpperCaseU(name));
+    SetLength(unames, Length(unames)+1);
+    unames[high(unames)] := TVSymbol.symbol_n(name);
     slots.Add(V);
+end;
+
+procedure TVRecord.AddSlot(nN: integer; V: TValue);
+begin
+    SetLength(unames, Length(unames)+1);
+    unames[high(unames)] := nN;
+    slots.Add(V);
+end;
+
+function TVRecord.GetSlot(nN: integer): TValue;
+begin
+    result := (slots[index_of(nN)] as TValue).Copy;
+end;
+
+function TVRecord.LookSlot(nN: integer): TValue;
+begin
+    result := slots[index_of(nN)] as TValue;
 end;
 
 function TVRecord.count: integer;
 begin
-    result := unames.Count;
+    //result := unames.Count;
+    result := Length(unames);
 end;
 
 function TVRecord.name_n(n: integer): unicodestring;
 begin
-    result := unames[n];
+    //result := unames[n];
+    result := TVSymbol.symbol_uname(unames[n]);
 end;
 
 function TVRecord.get_n_of(index: unicodestring): integer;
 begin
-    result := unames.IndexOf(index);
+    //result := unames.IndexOf(index);
+    result := index_of(TVSymbol.symbol_n(index));
 end;
 
 
@@ -2421,6 +2476,7 @@ begin
     home_stack := nil;
 
     sign := nil;
+    rests := nil;
     evaluated := false;
     stack_pointer := -1;
 end;
@@ -2434,6 +2490,7 @@ begin
     stack.Free;
     body.Free;
     sign.Free;
+    rests.Free;
     inherited Destroy;
 end;
 
@@ -2458,7 +2515,8 @@ begin
     (result as TVProcedure).stack_pointer := stack_pointer;
 
 
-    (result as tVProcedure).nN := nN;
+    (result as TVProcedure).nN := nN;
+    (result as TVProcedure).rests := rests.Copy as TVRecord;
 end;
 
 function TVProcedure.AsString: unicodestring;
@@ -2744,6 +2802,13 @@ begin
     LeaveCriticalSection(symbols_mutex);
 end;
 
+class function TVSymbol.symbol_uname(nN: integer): unicodestring;
+begin
+    EnterCriticalSection(symbols_mutex);
+    result := symbols[nN];
+    LeaveCriticalSection(symbols_mutex);
+end;
+
 constructor TVSymbol.Gensym;
 var negN: Int64;
 begin
@@ -2763,11 +2828,7 @@ function TVSymbol.fGetUname: unicodestring;
 begin
     if fN<0
     then result := fname
-    else begin
-        EnterCriticalSection(symbols_mutex);
-        result := symbols[fN];
-        LeaveCriticalSection(symbols_mutex);
-    end;
+    else result := symbol_uname(fN);
 end;
 
 constructor TVSymbol.Create(S: unicodestring);
