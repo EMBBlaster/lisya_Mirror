@@ -2637,6 +2637,7 @@ procedure TEvaluationFlow.oph_bind(s, P: TValue; constant: boolean;
     st: TVSymbolStack; rests: TVRecord);
 var bind: TBindings; i, _: integer; restV: TVList;
 begin
+    //WriteLn(P.AsString, ' ->> ', s.AsString);
     if st=nil then st := stack;
     bind := ifh_bind(s, p);
     _ := TVSymbol.symbol_n('_');

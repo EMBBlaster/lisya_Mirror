@@ -1,5 +1,36 @@
 ﻿(fmt nil "высшие функции... ")
 
+
+(block "режимы передачи параметров"
+    (procedure Pn (a b)
+        (assertion (and (= a 1) (= b 2)) "necessary"))
+    (Pn 1 2)
+    (procedure Po (a :optional b c)
+        (assertion (and (= a 1) (= b 2) (= c nil)) "optional"))
+    (Po 1 2)
+    (procedure Pk (a :key b c)
+        (assertion (and (= a 1) (= b nil) (= c 3)) "key"))
+    (Pk 1 :c 3)
+    (procedure Pf (a :flag b c)
+        (assertion (and (= a 1) (= b nil) (= c T)) "flag"))
+    (Pf 1 :c)
+    (procedure Pr (a :rest b)
+        (assertion (and (= a 1) (= b \(2 3))) "rest"))
+    (Pr 1 2 3)
+    (procedure P (a (b :optional c) (d :key e) (f :flag g) (h :rest i) :rest j)
+        (assertion (and
+            (= a 1)
+            (= b 2)
+            (= c nil)
+            (= d 4)
+            (= e 5)
+            (= f 6)
+            (= g T)
+            (= h 8)
+            (= i \(9 10))
+            (= j \(11 12))) "nested"))
+    (P 1 \(2) \(4 :e 5) \(6 :g) \(8 9 10) 11 12))
+
 (block "group"
     (var l \(-2 -1 0 1 2))
     (procedure not-neg (x) (>= x 0))

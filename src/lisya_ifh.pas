@@ -78,7 +78,7 @@ function ifh_bind(sign, PL: TValue): TBindings;
     var i: integer;
     begin
         if tpSymbol(_v)
-        then add_bind((_v as TVSymbol).N, TVList.Create, true)
+        then add_bind((_v as TVSymbol).N, TVList.Create)
         else
             if tpList(_v)
             then for i := 0 to (_v as TVList).high do bind_to_nil((_v as TVList).look[i])
@@ -138,10 +138,10 @@ function ifh_bind(sign, PL: TValue): TBindings;
             for i := key_start to pl.high do
                 if tpKeyword(pl.look[i]) and (nN=pl.SYM[i].N)
                 then begin
-                    add_bind(V.N, TVT.Create, true);
+                    add_bind(V.N, TVT.Create);
                     Exit;
                 end;
-            add_bind(V.N, TVList.Create, true);
+            add_bind(V.N, TVList.Create);
         end;
 
         procedure bind_rest(V: TVSymbol);
@@ -191,9 +191,10 @@ begin
 
    // WriteLn('bind_PL>> ',PL.AsString);
     bind(sign, PL);
-   // for i := 0 to high(result) do begin
-   //     WriteLn(symbols[result[i].nN],'  =>  ', result[i].V.AsString);
-   // end;
+  //  for i := 0 to high(result) do begin
+  //      WriteLn(symbols[result[i].nN],'  =>  ', result[i].V.AsString,
+  //          '  ', result[i].rest);
+  //  end;
 
 end;
 
