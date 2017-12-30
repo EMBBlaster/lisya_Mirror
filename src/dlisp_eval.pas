@@ -11,7 +11,7 @@ interface
 
 uses
     {$IFDEF WINDOWS}
-    ShellApi,
+    Windows, ShellApi,
     {$ENDIF}
     {$IFDEF LINUX}
     cwstring,
@@ -134,6 +134,7 @@ var root_evaluation_flow: TEvaluationFlow = nil;
     quote_operator: TVOperator = nil;
     T: TVT;
     NULL: TVList;
+    _: TVSymbol;
 
 function value_by_key(L: TVList; key: unicodestring): TValue;
 var i: integer;
@@ -1120,6 +1121,7 @@ end;
 
 function if_curry               (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; f: TVProcedure; bind: TBindings; _: TVSymbol; P: PVariable;
+    //curry: boolean;
     procedure del_sym(L: TVList; n: integer);
     var i: integer;
     begin
@@ -1232,6 +1234,11 @@ begin
     end;
 end;
 
+function if_hash_table          (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    result := TVHashTable.Create;
+end;
+
 function if_concatenate         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var sres: unicodestring; i,j: integer;
 begin
@@ -1265,8 +1272,10 @@ end;
 function if_key                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpList, tpSymbol]) of
+        tpList,      tpSymbol,
+        tpHashTable, tpAny]) of
         1: result := value_by_key(PL.L[0], PL.uname[1]);
+        2: result := (PL.look[0] as TVHashTable).Get(PL.look[1]);
     end;
 end;
 
@@ -1577,10 +1586,8 @@ var output: string;
             SE_ERR_DDEFAIL: raise ELE.Create('SE_ERR_DDEFAIL', 'ShellExecute');
             SE_ERR_DDETIMEOUT: raise ELE.Create('SE_ERR_DDETIMEOUT', 'ShellExecute');
             SE_ERR_DLLNOTFOUND: raise ELE.Create('SE_ERR_DLLNOTFOUND', 'ShellExecute');
-            SE_ERR_FNF: raise ELE.Create('SE_ERR_FNF', 'ShellExecute');
             SE_ERR_NOASSOC: raise ELE.Create('SE_ERR_NOASSOC', 'ShellExecute');
             SE_ERR_OOM: raise ELE.Create('SE_ERR_OOM', 'ShellExecute');
-            SE_ERR_PNF: raise ELE.Create('SE_ERR_PNF', 'ShellExecute');
             SE_ERR_SHARE: raise ELE.Create('SE_ERR_SHARE', 'ShellExecute');
         end;
     end;
@@ -2275,7 +2282,7 @@ begin
     end;
 end;
 
-const int_fun_count = 101;
+const int_fun_count = 102;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2340,6 +2347,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'POSITION';              f:if_position;              s:'(l e)'),
 (n:'LENGTH';                f:if_length;                s:'(l)'),
 (n:'LIST';                  f:if_list;                  s:'(:rest e)'),
+(n:'HASH-TABLE';            f:if_hash_table;            s:'()'),
 (n:'CONCATENATE';           f:if_concatenate;           s:'(:rest a)'),
 (n:'KEY';                   f:if_key;                   s:'(l k)'),
 (n:'GROUP';                 f:if_group;                 s:'(s :rest p)'),
@@ -2635,16 +2643,15 @@ end;
 
 procedure TEvaluationFlow.oph_bind(s, P: TValue; constant: boolean;
     st: TVSymbolStack; rests: TVRecord);
-var bind: TBindings; i, _: integer; restV: TVList;
+var bind: TBindings; i: integer; restV: TVList;
 begin
     //WriteLn(P.AsString, ' ->> ', s.AsString);
     if st=nil then st := stack;
     bind := ifh_bind(s, p);
-    _ := TVSymbol.symbol_n('_');
     for i := 0 to high(bind) do begin
-        if not (_ = bind[i].nN)
+        if not (_.N = bind[i].nN)
         then begin
-            if bind[i].rest and (rests<>nil) then begin
+            if (rests<>nil) and bind[i].rest then begin
                 restV := rests.GetSlot(bind[i].nN) as TVList;
                 restV.Append(bind[i].V as TVList);
                 st.new_var(bind[i].nN, restV, true);
@@ -2899,16 +2906,24 @@ end;
 end;
 
 function TEvaluationFlow.op_push                    (PL: TVList): TValue;
-var i: integer; CP: TVChainPointer;
+var i: integer; CP: TVChainPointer; target: TValue;
 begin
     CP := eval_link(PL.look[1]);
 try
     if CP.constant then raise ELE.Create('target is not variable');
-    if not tpList(CP.look) then raise ELE.Create('target is not list');
+    target := CP.look;
+    if not (tpList(target) or tpHashTable(target))
+    then raise ELE.Create('target is not list or hash table');
+
     CP.CopyOnWrite;
     try
         CP.enter_critical_section;
-        for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
+        if tpList(target)
+        then for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
+        if tpHashTable(target) then begin
+            if PL.Count<>4 then raise ELE.Malformed('PUSH hash-table key value');
+            (target as TVHashTable).Add(PL.look[2], eval(PL[3]));
+        end;
     finally
         CP.leave_critical_section;
     end;
@@ -2966,6 +2981,7 @@ begin
 end;
 
 function TEvaluationFlow.op_debug(PL: TVList): TValue;
+var tmp: TValue;
 begin
     result := TVT.Create;
 
@@ -2985,6 +3001,13 @@ begin
         if (PL.Count=3) and vpIntegerNotNegative(PL.look[2])
         then stack.Print(PL.I[2])
         else stack.Print;
+        exit;
+    end;
+
+    if (PL.Count=3) and vpKeyword_PRINT_HASH_TABLE(PL.look[1]) then begin
+        tmp := eval(PL[2]);
+        (tmp as TVHashTable).print;
+        tmp.Free;
         exit;
     end;
 
@@ -3211,7 +3234,7 @@ try
     tmp := TVRecord.Create;
     for i := 0 to (PL.Count div 2)-1 do begin
         if tpSymbol(PL.look[2*i+1])
-        then tmp.AddSlot(PL.uname[2*i+1], eval(PL[2*i+2]))
+        then tmp.AddSlot(PL.SYM[2*i+1], eval(PL[2*i+2]))
         else raise ELE.Malformed('record: '+PL.look[2*i+1].AsString+' is not symbol');
     end;
     result := tmp;
@@ -3240,7 +3263,7 @@ try
     rec := tmp as TVRecord;
     for i := 1 to (PL.Count div 2)-1 do begin
         if tpSymbol(PL.look[2*i])
-        then rec.slot[PL.uname[2*i]] := eval(PL[2*i+1])
+        then rec.slot[PL.SYM[2*i].N] := eval(PL[2*i+1])
         else raise ELE.Create(PL.look[2*i].AsString+' is not symbol');
     end;
     result := rec;
@@ -3784,7 +3807,7 @@ begin
         proc.rests := TVRecord.Create;
         //for i := 0 to rl.high do proc.stack.new_var(rl.SYM[i], TVList.Create, true);
         for i := 0 to rl.high do //proc.rests.Add(TVList.Create([rl[i], TVList.Create));
-            proc.rests.AddSlot(rl.uname[i], TVList.Create);
+            proc.rests.AddSlot(rl.SYM[i], TVList.Create);
     finally
         FreeAndNil(sl);
         FreeAndNil(rl);
@@ -4470,9 +4493,11 @@ initialization
     quote_operator := root_evaluation_flow.eval(TVSymbol.Create('QUOTE')) as TVOperator;
     T := TVT.Create;
     NULL := TVList.Create;
+    _ := TVSymbol.Create('_');
     set_threads_count(4);
 
 finalization
+    _.Free;
     NULL.Free;
     T.Free;
     quote_operator.Free;

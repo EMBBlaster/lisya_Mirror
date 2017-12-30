@@ -91,38 +91,38 @@
         (var a (list 1 (record s0 2 s1 (list 3 4))))
         (var b a)
         (set b\1\s1\1 9)
-        (assertion (= a \(1 #S(S0 2 S1 (3 4)))) "set side"))
+        (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "set side"))
 
     (block "APPEND"
         (var a (list 1 (record s0 2 s1 (list 3 4))))
         (var b a)
         (append b\1\s1 \(6 7))
-        (assertion (= a \(1 #S(S0 2 S1 (3 4)))) "append side"))
+        (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "append side"))
 
     (block "DEFAULT"
         (var a (list 1 (record s0 2 s1 (list 3 nil))))
         (var b a)
         (procedure p (x) (default x 7))
         (p b\1\s1\1)
-        (assertion (= a \(1 #S(S0 2 S1 (3 nil)))) "default side"))
+        (assertion (= a \(1 #R(S0 2 S1 (3 nil)))) "default side"))
 
     (block "FOR"
         (var a (list 1 (record s0 2 s1 (list 3 4))))
         (var b a)
         (for e b\1\s1 (set e 7))
-        (assertion (= a \(1 #S(S0 2 S1 (3 4)))) "for side"))
+        (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "for side"))
 
     (block "POP"
         (var a (list 1 (record s0 2 s1 (list 3 4))))
         (var b a)
         (pop b\1\s1)
-        (assertion (= a \(1 #S(S0 2 S1 (3 4)))) "pop side"))
+        (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "pop side"))
 
     (block "PUSH"
         (var a (list 1 (record s0 2 s1 (list 3 4))))
         (var b a)
         (push b\1\s1 7)
-        (assertion (= a \(1 #S(S0 2 S1 (3 4)))) "push side")))
+        (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "push side")))
 
 (log " успешно")
 

@@ -40,6 +40,8 @@ function tpFloat                                    (V: TValue): boolean;
 
 function tpGoto                                     (V: TValue): boolean;
 
+function tpHashTable                                (V: TValue): boolean;
+
 function tpInteger                                  (V: tValue): boolean;
 
 function tpInternalFunction                         (V: TValue): boolean;
@@ -173,6 +175,8 @@ function vpKeyword_MORE                             (V: TValue): boolean;
 function vpKeyword_OPTIONAL                         (V: TValue): boolean;
 
 function vpKeyword_PRINT_STACK                      (V: TValue): boolean;
+
+function vpKeyword_PRINT_HASH_TABLE                 (V: TValue): boolean;
 
 function vpKeyword_READ                             (V: TValue): boolean;
 
@@ -342,6 +346,11 @@ end;
 function tpGoto(V: TValue): boolean;
 begin
     result := V is TVGoto;
+end;
+
+function tpHashTable(V: TValue): boolean;
+begin
+    result := V is TVHashTable;
 end;
 
 function tpInteger(V: tValue): boolean;
@@ -727,6 +736,11 @@ begin
     result := vphKeywordName(V, ':PRINT-STACK');
 end;
 
+function vpKeyword_PRINT_HASH_TABLE(V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':PRINT-HASH-TABLE');
+end;
+
 function vpKeyword_READ                             (V: TValue): boolean;
 begin
     result := (V is TVKeyword) and ((V as TVSymbol).uname = ':READ');
@@ -995,7 +1009,8 @@ end;
 
 function vpSymbol__                                 (V: TValue): boolean;
 begin
-    result := vphSymbolName(V, '_');
+    //result := vphSymbolName(V, '_');
+    result := (V.ClassType=TVSymbol) and ((V as TVSymbol).N=kwN[kw_]);
 end;
 
 function vpSymbol_IN                                (V: TValue): boolean;

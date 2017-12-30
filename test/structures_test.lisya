@@ -1,0 +1,29 @@
+﻿(fmt nil "структуры ...")
+
+(block "окрошка"
+    (var h (hash-table))
+
+    (const (v1 v2 v3) (list
+        (hex (random 100000) 16)
+        (hex (random 100000) 16)
+        (hex (random 100000) 16)))
+
+    (push h "v1" v1)
+    (push h "v2" v2)
+    (push h "v3" v3)
+
+    (assertion (and
+        (= (key h "v1") v1)
+        (= (key h "v2") v2)
+        (= (key h "v3") v3)) "hash table"))
+
+(block "побочные эффекты при модификации хэш-таблицы"
+    (var h1 (hash-table))
+    (push h1 1 "a")
+    (var h2 h1)
+    (push h1 1 "b")
+    (assertion (and
+        (= (key h1 1) "b")
+        (= (key h2 1) "a")) "hash side"))
+
+(log "успешно")

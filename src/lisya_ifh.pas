@@ -60,7 +60,7 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 /// bind ///////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-
+var _: TVSymbol;
 function ifh_bind(sign, PL: TValue): TBindings;
 
     procedure add_bind(_n: integer; _v: TValue; {_c: boolean = false;} _r: boolean = false);
@@ -72,6 +72,7 @@ function ifh_bind(sign, PL: TValue): TBindings;
             //c := _c;
             rest := _r;
         end;
+        //if vpSymbol__(_v) then curry := true;
     end;
 
     procedure bind_to_nil(_v: TValue);
@@ -188,7 +189,7 @@ function ifh_bind(sign, PL: TValue): TBindings;
     end;
 var i: integer;
 begin
-
+   //curry := false;
    // WriteLn('bind_PL>> ',PL.AsString);
     bind(sign, PL);
   //  for i := 0 to high(result) do begin
@@ -429,6 +430,12 @@ finally
     expr.Free;
 end;
 end;
+
+initialization
+    _ := TVSymbol.Create('_');
+
+finalization
+    _.Free;
 
 end.
 

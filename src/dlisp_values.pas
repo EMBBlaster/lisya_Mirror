@@ -488,15 +488,20 @@ type
         function AsString: unicodestring; override;
         function hash: DWORD; override;
 
-        property slot[index: unicodestring]:TValue read fGetSlot write fSetSlot;
+        function GetSlot(nN: integer): TValue;
+        procedure SetSlot(nN: integer; V: TValue);
+        function LookSlot(nN: integer): TValue;
+
+        //property slot[index: unicodestring]:TValue read fGetSlot write fSetSlot;
+        property slot[nN: integer]:TValue read GetSlot write SetSlot;
         property Items[index: integer]: TValue read GetItem write SetItem; default;
         property look[index: integer]: TValue read LookItem;
         property look_name[n: unicodestring]: TValue read flook;
         function is_class(cl: TVRecord): boolean;
         procedure AddSlot(name: unicodestring; V: TValue); overload;
-        procedure AddSlot(nN: integer; V: TValue); overload;
-        function GetSlot(nN: integer): TValue;
-        function LookSlot(nN: integer): TValue;
+        //procedure AddSlot(nN: integer; V: TValue); overload;
+        procedure AddSlot(name: TVSymbol; V: TValue); overload;
+
 
 
 
@@ -506,6 +511,28 @@ type
         function get_n_of(index: unicodestring): integer;
     end;
 
+
+
+    { TVHashTable }
+
+    TVHashTable = class (TValue)
+    private
+        data: TVList;
+        fCount: integer;
+        procedure Expand;
+    public
+        constructor Create;
+        destructor Destroy; override;
+        function AsString: unicodestring; override;
+        function Copy: TValue; override;
+        function hash: DWORD; override;
+        procedure print;
+
+
+        procedure Add(key: TValue; V: TValue);
+        function Get(key: TValue): TValue;
+        procedure Clear;
+    end;
 
     { TVSymbolStack }
 
@@ -827,6 +854,8 @@ var symbols: array of unicodestring;
 
 implementation
 
+uses lisya_ifh;
+
 var gensym_n: Int64 = -1;
 
 
@@ -885,6 +914,110 @@ function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
+
+{ TVHashTable }
+
+procedure TVHashTable.Expand;
+var old_data: TVList; i, j, capacity: integer;
+begin
+    if fCount<(data.Count div 4) then Exit;
+
+    old_data := data;
+    data := TVList.Create;
+    capacity := old_data.Count*2;
+    data.SetCapacity(capacity);
+    for i := 1 to capacity do data.Add(TVList.Create);
+
+    for i := 0 to old_data.high do
+        for j := 0 to old_data.L[i].high do begin
+            data.L[old_data.L[i].L[j].I[0] mod capacity].Add(old_data.L[i][j]);
+        end;
+    old_data.Free;
+end;
+
+
+constructor TVHashTable.Create;
+begin
+    data := TVList.Create([TVList.Create]);
+    fCount := 0;
+end;
+
+destructor TVHashTable.Destroy;
+begin
+    data.Free;
+    inherited Destroy;
+end;
+
+function TVHashTable.AsString: unicodestring;
+begin
+    result := '#<HASH-TABLE '+IntToStr(fCount)+'/'+IntToStr(data.Count)+'>';
+end;
+
+function TVHashTable.Copy: TValue;
+begin
+    result := TVHashTable.Create;
+    (result as TVHashTable).data := data.Copy as TVList;
+    (result as TVHashTable).fCount := fCount;
+end;
+
+function TVHashTable.hash: DWORD;
+begin
+    result := 10008;
+end;
+
+procedure TVHashTable.print;
+var i: integer;
+begin
+    WriteLn('--------',AsString,'--------');
+    for i := 0 to data.high do
+        if data.L[i].Count>0 then WriteLn(i,'| ',data.L[i].AsString);
+    WriteLn('--------',AsString,'--------');
+end;
+
+procedure TVHashTable.Add(key: TValue; V: TValue);
+var h: DWORD; index, i: integer; nest: TVList;
+begin
+    Expand;
+    h := key.hash;
+
+    data.CopyOnWrite;
+    nest := data.L[h mod data.Count];
+    nest.CopyOnWrite;
+
+    for i := 0 to nest.high do begin
+        if (nest.L[i].I[0]=h) and ifh_equal(nest.L[i].look[1], key) then begin
+            nest.L[i][2] := V;
+            exit;
+        end;
+    end;
+
+    nest.Add(TVList.Create([TVInteger.Create(h), key.Copy, V]));
+    Inc(fCount);
+end;
+
+function TVHashTable.Get(key: TValue): TValue;
+var h: DWORD; i: integer; nest: TVList;
+begin
+    h := key.hash;
+
+    nest := data.L[h mod data.Count];
+
+    //WriteLn(nest.AsString);
+    for i := 0 to nest.high do begin
+        if (nest.L[i].I[0]=h) and ifh_equal(nest.L[i].look[1], key) then begin
+            result := nest.L[i][2];
+            exit;
+        end;
+    end;
+    result := TVList.Create;
+end;
+
+procedure TVHashTable.Clear;
+begin
+
+end;
+
+{ TVariable }
 
 procedure TVariable.enter_critical_section;
 begin
@@ -2273,7 +2406,7 @@ end;
 function TVRecord.AsString: unicodestring;
 var i: integer;
 begin
-    result := '#S(';
+    result := '#R(';
     if slots.Count>0
     then result := result + TVSymbol.symbol_uname(unames[0]) + ' ' + (slots[0] as TValue).AsString();
     for i := 1 to slots.Count - 1 do
@@ -2305,22 +2438,33 @@ end;
 
 procedure TVRecord.AddSlot(name: unicodestring; V: TValue);
 begin
-    //unames.Add(UpperCaseU(name));
     SetLength(unames, Length(unames)+1);
     unames[high(unames)] := TVSymbol.symbol_n(name);
     slots.Add(V);
 end;
 
-procedure TVRecord.AddSlot(nN: integer; V: TValue);
+//procedure TVRecord.AddSlot(nN: integer; V: TValue);
+//begin
+//    SetLength(unames, Length(unames)+1);
+//    unames[high(unames)] := nN;
+//    slots.Add(V);
+//end;
+
+procedure TVRecord.AddSlot(name: TVSymbol; V: TValue);
 begin
     SetLength(unames, Length(unames)+1);
-    unames[high(unames)] := nN;
+    unames[high(unames)] := name.N;
     slots.Add(V);
 end;
 
 function TVRecord.GetSlot(nN: integer): TValue;
 begin
     result := (slots[index_of(nN)] as TValue).Copy;
+end;
+
+procedure TVRecord.SetSlot(nN: integer; V: tValue);
+begin
+    slots[index_of(nN)] := V;
 end;
 
 function TVRecord.LookSlot(nN: integer): TValue;
@@ -2499,7 +2643,7 @@ function TVProcedure.Copy: TValue;
 var i: integer;
 begin
     //TODO: копирование процедуры ненадёжно может приводить к утечкам
-    self.Complement;
+    //self.Complement;
 
     result := self.ClassType.Create as TValue;
 
