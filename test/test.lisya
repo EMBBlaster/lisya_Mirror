@@ -51,6 +51,10 @@
 (assertion (= (div 12 5) 2) "div")
 (assertion (= (mod 12 5) 2) "mod")
 
+(assertion (= + +) "= internal functions")
+(assertion (not (= + *)) "not = internal functions")
+(assertion (= ШФ CURRY) "= int fun 2")
+
 (log ABS)
 (assertion (= (abs 1) 1) "abs int pos")
 (assertion (= (abs -2) 2) "abs int neg")

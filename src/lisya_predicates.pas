@@ -235,6 +235,8 @@ function vpListKeywordValue                         (V: TValue): boolean;
 
 function vpListOfByte                               (V: Tvalue): boolean;
 
+function vpListOfListsEqualLength                   (V: TValue): boolean;
+
 function vpListOfSymbolValuePairs                   (V: TValue): boolean;
 
 function vpListSymbolValue                          (V: TValue): boolean;
@@ -913,6 +915,26 @@ end;
 function vpListOfByte                               (V: Tvalue): boolean;
 begin
     result := tphListOf(V, vpIntegerByte);
+end;
+
+function vpListOfListsEqualLength(V: TValue): boolean;
+var L: TVList; i, ln: integer;
+begin
+    result := V is TVList;
+    if not result then exit;
+    L := V as TVList;
+
+    if L.Count=0 then Exit;
+
+    result := tpList(L.look[0]);
+    if not result then Exit;
+
+    ln := L.L[0].Count;
+
+    for i := 1 to L.high do begin
+        result := tpList(L.look[i]) and (L.L[i].Count=ln);
+        if not result then exit;
+    end;
 end;
 
 function vpListOfSymbolValuePairs                   (V: TValue): boolean;

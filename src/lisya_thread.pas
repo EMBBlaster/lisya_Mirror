@@ -44,6 +44,8 @@ type
 
 var map_threads_pool: array of TEvaluationThread;
 
+var th: boolean = false;
+
 procedure set_threads_count(n: integer);
 
 implementation

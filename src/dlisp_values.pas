@@ -49,6 +49,7 @@ type
         function Copy(): TValue; virtual; abstract;
         function AsString(): unicodestring; virtual; abstract;
         function hash: DWORD; virtual; abstract;
+        function equal(V: TValue): boolean; virtual; abstract;
     end;
     TValueList = array of TValue;
 
@@ -88,11 +89,15 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
     end;
 
 
+    { TVNumber }
+
     TVNumber = class (TValue)
         function C: COMPLEX; virtual; abstract;
+        function equal(V: TValue): boolean; override;
     end;
 
     { TVComplex }
@@ -112,6 +117,7 @@ type
 
     TVReal = class (TVNumber)
         function F: double; virtual; abstract;
+        function equal(V: TValue): boolean; override;
     end;
 
 
@@ -123,6 +129,7 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
 
         function F: double; override;
         function C: COMPLEX; override;
@@ -137,6 +144,7 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
     end;
 
     { TVFloat }
@@ -157,6 +165,7 @@ type
 
     TVTime = class (TValue)
         fDT: TDateTime;
+        function equal(V: TValue): boolean; override;
 
         //function year: integer;
         //function month: integer;
@@ -209,6 +218,7 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
 
         class function symbol_n(n: unicodestring): integer;
         class function symbol_uname(nN: integer): unicodestring;
@@ -222,8 +232,11 @@ type
         function Copy: TValue; override;
     end;
 
+    { TVGo }
 
-    TVGo = class (TValue);
+    TVGo = class (TValue)
+        function equal(V: TValue): boolean; override;
+    end;
 
 
     { TVGoto }
@@ -237,6 +250,7 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
     end;
 
 
@@ -267,6 +281,7 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
     end;
 
     { TVPrimitive }
@@ -277,6 +292,7 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
     end;
 
 
@@ -294,6 +310,7 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
 
         function constant: boolean;
         function value: TValue;
@@ -348,6 +365,7 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
 
 
         function Count: integer; override;
@@ -395,6 +413,7 @@ type
         //function Phantom_Copy: TVList;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
 
         function Count: integer; override;
 
@@ -449,6 +468,7 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
 
         property bytes[Index: integer]: Int64 read GetByte write SetByte; default;
         procedure SetCount(l: integer);
@@ -487,6 +507,7 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
 
         function GetSlot(nN: integer): TValue;
         procedure SetSlot(nN: integer; V: TValue);
@@ -526,8 +547,8 @@ type
         function AsString: unicodestring; override;
         function Copy: TValue; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
         procedure print;
-
 
         procedure Add(key: TValue; V: TValue);
         function Get(key: TValue): TValue;
@@ -548,6 +569,7 @@ type
         destructor Destroy; override;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
+        function equal(V: TValue): boolean; override;
 
         function Count: integer; //override;
         function set_n(n: integer; V: TValue): boolean; //override;
@@ -621,6 +643,7 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
 
         procedure Complement;
     end;
@@ -662,6 +685,7 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
     end;
 
     { TVPredicate }
@@ -675,6 +699,7 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
     end;
 
     { TVOperator }
@@ -694,8 +719,6 @@ type
             oeELT,
             oeERROR,
             oeEXECUTE_FILE,
-            oeFILTER,
-            oeFOLD,
             oeFOR,
             oeGOTO,
             oeIF,
@@ -704,7 +727,7 @@ type
             oeLET,
             oeMACRO,
             oeMACRO_SYMBOL,
-            oeMAP,
+            //oeMAP,
             oeOR,
             oePACKAGE,
             oePOP,
@@ -732,6 +755,7 @@ type
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
     end;
 
 
@@ -752,8 +776,8 @@ type
         constructor Create(m: TRTLCriticalSection); overload;
         destructor Destroy; override;
         function Copy: TValue; override;
-
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
 
         function read_byte(out b: byte): boolean;
         function read_bytes(var bb: TBytes; count: integer = -1): boolean;
@@ -829,6 +853,7 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
 
         procedure close_stream;
         procedure lock;
@@ -912,6 +937,34 @@ begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
 
+{ TVGo }
+
+function TVGo.equal(V: TValue): boolean;
+begin
+    result := self.ClassType=V.ClassType;
+end;
+
+{ TVTime }
+
+function TVTime.equal(V: TValue): boolean;
+begin
+    result := (V.ClassType=self.ClassType) and (fDT=(V as TVTime).fDT);
+end;
+
+{ TVReal }
+
+function TVReal.equal(V: TValue): boolean;
+begin
+    Result:= (V is TVReal) and (F=(V as TVReal).F);
+end;
+
+{ TVNumber }
+
+function TVNumber.equal(V: TValue): boolean;
+begin
+    result := (V is TVNumber) and (C=(V as TVNumber).C);
+end;
+
 { TVMacro }
 
 function TVMacro.AsString: unicodestring;
@@ -984,6 +1037,11 @@ end;
 function TVHashTable.hash: DWORD;
 begin
     result := 10008;
+end;
+
+function TVHashTable.equal(V: TValue): boolean;
+begin
+    raise ELE.Create('TVHashTable.eqial','not implemented');
 end;
 
 procedure TVHashTable.print;
@@ -1209,6 +1267,11 @@ begin
     result := crc32(0, @body, SizeOf(body));
 end;
 
+function TVPredicate.equal(V: TValue): boolean;
+begin
+    result := (V is TVPredicate) and (@body=@((V as TVPredicate).body));
+end;
+
 { TVReturn }
 
 constructor TVReturn.Create(V: TValue);
@@ -1237,6 +1300,11 @@ var i: DWORD;
 begin
     i := 4;
     result := crc32(value.hash, @i, SizeOf(i));
+end;
+
+function TVReturn.equal(V: TValue): boolean;
+begin
+    raise ELE.Create('TVReturn.equal', 'internal');
 end;
 
 { TVStreamPointer }
@@ -1268,6 +1336,11 @@ begin
     if body=nil
     then result := 10007
     else result := crc32(0, @stream, SizeOf(stream));
+end;
+
+function TVStreamPointer.equal(V: TValue): boolean;
+begin
+    result := (V is TVStreamPointer) and stream.equal((V as TVStreamPointer).stream);
 end;
 
 procedure TVStreamPointer.close_stream;
@@ -1375,6 +1448,11 @@ end;
 function TVStream.hash: DWORD;
 begin
     result := crc32(0, @fStream, SizeOf(fStream));
+end;
+
+function TVStream.equal(V: TValue): boolean;
+begin
+    result := (V is TVStream) and (fStream=(V as TVStream).fstream);
 end;
 
 function TVStream.read_byte(out b: byte): boolean;
@@ -1636,6 +1714,11 @@ begin
     Result := 10004;
 end;
 
+function TVPrimitive.equal(V: TValue): boolean;
+begin
+    result := V is TVPrimitive;
+end;
+
 { TVChainPointer }
 
 constructor TVChainPointer.Create(P: PVariable);
@@ -1682,6 +1765,11 @@ end;
 function TVChainPointer.hash: DWORD;
 begin
     Result:= look.hash;
+end;
+
+function TVChainPointer.equal(V: TValue): boolean;
+begin
+    raise ELE.Create('TVChainPointer.equal','internal');
 end;
 
 function TVChainPointer.constant: boolean;
@@ -1910,6 +1998,22 @@ begin
     result := crc32;
 end;
 
+function TVByteVector.equal(V: TValue): boolean;
+var i: integer; BV: TVByteVector;
+begin
+    result := V is TVByteVector;
+    if not result then Exit;
+    BV := V as TVByteVector;
+
+    result := Length(fBytes) = Length(BV.fBytes);
+    if not result then Exit;
+
+    for i := 0 to Length(fBytes)-1 do begin
+        result := fBytes[i]=BV.fBytes[i];
+        if not result then exit;
+    end;
+end;
+
 procedure TVByteVector.SetCount(l: integer);
 begin
     SetLength(fBytes, l);
@@ -2075,6 +2179,21 @@ end;
 function TVSymbolStack.AsString: unicodestring;
 begin
     result := '#<STACK '+IntToStr(Length(stack))+'>';
+end;
+
+function TVSymbolStack.equal(V: TValue): boolean;
+var i: integer; ss: TVSymbolStack;
+begin
+    result := V is TVSymbolStack;
+    if not result then exit;
+    ss := V as TVSymbolStack;
+
+    result := Length(stack)=Length(ss.stack);
+    if not result then Exit;
+    for i := 0 to high(stack) do begin
+        result := (stack[i].N=ss.stack[i].N) and (stack[i].V=ss.stack[i].V);
+        if not result then Exit;
+    end;
 end;
 
 function TVSymbolStack.Count: integer;
@@ -2317,6 +2436,11 @@ begin
     result := crc32(result, @high, SizeOf(high));
 end;
 
+function TVRange.equal(V: TValue): boolean;
+begin
+    result := (V is TVRange) and (low=(V as TVRange).low) and (high=(V as TVRange).high);
+end;
+
 
 { TVRecord }
 
@@ -2445,6 +2569,28 @@ begin
             div Length(unames);
 end;
 
+function TVRecord.equal(V: TValue): boolean;
+var i, j: integer; VR: TVRecord; m: boolean;
+begin
+    result := V is TVRecord;
+    if not result then Exit;
+    VR := V as TVRecord;
+
+    result := count=VR.count;
+    if not result then Exit;
+
+    for i := 0 to high(unames) do begin
+        result := false;
+        for j := 0 to high(VR.unames) do
+            if (unames[i]=VR.unames[j])
+                and ((slots[i] as TValue).equal(VR.slots[j] as TValue))
+            then result := true;
+        if not result then Exit;
+    end;
+
+    result := true;
+end;
+
 function TVRecord.is_class(cl: TVRecord): boolean;
 var i, j: integer; m: boolean;
 begin
@@ -2483,7 +2629,7 @@ begin
     result := (slots[index_of(nN)] as TValue).Copy;
 end;
 
-procedure TVRecord.SetSlot(nN: integer; V: tValue);
+procedure TVRecord.SetSlot(nN: integer; V: TValue);
 begin
     slots[index_of(nN)] := V;
 end;
@@ -2549,6 +2695,11 @@ begin
     result := crc32(6, @op_enum, SizeOf(op_enum));
 end;
 
+function TVOperator.equal(V: TValue): boolean;
+begin
+    result := (V is TVOperator) and (op_enum=(V as TVOperator).op_enum);
+end;
+
 { TVInternalFunction }
 
 constructor TVInternalFunction.Create(sign: TVList;
@@ -2594,6 +2745,11 @@ end;
 function TVInternalFunction.hash: DWORD;
 begin
     result := crc32(0, @body, SizeOf(body));
+end;
+
+function TVInternalFunction.equal(V: TValue): boolean;
+begin
+    result := (V is TVInternalFunction) and (@body=@((V as TVInternalFunction).body));
 end;
 
 { TVContinue }
@@ -2696,6 +2852,20 @@ begin
     result := (sign.hash div 2) + (body.hash div 2);
 end;
 
+function TVProcedure.equal(V: TValue): boolean;
+var proc: TVProcedure;
+begin
+    result := self.ClassType=V.ClassType;
+    if not result then Exit;
+    proc := V as TVProcedure;
+    Complement;
+    proc.Complement;
+    result := sign.equal(proc.sign)
+        and body.equal(proc.body)
+        and rests.equal(proc.rests)
+        and stack.equal(proc.stack);
+end;
+
 procedure TVProcedure.Complement;
 var i: integer;
 begin
@@ -2749,6 +2919,11 @@ begin
     result := crc32(3, @n, SizeOf(n));
 end;
 
+function TVGoto.equal(V: TValue): boolean;
+begin
+    Result := (V is TVGoto) and (N=(V as TVGoto).N);
+end;
+
 
 { TVT }
 
@@ -2765,6 +2940,11 @@ end;
 function TVT.hash: DWORD;
 begin
     result := 10001;
+end;
+
+function TVT.equal(V: TValue): boolean;
+begin
+    result := V.ClassType=TVT;
 end;
 
 { TVFloat }
@@ -2856,6 +3036,11 @@ begin
     result := crc32;
 end;
 
+function TVString.equal(V: TValue): boolean;
+begin
+    result := (V is TVString) and (S=(V as TVString).S);
+end;
+
 function TVString.Count: integer;
 begin
     result := Length(S);
@@ -2890,6 +3075,11 @@ function    TVInteger.AsString: unicodestring; begin result := IntToStr(fI); end
 function TVInteger.hash: DWORD;
 begin
     result := crc32(0, @fI, SizeOf(fI));
+end;
+
+function TVInteger.equal(V: TValue): boolean;
+begin
+    Result := (V.ClassType=TVInteger) and (fI=(V as TVInteger).fI);
 end;
 
 function TVInteger.F: double;
@@ -2927,6 +3117,11 @@ begin
     if n>=0
     then result := N
     else result := $FFFFFFFF+N;
+end;
+
+function TVSymbol.equal(V: TValue): boolean;
+begin
+    result := (V is TVSymbol) and (N=(V as TVSymbol).N);
 end;
 
 class function TVSymbol.symbol_n(n: unicodestring): integer;
@@ -3137,6 +3332,25 @@ begin
     for i := 0 to high do begin
         h := (fL[i] as TValue).hash;
         result := crc32(result, @h, SizeOf(h));
+    end;
+end;
+
+function TVList.equal(V: TValue): boolean;
+var VL: TVList; i: integer;
+begin
+    result := V is TVList;
+    if not result then Exit;
+
+    VL := V as TVList;
+    result := fL=VL.fL;
+    if result then Exit;
+
+    result := Count=VL.Count;
+    if not result then Exit;
+
+    for i := 0 to high do begin
+        result := look[i].equal(VL.look[i]);
+        if not result then Exit;
     end;
 end;
 

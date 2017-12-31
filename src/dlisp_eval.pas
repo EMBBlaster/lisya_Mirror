@@ -66,16 +66,13 @@ type
         function op_elt(PL: TVList): TValue;
         function op_error(PL: TVList): TValue;
         function op_execute_file(PL: TVList): TValue;
-        function op_filter(PL: TVList): TValue;
-        function op_fold(PL: TVList): TValue;
+        //function op_filter(PL: TVList): TValue;
         function op_for(PL: TVList): TValue;
         function op_goto(PL: TVList): TValue;
         function op_if(PL: TVList): TValue;
         function op_if_nil(PL: TVList): TValue;
         function op_last(PL: TVList): TValue;
         function op_let(PL: TVList): TValue;
-        function op_map(PL: TVList): TValue;
-        function op_map_th(PL: TVList): TValue;
         function op_macro_symbol(PL: TVList): TValue;
         function op_or(PL: TVList): TValue;
         function op_package(PL: TVList): TValue;
@@ -1154,6 +1151,88 @@ begin
     end;
 end;
 
+function if_filter              (const PL: TVList; call: TCallProc): TValue;
+var expr: TVList; P: TValue; i: integer;
+begin
+    case params_is(PL, result, [
+        tpSubprogram, tpList]) of
+        1: try
+            P := nil;
+            result := TVList.Create;
+            expr := TVList.Create([PL[0],nil]);
+            for i := 0 to PL.L[1].high do begin
+                expr[1] := PL.L[1][i];
+                P := call(expr);
+                if tpTrue(P) then (result as TVList).Add(PL.L[1][i]);
+                FreeAndNil(P);
+            end;
+        finally
+            expr.Free;
+            P.Free;
+        end;
+    end;
+end;
+
+function if_fold                (const PL: TVList; call: TCallProc): TValue;
+var expr: TVList; P: TValue; i: integer;
+begin
+    case params_is(PL, result, [
+        tpSubprogram, tpList]) of
+        1: case PL.L[1].Count of
+            0: result := TVList.Create;
+            1: result := PL.L[1][0];
+            else result := ifh_fold(call, PL.look[0] as TVSubprogram, PL.L[1], 0, PL.L[1].high);
+        end;
+    end;
+end;
+
+function if_map                 (const PL: TVList; call: TCallProc): TValue;
+var i, tc, distr, ln, n: integer; L: TVList; P: TVSubprogram;
+    emsg, eclass, estack: unicodestring;
+begin
+    case params_is(PL, result, [
+        tpSubprogram, tpNIL,
+        tpSubprogram, vpListOfListsEqualLength]) of
+        1: result := TVList.Create;
+        2: begin
+            L := PL.L[1];
+            P := PL.look[0] as TVSubprogram;
+            ln := L.L[0].Count;
+            if th
+            then result := ifh_map(call, P, L, 0, ln-1)
+            else try
+                th := true;
+                tc := Length(map_threads_pool);
+                distr := 0;
+                for i := 0 to tc-1 do begin
+                    if i<(ln mod tc) then n := (ln div tc)+1 else n := (ln div tc);
+                    map_threads_pool[i].eval(ifh_map, P, L, distr, distr+n-1);
+                    distr := distr+n;
+                end;
+
+                result := TVList.Create;
+                emsg := ''; eclass := ''; estack := '';
+            for i := 0 to tc-1 do try
+                (result as TVList).Append(map_threads_pool[i].WaitResult as TVList);
+                except
+                    on E: ELE do begin
+                        emsg := emsg+'; '+E.Message;
+                        eclass := eclass+'; '+E.EClass;
+                        estack := estack+';'+new_line+E.EStack;
+                end;
+            end;
+
+            if emsg<>'' then begin
+                FreeAndNil(result);
+                raise ELE.Create(emsg, eclass, estack);
+            end;
+
+            finally
+                th := false;
+            end;
+        end;
+    end;
+end;
 
 function if_union               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2320,7 +2399,7 @@ begin
     end;
 end;
 
-const int_fun_count = 105;
+const int_fun_count = 108;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2377,6 +2456,10 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SLOTS';                 f:if_slots;                 s:'(r)'),
 (n:'ШФ';                    f:if_curry;                 s:'(f :rest p)'),
 (n:'CURRY';                 f:if_curry;                 s:'(f :rest p)'),
+(n:'FILTER';                f:if_filter;                s:'(p l)'),
+(n:'FOLD';                  f:if_fold;                  s:'(p l)'),
+(n:'MAP';                   f:if_map;                   s:'(p :rest l)'),
+
 
 (n:'UNION';                 f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION';          f:if_intersection;          s:'(:rest a)'),
@@ -2494,8 +2577,6 @@ begin
             oeELT       : op('ELT');
             oeERROR     : op('ERROR');
             oeEXECUTE_FILE: op('EXECUTE-FILE');
-            oeFILTER    : op('FILTER');
-            oeFOLD      : op('FOLD');
             oeFOR       : op('FOR');
             oeGOTO      : op('GOTO');
             oeIF        : op('IF');
@@ -2504,7 +2585,6 @@ begin
             oeLET       : op('LET');
             oeMACRO     : op('MACRO');
             oeMACRO_SYMBOL: op('MACRO-SYMBOL');
-            oeMAP       : op('MAP');
             oeOR        : op('OR');
             oePACKAGE   : op('PACKAGE');
             oePOP       : op('POP');
@@ -3168,58 +3248,6 @@ end;
 
 end;
 
-function TEvaluationFlow.op_filter                  (PL: TVList): TValue;
-var i: integer; res: TVList; PLI: TVList; tmp: TVList;
-begin
-    //TODO: FILTER должен быть переделан во внутреннюю функцию
-    if PL.Count<>3 then raise ELE.Malformed('FILTER');
-try
-    PLI := nil;
-    PLI := TVList.Create([eval(PL[1]), eval(PL[2])]);
-
-    case params_is(PLI, result, [
-        tpSubprogram, tpList]) of
-        1: begin
-            res := TVList.Create();
-            for i := 0 to PLI.L[1].high do begin
-                tmp := TVList.Create([PLI[0], PLI.L[1][i]]);
-                result := call(tmp);
-                tmp.Free;
-                if not tpNIL(result)
-                then res.Add(PLI.L[1][i]);
-                FreeAndNil(result);
-            end;
-        end;
-    end;
-    result := res;
-finally
-    PLI.Free;
-end;
-end;
-
-function TEvaluationFlow.op_fold(PL: TVList): TValue;
-var data, expr: TVList; head, tail: TValue;
-begin
-
-    if (PL.Count<>3) then raise ELE.Malformed('FOLD');
-try
-    head := nil;
-    tail := nil;
-    head := eval(PL[1]);
-    tail := eval(PL[2]);
-    if not (tpSubprogram(head) and tpList(tail)) then raise ELE.InvalidParameters;
-    data := tail as TVList;
-
-    if data.Count=0 then begin result := TVList.Create; exit; end;
-    if data.Count=1 then begin result := data[0]; exit; end;
-
-    result := ifh_fold(call, head as TVSubprogram, data, 0, data.high);
-
-finally
-    tail.Free;
-    head.Free;
-end;
-end;
 
 function TEvaluationFlow.op_val                     (PL: TVList): TValue;
 begin
@@ -3554,8 +3582,6 @@ finally
 end;
 end;
 
-
-var th: boolean = false;
 
 function TEvaluationFlow.op_map_th                  (PL: TVList): TValue;
 var i,j, tc: integer;
@@ -3975,11 +4001,10 @@ begin
     //несвязанные символы должны быть удалены при довычислении подпрограммы
     //с целью избежания доступа по нулевым указателям
 
-    for i := 0 to symbols.High do begin
+    for i := 0 to symbols.High do
         sp.stack.new_ref(
             symbols.SYM[i],
             stack.find_ref_or_nil(symbols.SYM[i]));
-    end;
 end;
 
 function TEvaluationFlow.call(PL: TVList): TValue;
@@ -4070,9 +4095,7 @@ begin
         oeELT       : result := op_elt(PL);
         oeERROR     : result := op_error(PL);
         oeEXECUTE_FILE: result := op_execute_file(PL);
-        oeFILTER    : result := op_filter(PL);
         oeFOR       : result := op_for(PL);
-        oeFOLD      : result := op_fold(PL);
         oeGOTO      : result := op_goto(PL);
         oeIF        : result := op_if(PL);
         oeIF_NIL    : result := op_if_nil(PL);
@@ -4080,9 +4103,6 @@ begin
         oeLET       : result := op_let(PL);
         oeMACRO     : result := op_procedure(PL);
         oeMACRO_SYMBOL: result := op_macro_symbol(PL);
-        oeMAP       : if th or (Length(map_threads_pool)=0)
-                        then result := op_map(PL) else result := op_map_th(PL);
-        //oeMAP       : result := op_map(PL);
         oeOR        : result := op_OR(PL);
         oePACKAGE   : result := op_package(PL);
         oePOP       : result := op_pop(PL);

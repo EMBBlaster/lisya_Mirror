@@ -81,7 +81,6 @@ function ifh_bind(sign, PL: TValue): TBindings;
             //c := _c;
             rest := _r;
         end;
-        //if vpSymbol__(_v) then curry := true;
     end;
 
     procedure bind_to_nil(_v: TValue);
@@ -215,6 +214,8 @@ end;
 function ifh_equal(const A,B: TValue): boolean;
 var type_v: (int, num, str, sym, t, lst, struct, any, bytevec); i: integer;
 begin
+    result := A.equal(B);
+    Exit;
     if tpInteger(A) and tpInteger(B)
     then type_v := int
     else
