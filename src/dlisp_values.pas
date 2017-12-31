@@ -625,13 +625,14 @@ type
         procedure Complement;
     end;
 
+    { TVMacro }
+
     TVMacro = class (TVProcedure)
         //макрос является обычной функцией за тем исключением, что
         //возвращаемый им результат выполняется в месте вызова
         //данный клас нужен, только для того, чтобы eval мог отличить макрос
         //от процедуры
-
-        //неправда это всё надо переделать
+        function AsString: unicodestring; override;
     end;
 
     TVMacroSymbol = class (TVProcedure)
@@ -688,13 +689,10 @@ type
             oeCOND,
             oeCONST,
             oeCONTINUE,
-            oeCURRY,
             oeDEBUG,
             oeDEFAULT,
-            //oeELSE,
             oeELT,
             oeERROR,
-            //oeEXCEPTION,
             oeEXECUTE_FILE,
             oeFILTER,
             oeFOLD,
@@ -717,7 +715,6 @@ type
             oeRECORD_AS,
             oeRETURN,
             oeSET,
-            //oeTHEN,
             oeUSE,
             oeVAL,
             oeVAR,
@@ -913,6 +910,30 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVMacro }
+
+function TVMacro.AsString: unicodestring;
+var
+    PL: unicodestring;
+    i: integer;
+
+    function m(pd: TSubprogramParmeterMode): unicodestring;
+    begin
+        case pd of
+            spmNec: result := ':n';
+            spmKey: result := ':k';
+            spmOpt: result := ':o';
+            spmRest: result := ':r';
+        end;
+    end;
+
+begin
+    PL := '';
+    if nN<0
+    then result := '#<MACRO'+sign.AsString+'>'
+    else result := '#<MACRO '+symbols[nN]+'>';
 end;
 
 { TVHashTable }
@@ -2567,7 +2588,7 @@ end;
 
 function TVInternalFunction.AsString: unicodestring;
 begin
-    result := '#<INTERNAL '+symbols[nN]+' '+signature.AsString()+'>';
+    result := '#<INTERNAL '+symbols[nN]+'>';//+signature.AsString()+'>';
 end;
 
 function TVInternalFunction.hash: DWORD;
@@ -2664,27 +2685,9 @@ begin
 end;
 
 function TVProcedure.AsString: unicodestring;
-var
-    PL: unicodestring;
-    i: integer;
-
-    function m(pd: TSubprogramParmeterMode): unicodestring;
-    begin
-        case pd of
-            spmNec: result := ':n';
-            spmKey: result := ':k';
-            spmOpt: result := ':o';
-            spmRest: result := ':r';
-        end;
-    end;
-
 begin
-//    pl := parameters_list.AsString;
-    PL := '';
-//    for i := 0 to Length(fsignature)-1 do
-//        PL := PL+' '+fsignature[i].n+m(fsignature[i].m);
-    if nN<0
-    then result := '#<PROCEDURE'+sign.AsString+'>'
+    if nN<=0
+    then result := '#<PROCEDURE '+sign.AsString+'>'
     else result := '#<PROCEDURE '+symbols[nN]+'>';
 end;
 

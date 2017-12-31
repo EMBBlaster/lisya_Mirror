@@ -27,6 +27,7 @@ function ifh_union              (const L: TVList): TVList;
 function ifh_union1             (const L: TVList): TVList;
 
 function ifh_intersection       (const L: TVList): TVList;
+function ifh_set_include        (const A, B: TVList): boolean;
 
 function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
 function ifh_fold(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
@@ -36,14 +37,22 @@ implementation
 type THashes = array of DWORD;
 type THashesList = array of THashes;
 
-procedure ifhh_hash_lists(L: TVList; out hashes: THashesList); inline;
-var i, j: integer;
+procedure ifhh_hash_list(L: TVList; out hashes: THashes); inline;
+var i: integer;
 begin
     SetLength(hashes, L.Count);
-    for i := 0 to L.high do begin
-        SetLength(hashes[i], L.L[i].Count);
-        for j := 0 to L.L[i].high do hashes[i][j] := L.L[i].look[j].hash;
-    end;
+    for i := 0 to L.high do hashes[i] := L.look[i].hash;
+end;
+
+procedure ifhh_hash_lists(L: TVList; out hashes: THashesList); inline;
+var i: integer;
+begin
+    SetLength(hashes, L.Count);
+    for i := 0 to L.high do ifhh_hash_list(L.L[i], hashes[i]);
+    // begin
+    //    SetLength(hashes[i], L.L[i].Count);
+    //    for j := 0 to L.L[i].high do hashes[i][j] := L.L[i].look[j].hash;
+    //end;
 end;
 
 function ifhh_member_hashed(const hL: THashes; L: TVList;
@@ -390,6 +399,20 @@ begin
     SetLength(hashes, 0);
     SetLength(res, 0);
 end;
+//------------------------------------------------------------------------------
+function ifh_set_include        (const A, B: TVList): boolean;
+var hashes_A, hashes_B: THashes; i: integer;
+begin
+    ifhh_hash_list(A, hashes_A);
+    ifhh_hash_list(B, hashes_B);
+
+    result := true;
+    for i := 0 to B.high do begin
+        result := ifhh_member_hashed(hashes_A, A, hashes_B[i], B.look[i]);
+        if not result then exit;
+    end;
+end;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// threads ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -430,6 +453,10 @@ finally
     expr.Free;
 end;
 end;
+
+////////////////////////////////////////////////////////////////////////////////
+/// строки /////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 initialization
     _ := TVSymbol.Create('_');

@@ -8,7 +8,16 @@
     (var a \(1 2))
     (var b \(3 4))
 
-    (assertion (equal-sets \((1 3) (1 4) (2 3) (2 4)) (* a b)) "set mul"))
+    (assertion (equal-sets \((1 3) (1 4) (2 3) (2 4)) (* a b)) "set mul")
+
+    (var (a b c) \((1 2 3) (2 3) (3 4)))
+    (assertion (not (<= a b)) "set include 1")
+    (assertion (<= b a) "set include 2")
+    (assertion (not (>= b a)) "set include 3")
+    (assertion (not (<= c a)) "set include 4")
+    (assertion (>= a a) "set include 5")
+    (assertion (<= a a) "set include 6"))
+
 
 (log \успешно)
 

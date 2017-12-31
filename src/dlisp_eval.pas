@@ -61,7 +61,6 @@ type
         function op_case(PL: TVList): TValue;
         function op_cond(PL: TVList): TValue;
         function op_const(PL: TVList): TValue;
-        function op_curry(PL: TVList): TValue;
         function op_debug(PL: TVList): TValue;
         function op_default(PL: TVList): TValue;
         function op_elt(PL: TVList): TValue;
@@ -743,10 +742,12 @@ begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
         tpReal,    tpReal,
-        tpString,  tpString]) of
+        tpString,  tpString,
+        tpList,    tpList]) of
         1: bool_to_TV( PL.I[0]>=PL.I[1] , result);
         2: bool_to_TV( PL.F[0]>=PL.F[1] , result);
         3: bool_to_TV( PL.S[0]>=PL.S[1] , result);
+        4: bool_to_TV(ifh_set_include(PL.L[0], PL.L[1]), result);
     end;
 end;
 
@@ -755,10 +756,12 @@ begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
         tpReal,    tpReal,
-        tpString,  tpString]) of
+        tpString,  tpString,
+        tpList,    tpList]) of
         1: bool_to_TV( PL.I[0]<=PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<=PL.F[1] , result);
         3: bool_to_TV( PL.S[0]<=PL.S[1] , result);
+        4: bool_to_TV(ifh_set_include(PL.L[1], PL.L[0]), result);
     end;
 end;
 
@@ -836,13 +839,6 @@ begin
     end;
 end;
 
-//function if_error               (const PL: TVList; {%H-}call: TCallProc): TValue;
-//begin
-//    case params_is (PL, result, [
-//        tpString, tpList]) of
-//        1: raise ELE.Create(ifh_format(PL.L[1]), PL.S[0]);
-//    end;
-//end;
 
 function if_extract_file_ext    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -1137,6 +1133,8 @@ begin
             result := PL[0];
             f := result as TVProcedure;
             f.sign.CopyOnWrite;
+            f.nN := 0;
+
             bind := ifh_bind(f.sign,PL.L[1]);
             for i := 0 to high(bind) do begin
                 if vpSymbol__(bind[i].V)
@@ -1325,6 +1323,24 @@ begin
     end;
 end;
 
+function if_mismatch            (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i, j: integer;
+begin
+    case params_is(PL, result, [
+        tpString, tpListOfStrings]) of
+        1: begin
+            for i := 1 to Length(PL.S[0]) do
+                for j := 0 to PL.L[1].high do
+                    if (Length(PL.L[1].S[j])<i) or (PL.S[0][i]<>PL.L[1].S[j][i])
+                    then begin
+                        result := TVInteger.Create(i-1);
+                        Exit;
+                    end;
+            result := TVList.Create;
+        end;
+    end;
+end;
+
 function if_byte_vector         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
@@ -1441,6 +1457,28 @@ begin
         1: result := TVT.Create;
         2: raise ELE.Create(PL.S[1], 'assertion');
     end;
+end;
+
+function if_documentation       (const PL: TVList; {%H-}call: TCallProc): TValue;
+var proc: TVProcedure; int_fun: TVInternalFunction;
+begin
+    case params_is(PL, result, [
+        tpProcedure,
+        tpInternalFunction]) of
+        1: begin
+            proc := PL.look[0] as TVProcedure;
+            WriteLn(proc.AsString);
+            WriteLn(proc.sign.AsString);
+            if tpString(proc.body.look[0]) then WriteLn(proc.body.look[0].AsString);
+            WriteLn(proc.rests.AsString);
+        end;
+        2: begin
+            int_fun := PL.look[0] as TVInternalFunction;
+            WriteLn(int_fun.AsString);
+            WriteLn(int_fun.signature.AsString);
+        end;
+    end;
+    result := TVT.Create;
 end;
 
 function if_directory           (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -2282,7 +2320,7 @@ begin
     end;
 end;
 
-const int_fun_count = 102;
+const int_fun_count = 105;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2338,6 +2376,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SORT';                  f:if_sort;                  s:'(s :optional p)'),
 (n:'SLOTS';                 f:if_slots;                 s:'(r)'),
 (n:'ШФ';                    f:if_curry;                 s:'(f :rest p)'),
+(n:'CURRY';                 f:if_curry;                 s:'(f :rest p)'),
 
 (n:'UNION';                 f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION';          f:if_intersection;          s:'(:rest a)'),
@@ -2351,6 +2390,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'CONCATENATE';           f:if_concatenate;           s:'(:rest a)'),
 (n:'KEY';                   f:if_key;                   s:'(l k)'),
 (n:'GROUP';                 f:if_group;                 s:'(s :rest p)'),
+(n:'MISMATCH';              f:if_mismatch;              s:'(a :rest b)'),
 
 (n:'BYTE-VECTOR';           f:if_byte_vector;           s:'(:rest b)'),
 (n:'BITWISE-AND';           f:if_bitwise_and;           s:'(a b)'),
@@ -2361,6 +2401,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'CHARACTER';             f:if_character;             s:'(n)'),
 
 (n:'ASSERTION';             f:if_assertion;             s:'(c m)'),
+(n:'DOCUMENTATION';         f:if_documentation;         s:'(a)'),
 (n:'DIRECTORY';             f:if_directory;             s:'(d)'),
 (n:'SLEEP';                 f:if_sleep;                 s:'(m)'),
 //(n:'EXECUTE-FILE';          f:if_execute_file;          s:'(n)'),
@@ -2448,13 +2489,10 @@ begin
             oeCOND      : op('COND');
             oeCONST     : op('CONST');
             oeCONTINUE  : op('CONTINUE');
-            oeCURRY     : op('CURRY');
             oeDEBUG     : op('DEBUG');
             oeDEFAULT   : op('DEFAULT');
             oeELT       : op('ELT');
             oeERROR     : op('ERROR');
-            //oeELSE      : op('ELSE');
-            //oeEXCEPTION : op('EXCEPTION');
             oeEXECUTE_FILE: op('EXECUTE-FILE');
             oeFILTER    : op('FILTER');
             oeFOLD      : op('FOLD');
@@ -2477,7 +2515,6 @@ begin
             oeRECORD_AS : op('RECORD-AS');
             oeRETURN    : op('RETURN');
             oeSET       : op('SET');
-            //oeTHEN      : op('THEN');
             oeUSE       : op('USE');
             oeVAL       : op('VAL');
             oeVAR       : op('VAR');
@@ -2965,19 +3002,6 @@ begin
     end;
 
     result := TVT.Create;
-end;
-
-function TEvaluationFlow.op_curry(PL: TVList): TValue;
-var head: TValue; P: TVProcedure; fi: TVInternalFunction; params: TVList;
-    i: integer;
-begin
-    if PL.Count<2 then raise ELE.Malformed('CURRY');
-    head := nil;
-    params := nil;
-
-    raise ELE.Create('not impl');
-
-
 end;
 
 function TEvaluationFlow.op_debug(PL: TVList): TValue;
@@ -4041,13 +4065,10 @@ begin
         oeCOND      : result := op_cond(PL);
         oeCONST     : result := op_const(PL);
         oeCONTINUE  : result := TVContinue.Create;
-        oeCURRY     : result := op_curry(PL);
         oeDEBUG     : result := op_debug(PL);
         oeDEFAULT   : result := op_default(PL);
         oeELT       : result := op_elt(PL);
         oeERROR     : result := op_error(PL);
-        //oeELSE      : result := op_secondary_error(PL);
-        //oeEXCEPTION : result := op_secondary_error(PL);
         oeEXECUTE_FILE: result := op_execute_file(PL);
         oeFILTER    : result := op_filter(PL);
         oeFOR       : result := op_for(PL);
@@ -4073,7 +4094,6 @@ begin
         oeRECORD_AS : result := op_record_as(PL);
         oeRETURN    : result := op_return(PL);
         oeSET       : result := op_set(PL);
-        //oeTHEN      : result := op_secondary_error(PL);
         oeUSE       : result := op_with(PL, true);
         oeVAL       : result := op_val(PL);
         oeVAR       : result := op_var(PL);
