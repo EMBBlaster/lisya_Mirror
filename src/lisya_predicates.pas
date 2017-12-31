@@ -3,7 +3,6 @@
 {$ASSERTIONS ON}
 interface
 
-{$DEFINE mysql55}
 uses
     {$IFDEF LINUX}
     cwstring,

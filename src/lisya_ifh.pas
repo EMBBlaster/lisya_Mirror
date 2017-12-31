@@ -195,7 +195,7 @@ function ifh_bind(sign, PL: TValue): TBindings;
                 rest: bind_rest(sign.SYM[i]);
             end;
     end;
-var i: integer;
+//var i: integer;
 begin
    //curry := false;
    // WriteLn('bind_PL>> ',PL.AsString);

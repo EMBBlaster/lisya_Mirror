@@ -620,7 +620,7 @@ type
         nN: integer;
         //TODO: нужно пересмотреть дерево классов подпрограмм
         //поле signature используется только внутренними функциями
-        //TVProcedure использует поле fsignature
+        //TVProcedure использует поле sign
         //поле stack не используется операторами и внутренними функциями
     end;
 
@@ -727,7 +727,6 @@ type
             oeLET,
             oeMACRO,
             oeMACRO_SYMBOL,
-            //oeMAP,
             oeOR,
             oePACKAGE,
             oePOP,
@@ -744,7 +743,7 @@ type
             oeWHEN,
             oeWHILE,
             oeWITH);
-    //and append block break case cond const continue default elt exception filter for goto if if-nil last let map or pop procedure push quote set stack structure structure-as val var when while
+    //and append block break case cond const continue default elt for goto if if-nil last let or pop procedure push quote set stack structure structure-as val var when while
 
     TVOperator = class (TVInternalSubprogram)
         op_enum: TOperatorEnum;
@@ -968,24 +967,9 @@ end;
 { TVMacro }
 
 function TVMacro.AsString: unicodestring;
-var
-    PL: unicodestring;
-    i: integer;
-
-    function m(pd: TSubprogramParmeterMode): unicodestring;
-    begin
-        case pd of
-            spmNec: result := ':n';
-            spmKey: result := ':k';
-            spmOpt: result := ':o';
-            spmRest: result := ':r';
-        end;
-    end;
-
 begin
-    PL := '';
-    if nN<0
-    then result := '#<MACRO'+sign.AsString+'>'
+    if nN<=0
+    then result := '#<MACRO '+sign.AsString+'>'
     else result := '#<MACRO '+symbols[nN]+'>';
 end;
 

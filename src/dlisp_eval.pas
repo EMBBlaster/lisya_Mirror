@@ -4,8 +4,6 @@
 
 {$ASSERTIONS ON}
 
-{$DEFINE mysql55}
-
 
 interface
 
@@ -15,6 +13,10 @@ uses
     {$ENDIF}
     {$IFDEF LINUX}
     cwstring,
+    {$ENDIF}
+    {$IFDEF GUI}
+    Interfaces, forms,
+    lisya_canvas,
     {$ENDIF}
     process, Classes, SysUtils, math, crc, ucomplex, zstream
     , dlisp_values, dlisp_read, lisya_xml, mar,
@@ -48,7 +50,6 @@ type
                         st: TVSymbolStack=nil; rests: TVRecord=nil);
         function oph_bind_to_list(s, P: TVList): TVList;
         procedure oph_execute_file(fn: unicodestring);
-        function oph_map(PL: TVList; P: TVSubprogram; b, e: integer): TValue;
         procedure oph_bind_package(name: unicodestring; import: boolean = false);
 
         function opl_elt(PL: TVList): TVChainPointer;
@@ -831,9 +832,13 @@ end;
 
 function if_test_dyn            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
-    case params_is(PL, result, [tpListOfLists]) of
-        1: result := ifh_intersection(PL.L[0]);
-    end;
+{$IFDEF GUI}
+    Application.Initialize;
+    Application.CreateForm(TCanvasForm, CanvasForm);
+    //CanvasForm.SetStructure(TVList.Create([TVString.Create('новая форма')]));
+    Application.Run;
+{$ENDIF}
+    result := TVT.Create;
 end;
 
 
@@ -1113,7 +1118,7 @@ begin
 end;
 
 function if_curry               (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; f: TVProcedure; bind: TBindings; _: TVSymbol; P: PVariable;
+var i: integer; f: TVProcedure; bind: TBindings;
     //curry: boolean;
     procedure del_sym(L: TVList; n: integer);
     var i: integer;
@@ -1174,7 +1179,6 @@ begin
 end;
 
 function if_fold                (const PL: TVList; call: TCallProc): TValue;
-var expr: TVList; P: TValue; i: integer;
 begin
     case params_is(PL, result, [
         tpSubprogram, tpList]) of
@@ -1212,20 +1216,20 @@ begin
 
                 result := TVList.Create;
                 emsg := ''; eclass := ''; estack := '';
-            for i := 0 to tc-1 do try
-                (result as TVList).Append(map_threads_pool[i].WaitResult as TVList);
-                except
-                    on E: ELE do begin
-                        emsg := emsg+'; '+E.Message;
-                        eclass := eclass+'; '+E.EClass;
-                        estack := estack+';'+new_line+E.EStack;
+                for i := 0 to tc-1 do try
+                    (result as TVList).Append(map_threads_pool[i].WaitResult as TVList);
+                    except
+                        on E: ELE do begin
+                            emsg := emsg+'; '+E.Message;
+                            eclass := eclass+'; '+E.EClass;
+                            estack := estack+';'+new_line+E.EStack;
+                    end;
                 end;
-            end;
 
-            if emsg<>'' then begin
-                FreeAndNil(result);
-                raise ELE.Create(emsg, eclass, estack);
-            end;
+                if emsg<>'' then begin
+                    FreeAndNil(result);
+                    raise ELE.Create(emsg, eclass, estack);
+                end;
 
             finally
                 th := false;
@@ -2081,7 +2085,6 @@ begin
 end;
 
 function if_print               (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer;
 begin
         case params_is(PL, result, [
             vpStreamPointerActive, tpAny,
@@ -2431,7 +2434,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'EQUAL-CASE-INSENSITIVE';f:if_equal_case_insensitive;s:'(s s)'),
 (n:'EQUAL-SETS';            f:if_equal_sets;            s:'(a b)'),
 
-(n:'TEST-DYN';              f:if_test_dyn;              s:'(:rest a)'),
+(n:'TEST-DYN';              f:if_test_dyn;              s:'()'),
 //(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
 
 
@@ -2490,6 +2493,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 //(n:'EXECUTE-FILE';          f:if_execute_file;          s:'(n)'),
 (n:'RUN-COMMAND';           f:if_run_command;           s:'(c :optional d)'),
 (n:'NOW';                   f:if_now;                   s:'()'),
+
 
 (n:'OPEN-FILE';             f:if_open_file;             s:'(n :key mode encoding)'),
 (n:'CLOSE-FILE';            f:if_close_stream;          s:'(s)'),
@@ -2819,26 +2823,6 @@ begin
             FreeAndNil(prog_file);
             FreeAndNil(res);
         end;
-end;
-
-function TEvaluationFlow.oph_map(PL: TVList; P: TVSubprogram; b, e: integer
-    ): TValue;
-var expr: TVList;
-    i, j: integer;
-begin
-    result := TVList.Create;
-    //expr := TVList.CreatePhantom;
-    expr := TVList.Create;
-    expr.SetCapacity(PL.Count+1);
-    //expr.Add_phantom(P);
-    expr.Add(P);
-    for j := 0 to PL.high do //expr.Add_phantom(P);
-        expr.Add(nil);
-    for i := b to e do begin
-        for j := 0 to PL.high do //expr[j+1] := PL.L[j].look[i];
-            expr[j+1] := PL.L[j][i];
-        (result as TVList).Add(call(expr));
-    end;
 end;
 
 procedure TEvaluationFlow.oph_bind_package(name: unicodestring; import: boolean);
@@ -3540,107 +3524,6 @@ begin
     finally
         FreeAndNil(old_v);
     end;
-end;
-
-function TEvaluationFlow.op_map                     (PL: TVList): TValue;
-var expr: TVList; i,j: integer;
-    min_count: integer; PLI: TVList;
-begin
-    if PL.Count<3 then raise ELE.Malformed('MAP');
-    result := nil;
-    expr := nil;
-    PLI := TVList.Create;
-    PLI.SetCapacity(PL.Count-1);
-try
-    for i := 1 to PL.High do PLI.Add(eval(PL[i]));
-
-    if not tpSubprogram(PLI.look[0]) then raise ELE.InvalidParameters;
-    for i := 1 to PLI.high do
-        if not tpList(PLI.look[i]) then raise ELE.InvalidParameters;
-
-    min_count := min_list_length(PLI, 1);
-try
-    //expr := PLI.Phantom_Copy;
-    //expr := PLI.Copy as TVList;
-    expr := TVList.Create([PLI[0]]);
-    for j := 1 to PLI.high do expr.Add(nil);
-    result := TVList.Create;
-    for i := 0 to min_count - 1 do begin
-        for j := 1 to PLI.High do //expr[j] := PLI.L[j].look[i];
-            expr[j] := PLI.L[j][i];
-        (result as TVList).Add(call(expr));
-    end;
-except
-    //удалить результаты предыдущих итераций если текущая завершилась
-    // с ошибкой
-    FreeAndNil(result);
-    raise;
-end;
-finally
-    PLI.Free;
-    expr.Free;
-end;
-end;
-
-
-function TEvaluationFlow.op_map_th                  (PL: TVList): TValue;
-var i,j, tc: integer;
-    min_count: integer; data: TVList;
-    n, destr: integer;
-    emsg,eclass,estack: unicodestring;
-    head: TValue;
-begin
-    if PL.Count<3 then raise ELE.Malformed('MAP');
-    result := nil;
-    head := nil;
-    data := TVList.Create;
-    data.SetCapacity(PL.Count-2);
-try
-    for i := 2 to PL.High do data.Add(eval(PL[i]));
-    head := eval(PL[1]);
-
-    if not (tpSubprogram(head) and not tpOperator(head))
-    then raise ELE.InvalidParameters;
-    if not tpListOfLists(data) then raise ELE.InvalidParameters;
-
-    min_count := min_list_length(data, 0);
-    //это не обзательно, но позволит избежать довычисления процедуры
-    //каждым из потоков
-    if tpProcedure(head) then (head as TVProcedure).Complement;
-///
-    th := true;
-    tc := Length(map_threads_pool);
-
-    destr := 0;
-    for i := 0 to tc-1 do begin
-        if i<(min_count mod tc) then n := (min_count div tc)+1 else n := (min_count div tc);
-        map_threads_pool[i].eval(ifh_map, head as TVSubprogram, data,
-            destr, destr+n-1);
-
-        destr := destr+n;
-    end;
-
-    result := TVList.Create;
-    emsg := ''; eclass := ''; estack := '';
-    for i := 0 to tc-1 do try
-        (result as TVList).Append(map_threads_pool[i].WaitResult as TVList);
-        except
-            on E: ELE do begin
-                emsg := emsg+'; '+E.Message;
-                eclass := eclass+'; '+E.EClass;
-                estack := estack+';'+new_line+E.EStack;
-            end;
-        end;
-
-    if emsg<>'' then begin
-        FreeAndNil(result);
-        raise ELE.Create(emsg, eclass, estack);
-    end;
-finally
-    data.Free;
-    head.Free;
-    th := false;
-end;
 end;
 
 function TEvaluationFlow.op_macro_symbol(PL: TVList): TValue;

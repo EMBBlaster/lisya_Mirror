@@ -9,8 +9,6 @@ uses
 
 type
 
-
-    TMTFun = function (): TValue of object;
     TMTFunction = function (call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
 
     { TEvaluationThread }
@@ -18,7 +16,6 @@ type
     TEvaluationThread = class (TThread)
     private
         fflow: dlisp_eval.TEvaluationFlow;
-        fFun: TMTFun;
         fFunction: TMTFunction;
         fExpression: TVList;
         fP: TVSubprogram;
@@ -33,11 +30,7 @@ type
         fResult: TValue;
         constructor Create;
         destructor Destroy; override;
-        procedure eval_map(PL: TVList; b, e: integer);
         procedure eval(f: TMTFunction; P: TVSubprogram; PL: TVList; b, e: integer);
-        procedure eval_fold(PL: TVList; b, e: integer);
-        function map_subseq(): TValue;
-        function fold_subseq(): TValue;
         function WaitResult: TValue;
     end;
 
@@ -93,7 +86,7 @@ begin
 
         end;
         RtlEventSetEvent(fComplitedEvent);
-        self.Suspend;
+        self.Suspended := true;
     end;
 end;
 
@@ -115,21 +108,8 @@ begin
     //fExpression.Free;
     RTLeventdestroy(fComplitedEvent);
     self.Terminate;
-    self.Resume;
+    self.Suspended := false;
     inherited;
-end;
-
-
-procedure TEvaluationThread.eval_map(PL: TVList; b, e: integer);
-begin
-    if fResult<>nil then raise ELE.Create('поток занят');
-
-    fFun := map_subseq;
-    fExpression := PL;
-    fA := b;
-    fB := e;
-    RTLEventResetEvent(fComplitedEvent);
-    self.Start;
 end;
 
 procedure TEvaluationThread.eval(f: TMTFunction; P: TVSubprogram; PL: TVList; b, e: integer);
@@ -141,54 +121,6 @@ begin
     fB := e;
     RTLEventResetEvent(fComplitedEvent);
     self.Start;
-end;
-
-procedure TEvaluationThread.eval_fold(PL: TVList; b, e: integer);
-begin
-    fFun := fold_subseq;
-    fExpression := PL;
-    fA := b;
-    fB := e;
-    RTLEventResetEvent(fComplitedEvent);
-    self.Start;
-end;
-
-function TEvaluationThread.map_subseq(): TValue;
-var expr: TVList;
-    i, j: integer;
-begin try try
-    result := TVList.Create;
-    (result as TVList).SetCapacity(fB-fA+1);
-
-    expr := TVList.Create([fExpression[0]]);
-    for i := 1 to fExpression.high do expr.Add(nil);
-    for i := fA to fB do begin
-        if terminated then break;
-        for j := 1 to fExpression.high do expr[j] := fExpression.L[j][i];
-        (result as TVList).Add(fflow.call(expr));
-    end;
-except
-    FreeAndNil(result);
-    raise;
-end;
-finally
-    expr.Free;
-end;
-end;
-
-function TEvaluationThread.fold_subseq: TValue;
-var expr: TVList; tmp: TValue; i: integer;
-begin try
-    expr := TVList.Create([fExpression[0], fExpression.L[1][fA], fExpression.L[1][fA+1]]);
-    result := fflow.call(expr);
-    for i := fA+2 to fB do begin
-        expr[1] := result;
-        expr[2] := fExpression.L[1][i];
-        result := fflow.call(expr);
-    end;
-finally
-    expr.Free;
-end;
 end;
 
 function TEvaluationThread.WaitResult: TValue;

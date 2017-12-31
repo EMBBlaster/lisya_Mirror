@@ -1,0 +1,8 @@
+object CanvasForm: TCanvasForm
+  Left = 505
+  Height = 240
+  Top = 307
+  Width = 320
+  Caption = 'CanvasForm'
+  LCLVersion = '1.2.4.0'
+end
