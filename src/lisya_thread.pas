@@ -37,7 +37,11 @@ type
 
 var map_threads_pool: array of TEvaluationThread;
 
+{$IFDEF MULTITHREADING}
 var th: boolean = false;
+{$ELSE}
+var th: boolean = true;
+{$ENDIF}
 
 procedure set_threads_count(n: integer);
 

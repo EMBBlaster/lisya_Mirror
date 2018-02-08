@@ -105,7 +105,7 @@ type
         function call(PL: TVList): TValue;
         function call_procedure(PL: TVList): TValue; inline;
         function call_macro(PL: TVList): TValue;
-        function call_internal(PL: TVList): TValue; inline;
+        function call_internal(PL: TVList): TValue; //inline;
         function call_operator(PL: TVList): TValue;
         function call_predicate(PL: TVList): TValue;
 

@@ -1015,6 +1015,7 @@ end;
 function TVHashTable.Copy: TValue;
 begin
     result := TVHashTable.Create;
+    (result as TVHashTable).data.Free;
     (result as TVHashTable).data := data.Copy as TVList;
     (result as TVHashTable).fCount := fCount;
 end;
