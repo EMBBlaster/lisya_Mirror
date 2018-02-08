@@ -831,11 +831,13 @@ end;
 
 
 function if_test_dyn            (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer;
 begin
 {$IFDEF GUI}
     Application.Initialize;
     Application.CreateForm(TCanvasForm, CanvasForm);
-    //CanvasForm.SetStructure(TVList.Create([TVString.Create('новая форма')]));
+    for i:= 0 to PL.L[0].high do
+    CanvasForm.Post(PL.L[0].L[i]);
     Application.Run;
 {$ENDIF}
     result := TVT.Create;
@@ -2434,7 +2436,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'EQUAL-CASE-INSENSITIVE';f:if_equal_case_insensitive;s:'(s s)'),
 (n:'EQUAL-SETS';            f:if_equal_sets;            s:'(a b)'),
 
-(n:'TEST-DYN';              f:if_test_dyn;              s:'()'),
+(n:'TEST-DYN';              f:if_test_dyn;              s:'(:rest msgs)'),
 //(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
 
 

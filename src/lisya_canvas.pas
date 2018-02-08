@@ -9,7 +9,7 @@ uses
     cwstring,
     {$ENDIF}
     Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs
-    ,dlisp_values
+    ,dlisp_values, lisya_predicates
     ;
 
 type
@@ -22,6 +22,7 @@ type
         { private declarations }
     public
         procedure SetStructure(structure: TVRecord);
+        procedure Post(msg: TVList);
         { public declarations }
     end;
 
@@ -37,6 +38,19 @@ implementation
 procedure TCanvasForm.SetStructure(structure: TVRecord);
 begin
     Caption := (structure.slot[TVSymbol.symbol_n('CAPTION')] as TVString).S;
+end;
+
+procedure TCanvasForm.Post(msg: TVList);
+begin
+    if (msg.Count=2) and vpKeyword_CAPTION(msg.look[0]) then begin
+        caption := msg.S[1];
+        Exit;
+    end;
+
+    if (msg.Count=2) and vpKeyword_WIDTH(msg.look[0]) then begin
+        width := msg.I[1];
+        Exit;
+    end;
 end;
 
 end.

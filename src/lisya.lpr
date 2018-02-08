@@ -7,11 +7,11 @@ uses
     cwstring,
     {$ENDIF}
     {$IFDEF GUI}
-    Interfaces, Forms,
+    Interfaces, Forms, lisya_canvas,
     {$ENDIF}
     sysutils,
     lisya_repl,
-    dlisp_eval, lisya_ifh, lisya_canvas;
+    dlisp_eval, lisya_ifh;
 
 begin
     {$if declared(UseHeapTrace)}

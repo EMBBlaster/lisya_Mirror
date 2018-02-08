@@ -139,6 +139,8 @@ function vpKeyword_APPEND                           (V: TValue): boolean;
 
 function vpKeyword_BOM                              (V: TValue): boolean;
 
+function vpKeyword_CAPTION                          (V: TValue): boolean;
+
 function vpKeyword_CAPTURE                          (V: TValue): boolean;
 
 function vpKeyword_CAPTURED                         (V: TValue): boolean;
@@ -202,6 +204,8 @@ function vpKeyword_UTF32BE                          (V: TValue): boolean;
 function vpKeyword_UTF32LE                          (V: TValue): boolean;
 
 function vpKeyword_UTF8                             (V: TValue): boolean;
+
+function vpKeyword_WIDTH                            (V: TValue): boolean;
 
 function vpKeyword_WRITE                            (V: TValue): boolean;
 
@@ -623,7 +627,7 @@ end;
 
 function vpKeyword__                                (V: TValue): boolean;
 begin
-    result := (V is TVKeyword) and ((V as TVSymbol).N = kwN[kw_]);
+    result := (V is TVKeyword) and ((V as TVSymbol).N = _.N);
 end;
 
 function vpKeyword_ALL                              (V: TValue): boolean;
@@ -639,6 +643,11 @@ end;
 function vpKeyword_BOM                              (V: TValue): boolean;
 begin
     result := (V is TVKeyword) and ((V as TVSymbol).uname = ':BOM');
+end;
+
+function vpKeyword_CAPTION(V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':CAPTION');
 end;
 
 function vpKeyword_CAPTURE                          (V: TValue): boolean;
@@ -693,13 +702,15 @@ end;
 
 function vpKeyword_FLAG                             (V: TValue): boolean;
 begin
-    result := (V is TVKeyword) and (
-           ((V as TVSymbol).uname = ':FLAG'));
+//    result := (V is TVKeyword) and (
+//           ((V as TVSymbol).uname = ':FLAG'));
+    result := vphKeywordName(V, ':FLAG');
 end;
 
 function vpKeyword_KEY                              (V: TValue): boolean;
 begin
-    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':KEY');
+    //result := (V is TVKeyword) and ((V as TVSymbol).uname = ':KEY');
+    result := vphKeywordName(V, ':KEY');
 end;
 
 function vpKeyword_KOI8R                            (V: TValue): boolean;
@@ -729,7 +740,8 @@ end;
 
 function vpKeyword_OPTIONAL                         (V: TValue): boolean;
 begin
-    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':OPTIONAL');
+//    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':OPTIONAL');
+    result := vphKeywordName(V, ':OPTIONAL');
 end;
 
 function vpKeyword_PRINT_STACK                      (V: TValue): boolean;
@@ -760,7 +772,8 @@ end;
 function vpKeyword_REST                             (V: TValue): boolean;
 begin
     //result := (V is TVKeyword) and ((V as TVSymbol).uname = ':REST');
-    result := (V is TVKeyword) and ((V as TVSymbol).N = kwN[kwRest]);
+    //result := (V is TVKeyword) and ((V as TVSymbol).N = kwN[kwRest]);
+    result := vphKeywordName(V, ':REST');
 end;
 
 function vpKeyword_RESULT                           (V: TValue): boolean;
@@ -817,6 +830,11 @@ begin
     result := (V is TVKeyword) and (
            ((V as TVSymbol).uname = ':UTF8')
         or ((V as TVSymbol).uname = ':UTF-8'));
+end;
+
+function vpKeyword_WIDTH(V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':WIDTH');
 end;
 
 function vpKeyword_WRITE                            (V: TValue): boolean;
@@ -1068,7 +1086,7 @@ begin
 end;
 
 initialization
-    init_keywords;
+   // init_keywords;
 
 end.  //955
 

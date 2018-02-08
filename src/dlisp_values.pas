@@ -871,6 +871,7 @@ procedure ReleaseVariable(var P: PVariable);
 var symbols: array of unicodestring;
     symbols_mutex: TRTLCriticalSection;
     console_mutex: TRTLCriticalSection;
+    _ : TVSymbol;
 
 
 implementation
@@ -3478,7 +3479,9 @@ end;
 initialization
     InitCriticalSection(symbols_mutex);
     InitCriticalSection(console_mutex);
+    _ := TVSymbol.Create('_');
 finalization
+    _.Free;
     DoneCriticalSection(symbols_mutex);
     DoneCriticalSection(console_mutex);
 end.
