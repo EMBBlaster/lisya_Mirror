@@ -140,6 +140,13 @@ begin
     end;
 end;
 
+initialization
+    {$IFDEF MULTITHREADING}
+    set_threads_count(4);
+    {$ENDIF}
+
+finalization
+    set_threads_count(0);
 
 end.
 

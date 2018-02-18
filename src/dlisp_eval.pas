@@ -131,7 +131,6 @@ var root_evaluation_flow: TEvaluationFlow = nil;
     quote_operator: TVOperator = nil;
     T: TVT;
     NULL: TVList;
-    _: TVSymbol;
 
 function value_by_key(L: TVList; key: unicodestring): TValue;
 var i: integer;
@@ -4418,11 +4417,8 @@ initialization
     quote_operator := root_evaluation_flow.eval(TVSymbol.Create('QUOTE')) as TVOperator;
     T := TVT.Create;
     NULL := TVList.Create;
-    _ := TVSymbol.Create('_');
-    set_threads_count(4);
 
 finalization
-    _.Free;
     NULL.Free;
     T.Free;
     quote_operator.Free;
