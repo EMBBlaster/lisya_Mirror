@@ -35,9 +35,11 @@
     (procedure p (a) a)
     (assertion (= 1 (p 1)) "eval params"))
 
-(block "рекурсивные процедуры"
-    (procedure p (n) (if (> n 0) (p (- n 1))))
-    (p 5))
+(log "")
+(log "WARNING не тестируются рекурсивные процедуры")
+;(block "рекурсивные процедуры"
+;    (procedure p (n) (if (> n 0) (p (- n 1))))
+;    (p 5))
 
 
 (block "group"

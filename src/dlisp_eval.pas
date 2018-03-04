@@ -843,6 +843,12 @@ begin
 end;
 
 
+function if_repl                (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    result := nil;
+    raise ELisyaREPL.Create('','repl');
+end;
+
 function if_extract_file_ext    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -1665,9 +1671,12 @@ begin try
         result := true;
     except
         on E:ELE do begin
-            WriteLn('ERROR during execution ',filename);
-            Write(E.EStack);
-            WriteLn(E.Message,' (',E.EClass,')');
+            if E.EClass<>'repl'
+            then begin
+                WriteLn('ERROR during execution ',filename);
+                Write(E.EStack);
+                WriteLn(E.Message,' (',E.EClass,')');
+            end;
         end;
     end;
 finally
@@ -2403,7 +2412,7 @@ begin
     end;
 end;
 
-const int_fun_count = 108;
+const int_fun_count = 109;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2437,6 +2446,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'TEST-DYN';              f:if_test_dyn;              s:'(:rest msgs)'),
 //(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
+
+(n:'REPL';                  f:if_repl;                  s:'()'),
 
 
 (n:'EXTRACT-FILE-EXT';      f:if_extract_file_ext;      s:'(s)'),
@@ -3069,6 +3080,76 @@ begin
     result := TVT.Create;
 end;
 
+
+procedure oph_debug_print_graph(V: PVariable);
+type TVarRec = record P: PVariable; ref_count: integer; end;
+var vars: array of TVarRec; links: array of TVarRec;
+    indent, i, j, c: integer;
+    clear: boolean;
+    function registered_node(P: PVariable): boolean;
+    var i: integer;
+    begin
+        result := true;
+        for i := 0 to high(vars) do if vars[i].P=pointer(P) then Exit;
+        result := false;
+    end;
+
+    procedure add_link(P: PVariable);
+    begin
+        SetLength(links, Length(links)+1);
+        links[high(links)].P:=P;
+        links[high(links)].ref_count:=P.references;
+    end;
+
+    procedure add_node(p: PVariable);
+    var proc: TVProcedure; i,j: integer;
+    begin
+        if not registered_node(P) then begin
+            SetLength(vars, length(vars)+1);
+            vars[high(vars)].P:=P;
+            vars[high(vars)].ref_count:=P.references;
+
+            proc := P.V as TVProcedure;
+            for j := 1 to indent do Write('   ');
+            WriteLn(Int64(P), '  ', P.references,' ', proc.AsString);
+            Inc(indent);
+            for i:=0 to high(proc.stack.stack) do begin
+                if (proc.stack.stack[i].V<>nil) and tpProcedure(proc.stack.stack[i].V.V)
+                then begin
+                    add_node(proc.stack.stack[i].V);
+                    add_link(proc.stack.stack[i].V);
+                end;
+            end;
+            dec(indent);
+        end;
+
+    end;
+
+begin
+    add_link(V);
+    indent := 0;
+    if tpProcedure(V.V) then add_node(V);
+    WriteLn();
+
+    for i := 0 to high(links) do
+        WriteLn(Int64(links[i].P), '  ', (links[i].P.V as TVProcedure).AsString);
+
+    clear := true;
+    for i := 0 to high(vars) do begin
+        c := 0;
+        for j := 0 to high(links) do begin
+            if vars[i].P = links[j].P then Inc(c);
+        end;
+        if c<vars[i].ref_count then begin
+            clear := false;
+            Break;
+        end;
+        if c>vars[i].ref_count then WriteLn('WARNING: нарушение ссылочной целостности');
+    end;
+
+    WriteLn(clear);
+end;
+
 function TEvaluationFlow.op_debug(PL: TVList): TValue;
 var tmp: TValue;
 begin
@@ -3105,6 +3186,11 @@ begin
         then set_threads_count(PL.I[2]);
         exit;
     end;
+
+    if (PL.Count=3) and vpKeyword_SHOW_GRAPH(PL.look[1]) then begin
+        oph_debug_print_graph(stack.look_var(PL.SYM[2].N));
+    end;
+
 end;
 
 function TEvaluationFlow.op_default                 (PL: TVList): TValue;
