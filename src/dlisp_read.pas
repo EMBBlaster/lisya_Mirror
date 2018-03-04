@@ -402,9 +402,7 @@ end;
 function read(str: TVStreamPointer): TValue;
 begin
     assert(str <> nil, 'чтение из потока');
-    str.lock;
     result := read_u(str);
-    str.unlock;
 end;
 
 function read_from_string(s: unicodestring): TValue;
@@ -433,8 +431,8 @@ var  i: integer; sn: unicodestring;
     procedure indent;
     var i: integer;
     begin for i:=1 to ind do wr(' '); end;
-begin try try
-    if stream=nil then EnterCriticalSection(console_mutex) else stream.lock;
+begin try
+
     //TODO: нужен специальный код для печати списков ключ-значение, чтобы пара помещалась на одной строке
     if (V is TVList) then begin
         if (V as TVList).count=0
@@ -512,11 +510,8 @@ begin try try
 finally
     if line_end then wr(new_line);
 end;
-finally
-    if stream=nil then LeaveCriticalSection(console_mutex) else stream.unlock;
-end;
-end;
 
+end;
 
 end.
 

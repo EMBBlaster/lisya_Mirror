@@ -124,7 +124,6 @@ function execute_file(filename: unicodestring): boolean;
 
 implementation
 
-uses lisya_thread;
 
 var root_evaluation_flow: TEvaluationFlow = nil;
     base_stack: TVSymbolStack = nil;
@@ -391,9 +390,7 @@ function ifh_write_string(stream: TVStreamPointer; s: unicodestring): boolean;
 var i: integer;
 begin
     result := true;
-    try stream.lock;
     for i := 1 to Length(s) do result := stream.stream.write_char(s[i]);
-    finally stream.unlock; end;
 end;
 
 function ifh_quote(const V: TValue): TVList;
@@ -843,6 +840,12 @@ begin
 end;
 
 
+function if_repl                (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    result := nil;
+    //TODO: функция REPL
+end;
+
 function if_extract_file_ext    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -1192,50 +1195,16 @@ begin
 end;
 
 function if_map                 (const PL: TVList; call: TCallProc): TValue;
-var i, tc, distr, ln, n: integer; L: TVList; P: TVSubprogram;
-    emsg, eclass, estack: unicodestring;
 begin
     case params_is(PL, result, [
         tpSubprogram, tpNIL,
         tpSubprogram, vpListOfListsEqualLength]) of
         1: result := TVList.Create;
-        2: begin
-            L := PL.L[1];
-            P := PL.look[0] as TVSubprogram;
-            ln := L.L[0].Count;
-            if th
-            then result := ifh_map(call, P, L, 0, ln-1)
-            else try
-                th := true;
-                tc := Length(map_threads_pool);
-                distr := 0;
-                for i := 0 to tc-1 do begin
-                    if i<(ln mod tc) then n := (ln div tc)+1 else n := (ln div tc);
-                    map_threads_pool[i].eval(ifh_map, P, L, distr, distr+n-1);
-                    distr := distr+n;
-                end;
-
-                result := TVList.Create;
-                emsg := ''; eclass := ''; estack := '';
-                for i := 0 to tc-1 do try
-                    (result as TVList).Append(map_threads_pool[i].WaitResult as TVList);
-                    except
-                        on E: ELE do begin
-                            emsg := emsg+'; '+E.Message;
-                            eclass := eclass+'; '+E.EClass;
-                            estack := estack+';'+new_line+E.EStack;
-                    end;
-                end;
-
-                if emsg<>'' then begin
-                    FreeAndNil(result);
-                    raise ELE.Create(emsg, eclass, estack);
-                end;
-
-            finally
-                th := false;
-            end;
-        end;
+        2: result := ifh_map(
+                call,
+                PL.look[0] as TVSubprogram,
+                PL.L[1],
+                0, PL.L[1].L[0].high); //эти параметры рудимент многопоточности
     end;
 end;
 
@@ -1665,9 +1634,12 @@ begin try
         result := true;
     except
         on E:ELE do begin
-            WriteLn('ERROR during execution ',filename);
-            Write(E.EStack);
-            WriteLn(E.Message,' (',E.EClass,')');
+            if E.EClass<>'repl'
+            then begin
+                WriteLn('ERROR during execution ',filename);
+                Write(E.EStack);
+                WriteLn(E.Message,' (',E.EClass,')');
+            end;
         end;
     end;
 finally
@@ -1779,9 +1751,7 @@ begin
     case params_is(PL, result, [
         tpStreamPointer]) of
         1: begin
-            (PL.look[0] as TVStreamPointer).lock;
             (PL.look[0] as TVStreamPointer).close_stream;
-            (PL.look[0] as TVStreamPointer).unlock;
             result := TVT.Create;
         end;
     end;
@@ -1994,14 +1964,13 @@ begin
         1: begin
             s := '';
             try
-                (PL.look[0] as TVStreamPointer).lock;
                 while (PL.look[0] as TVStreamPointer).stream.read_char(ch) do
                     case ch of
                         #13,#10: if s<>'' then break;
                         else s := s + ch;
                     end;
             finally
-                (PL.look[0] as TVStreamPointer).unlock;
+
             end;
             if s<>''
             then result := TVString.Create(s)
@@ -2116,9 +2085,7 @@ begin
             result := TVT.Create;
         end;
         2: begin
-            try EnterCriticalSection(console_mutex);
             System.Write(ifh_format(PL.L[1]));
-            finally LeaveCriticalSection(console_mutex);end;
             result := TVT.Create;
         end;
         3,4: result := TVString.Create(ifh_format(PL.L[1]));
@@ -2130,9 +2097,7 @@ begin
     case params_is(PL, result, [
         tpList]) of
         1: begin
-            try EnterCriticalSection(console_mutex);
             System.WriteLn(ifh_format(PL.L[0]));
-            finally LeaveCriticalSection(console_mutex);end;
             result := TVT.Create;
         end;
     end;
@@ -2403,7 +2368,7 @@ begin
     end;
 end;
 
-const int_fun_count = 108;
+const int_fun_count = 109;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2437,6 +2402,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'TEST-DYN';              f:if_test_dyn;              s:'(:rest msgs)'),
 //(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
+
+(n:'REPL';                  f:if_repl;                  s:'()'),
 
 
 (n:'EXTRACT-FILE-EXT';      f:if_extract_file_ext;      s:'(s)'),
@@ -3018,20 +2985,18 @@ try
     then raise ELE.Create('target is not list or hash table');
 
     CP.CopyOnWrite;
-    try
-        CP.enter_critical_section;
-        if tpList(target)
-        then for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
-        if tpHashTable(target) then begin
-            if PL.Count<>4 then raise ELE.Malformed('PUSH hash-table key value');
-            (target as TVHashTable).Add(PL.look[2], eval(PL[3]));
-        end;
-    finally
-        CP.leave_critical_section;
+
+
+    if tpList(target)
+    then for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
+    if tpHashTable(target) then begin
+        if PL.Count<>4 then raise ELE.Malformed('PUSH hash-table key value');
+        (target as TVHashTable).Add(PL.look[2], eval(PL[3]));
     end;
+
     result := TVT.Create;
 finally
-    CP.Free;
+    CP.Free; //TODO: может упасть здесь если возникло исключение при вычислении параметров?
 end;
 end;
 
@@ -3044,9 +3009,7 @@ try
     if CP.constant then raise ELE.Create('target is not variable');
     if not tpList(CP.look) then raise ELE.Create('target is not list');
     CP.CopyOnWrite;
-    CP.enter_critical_section;
     result := (cp.look as TVList).POP;
-    CP.leave_critical_section;
 finally
     CP.Free;
 end;
@@ -3067,6 +3030,76 @@ begin
     end;
 
     result := TVT.Create;
+end;
+
+
+procedure oph_debug_print_graph(V: PVariable);
+type TVarRec = record P: PVariable; ref_count: integer; end;
+var vars: array of TVarRec; links: array of TVarRec;
+    indent, i, j, c: integer;
+    clear: boolean;
+    function registered_node(P: PVariable): boolean;
+    var i: integer;
+    begin
+        result := true;
+        for i := 0 to high(vars) do if vars[i].P=pointer(P) then Exit;
+        result := false;
+    end;
+
+    procedure add_link(P: PVariable);
+    begin
+        SetLength(links, Length(links)+1);
+        links[high(links)].P:=P;
+        links[high(links)].ref_count:=P.references;
+    end;
+
+    procedure add_node(p: PVariable);
+    var proc: TVProcedure; i,j: integer;
+    begin
+        if not registered_node(P) then begin
+            SetLength(vars, length(vars)+1);
+            vars[high(vars)].P:=P;
+            vars[high(vars)].ref_count:=P.references;
+
+            proc := P.V as TVProcedure;
+            for j := 1 to indent do Write('   ');
+            WriteLn(Int64(P), '  ', P.references,' ', proc.AsString);
+            Inc(indent);
+            for i:=0 to high(proc.stack.stack) do begin
+                if (proc.stack.stack[i].V<>nil) and tpProcedure(proc.stack.stack[i].V.V)
+                then begin
+                    add_node(proc.stack.stack[i].V);
+                    add_link(proc.stack.stack[i].V);
+                end;
+            end;
+            dec(indent);
+        end;
+
+    end;
+
+begin
+    add_link(V);
+    indent := 0;
+    if tpProcedure(V.V) then add_node(V);
+    WriteLn();
+
+    for i := 0 to high(links) do
+        WriteLn(Int64(links[i].P), '  ', (links[i].P.V as TVProcedure).AsString);
+
+    clear := true;
+    for i := 0 to high(vars) do begin
+        c := 0;
+        for j := 0 to high(links) do begin
+            if vars[i].P = links[j].P then Inc(c);
+        end;
+        if c<vars[i].ref_count then begin
+            clear := false;
+            Break;
+        end;
+        if c>vars[i].ref_count then WriteLn('WARNING: нарушение ссылочной целостности');
+    end;
+
+    WriteLn(clear);
 end;
 
 function TEvaluationFlow.op_debug(PL: TVList): TValue;
@@ -3100,11 +3133,16 @@ begin
         exit;
     end;
 
-    if (PL.Count>=2) and vpKeyword_THREADS_COUNT(PL.look[1]) then begin
-        if (PL.Count=3) and vpIntegerNotNegative(PL.look[2])
-        then set_threads_count(PL.I[2]);
-        exit;
+    //if (PL.Count>=2) and vpKeyword_THREADS_COUNT(PL.look[1]) then begin
+    //    if (PL.Count=3) and vpIntegerNotNegative(PL.look[2])
+    //    then set_threads_count(PL.I[2]);
+    //    exit;
+    //end;
+
+    if (PL.Count=3) and vpKeyword_SHOW_GRAPH(PL.look[1]) then begin
+        oph_debug_print_graph(stack.look_var(PL.SYM[2].N));
     end;
+
 end;
 
 function TEvaluationFlow.op_default                 (PL: TVList): TValue;
@@ -3118,14 +3156,11 @@ try
     if tpNIL(CP.look)
     then
         if CP.constant
-        then //stack.new_var(PL.uname[1], eval(PL[2]), true)
+        then
             stack.new_var(PL.SYM[1], eval(PL[2]), true)
-        else try
+        else begin
             CP.CopyOnWrite;
-            CP.enter_critical_section;
             CP.set_target(eval(PL[2]));
-        finally
-            CP.leave_critical_section;
         end;
 
     result := TVT.Create;
@@ -3251,12 +3286,9 @@ begin try
     CP := eval_link(PL.look[1]);
     if CP.constant then raise ELE.Create('target is not variable');
     CP.CopyOnWrite;
-    try
-        CP.enter_critical_section;
-        CP.set_target(eval(PL[2]));
-    finally
-        CP.leave_critical_section;
-    end;
+
+    CP.set_target(eval(PL[2]));
+
     result := TVT.Create;
 finally
     FreeAndNil(CP);
@@ -3633,28 +3665,26 @@ begin try
 
     CP := eval_link(PL.look[1]);
     if CP.constant then raise ELE.Create('target is not variable');
-    try
-        CP.enter_critical_section;
-        if CP.look is TVString
-        then
-            for i := 2 to PL.high do
-                (CP.look as TVString).S := (CP.look as TVString).S + PL.S[i]
 
-        else if CP.look is TVList
-        then begin
-            CP.CopyOnWrite;
-            for i := 2 to PL.high do (CP.look as TVList).Append(PL[i] as TVList)
-        end
 
-        else if CP.look is TVByteVector
-        then
-            for i := 2 to PL.high do
-                (CP.look as TVByteVector).append(PL[i] as TVByteVector)
+    if CP.look is TVString
+    then
+        for i := 2 to PL.high do
+            (CP.look as TVString).S := (CP.look as TVString).S + PL.S[i]
 
-        else raise ELE.InvalidParameters;
-    finally
-        CP.leave_critical_section;
-    end;
+    else if CP.look is TVList
+    then begin
+        CP.CopyOnWrite;
+        for i := 2 to PL.high do (CP.look as TVList).Append(PL[i] as TVList)
+    end
+
+    else if CP.look is TVByteVector
+    then
+        for i := 2 to PL.high do
+            (CP.look as TVByteVector).append(PL[i] as TVByteVector)
+
+    else raise ELE.InvalidParameters;
+
 
     result := TVT.Create;
 finally

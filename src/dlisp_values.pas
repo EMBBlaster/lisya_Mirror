@@ -69,9 +69,8 @@ type
         constant: boolean;
     private
         ref_count: integer;
-        critical_section: TRTLCriticalSection;
-        procedure enter_critical_section;
-        procedure leave_critical_section;
+    public
+        property references: integer read ref_count;
     end;
     PVariable = ^TVariable;
 
@@ -318,8 +317,6 @@ type
         procedure add_index(i: integer);
         procedure set_target(_V: TValue);
         procedure CopyOnWrite;
-        procedure enter_critical_section;
-        procedure leave_critical_section;
         procedure set_last_index(i: integer);
     end;
 
@@ -381,11 +378,8 @@ type
 
     TListBody = class (TObjectList)
         ref_count: integer;
-        critical_section: TRTLCriticalSection;
         constructor Create(free_objects: boolean);
         destructor Destroy;
-        procedure enter_critical_section;
-        procedure leave_critical_section;
     end;
 
     TVList = class (TVCompoundIndexed)
@@ -768,11 +762,8 @@ type
     TVStream = class (TValue)
         fstream: TStream;
         encoding: TStreamEncoding;
-        mutex: TRTLCriticalSection;
-        external_mutex: boolean;
 
         constructor Create; overload;
-        constructor Create(m: TRTLCriticalSection); overload;
         destructor Destroy; override;
         function Copy: TValue; override;
         function hash: DWORD; override;
@@ -855,8 +846,6 @@ type
         function equal(V: TValue): boolean; override;
 
         procedure close_stream;
-        procedure lock;
-        procedure unlock;
     end;
 
 
@@ -869,14 +858,12 @@ function RefVariable(P: PVariable): PVariable;
 procedure ReleaseVariable(var P: PVariable);
 
 var symbols: array of unicodestring;
-    symbols_mutex: TRTLCriticalSection;
-    console_mutex: TRTLCriticalSection;
     _ : TVSymbol;
 
 
 implementation
 
-uses lisya_ifh;
+uses lisya_ifh, lisya_predicates;
 
 var gensym_n: Int64 = -1;
 
@@ -884,23 +871,100 @@ var gensym_n: Int64 = -1;
 
     { TVariable }
 
+
+
+function ReleaseRecursiveProcedure(var P: PVariable): boolean;
+var vars, links: array of PVariable;
+    indent, i, j, c: integer;
+    clear: boolean;
+    function registered_node(P: PVariable): boolean;
+    var i: integer;
+    begin
+        result := true;
+        for i := 0 to high(vars) do if vars[i]=pointer(P) then Exit;
+        result := false;
+    end;
+
+    procedure add_link(P: PVariable);
+    begin
+        SetLength(links, Length(links)+1);
+        links[high(links)]:=P;
+    end;
+
+    procedure add_node(P: PVariable);
+    var proc: TVProcedure; i,j: integer;
+    begin
+        if not registered_node(P) then begin
+            SetLength(vars, length(vars)+1);
+            vars[high(vars)]:=P;
+
+            proc := P.V as TVProcedure;
+            for j := 1 to indent do Write('   ');
+            WriteLn(IntToHex(qword(links[i]), 8), '  ', P.references,' ', proc.AsString);
+            Inc(indent);
+            for i:=0 to high(proc.stack.stack) do begin
+                if (proc.stack.stack[i].V<>nil) and tpProcedure(proc.stack.stack[i].V.V)
+                then begin
+                    add_node(proc.stack.stack[i].V);
+                    add_link(proc.stack.stack[i].V);
+                end;
+            end;
+            dec(indent);
+        end;
+    end;
+
+begin
+
+    indent := 0;
+    result := false;
+
+    if not tpProcedure(P.V) then Exit;
+
+
+    add_link(P);
+    add_node(P);
+
+    WriteLn();
+
+    for i := 0 to high(links) do
+        WriteLn(IntToHex(qword(links[i]),8), '  ', (links[i].V as TVProcedure).AsString);
+
+
+
+    clear := true;
+    for i := 0 to high(vars) do begin
+        c := 0;
+        for j := 0 to high(links) do if vars[i] = links[j] then Inc(c);
+
+        clear := c=vars[i].ref_count;
+        if not clear then Break;
+
+        if c>vars[i].ref_count then WriteLn('WARNING: нарушение ссылочной целостности');
+    end;
+
+    WriteLn(clear);
+
+    if clear then begin
+        for i := 0 to high(vars) do begin
+
+        end;
+
+    end;
+
+end;
+
 function NewVariable(_V: TValue = nil; _constant: boolean = false): PVariable;
 begin
     New(result);
     result.ref_count:=1;
     result.constant := _constant;
     result.V := _V;
-    InitCriticalSection(result.critical_section);
-
-   // WriteLn('NewVariable>> ', IntToHex(qword(result),8));
 end;
 
 function RefVariable(P: PVariable): PVariable;
 begin
-    if P<> nil then begin
-        P.enter_critical_section;
+    if P<>nil then begin
         Inc(P.ref_count);
-        P.leave_critical_section;
         result := P;
     end
     else
@@ -911,13 +975,15 @@ procedure ReleaseVariable(var P: PVariable);
 var no_refs: boolean;
 begin
     if P<>nil then begin
-        P.enter_critical_section;
+        {$IFDEF RECURSIVERELEASE}
+        ReleaseRecursiveProcedure(P);
+        no_refs := P.ref_count=0;
+        {$ELSE}
         Dec(P.ref_count);
         no_refs := P.ref_count<=0;
-        P.leave_critical_section;
+        {$ENDIF}
         if no_refs then begin
             P.V.Free;
-            DoneCriticalSection(P.critical_section);
             Dispose(P);
             P:= nil;
         end;
@@ -1082,17 +1148,6 @@ begin
 
 end;
 
-{ TVariable }
-
-procedure TVariable.enter_critical_section;
-begin
-    EnterCriticalSection(critical_section);
-end;
-
-procedure TVariable.leave_critical_section;
-begin
-    LeaveCriticalSection(critical_section);
-end;
 
 { TListBody }
 
@@ -1100,22 +1155,11 @@ constructor TListBody.Create(free_objects: boolean);
 begin
     inherited Create(free_objects);
     ref_count := 1;
-    InitCriticalSection(critical_section);
 end;
 
 destructor TListBody.Destroy;
 begin
-    DoneCriticalSection(critical_section);
-end;
 
-procedure TListBody.enter_critical_section;
-begin
-    EnterCriticalSection(critical_section);
-end;
-
-procedure TListBody.leave_critical_section;
-begin
-    leaveCriticalSection(critical_section);
 end;
 
 
@@ -1129,7 +1173,7 @@ begin
     //WriteLn('inflate>> ',target.V.AsString());
     fStream := TCompressionStream.create(clDefault,
         (target.V as TVStream).fstream, not head);
-    inherited Create((target.V as TVStream).mutex);
+    inherited Create();
 end;
 
 destructor TVDeflateStream.Destroy;
@@ -1335,15 +1379,6 @@ begin
     stream := nil;
 end;
 
-procedure TVStreamPointer.lock;
-begin
-    EnterCriticalSection((body.V as TVStream).mutex);
-end;
-
-procedure TVStreamPointer.unlock;
-begin
-    LeaveCriticalSection((body.V as TVStream).mutex);
-end;
 
 { TVInflateStream }
 
@@ -1354,7 +1389,7 @@ begin
     target := _target;
     //WriteLn('inflate>> ',target.V.AsString());
     fStream := TDecompressionStream.create((target.V as TVStream).fstream, not head);
-    inherited Create((target.V as TVStream).mutex);
+    inherited Create();
 end;
 
 destructor TVInflateStream.Destroy;
@@ -1408,20 +1443,12 @@ end;
 
 constructor TVStream.Create;
 begin
-    InitCriticalSection(mutex);
-    external_mutex := false;
-end;
 
-constructor TVStream.Create(m: TRTLCriticalSection);
-begin
-    mutex := m;
-    external_mutex := true;
 end;
 
 destructor TVStream.Destroy;
 begin
     fstream.Free;
-    if not external_mutex then DoneCriticalSection(mutex);
     inherited Destroy;
 end;
 
@@ -1823,15 +1850,6 @@ begin
     end;
 end;
 
-procedure TVChainPointer.enter_critical_section;
-begin
-    V.enter_critical_section;
-end;
-
-procedure TVChainPointer.leave_critical_section;
-begin
-    V.leave_critical_section;
-end;
 
 procedure TVChainPointer.set_last_index(i: integer);
 begin
@@ -2194,10 +2212,8 @@ begin
 
     if stack[n].V.constant
     then raise ELE.Create('stack element '+IntToStr(n)+' is constant');
-    stack[n].V.enter_critical_section;
     stack[n].V.V.Free;
     stack[n].V.V := V;
-    stack[n].V.leave_critical_section;
     result := true;
 end;
 
@@ -2285,11 +2301,8 @@ begin
     //print(_n);
     for i := high(stack) downto _n do
         if (stack[i].V<>nil) and (stack[i].V.ref_count>1) and (stack[i].V.V is TVProcedure)
-        then begin
-            stack[i].V.enter_critical_section;
-            (stack[i].V.V as TVProcedure).Complement;
-            stack[i].V.leave_critical_section;
-        end;
+        then (stack[i].V.V as TVProcedure).Complement;
+
 
     for i := high(stack) downto _n do ReleaseVariable(stack[i].V);
 
@@ -2786,6 +2799,8 @@ begin
     rests := nil;
     evaluated := false;
     stack_pointer := -1;
+
+    //WriteLn('proc +');
 end;
 
 destructor TVProcedure.Destroy;
@@ -2793,6 +2808,8 @@ var i: integer;
 begin
 //    for i := 0 to high(fsignature) do fsignature[i].n := '';
 //    SetLength(fsignature,0);
+
+    //WriteLn('proc -', TVSymbol.symbol_uname(self.nN));
 
     stack.Free;
     body.Free;
@@ -2851,6 +2868,7 @@ begin
         and rests.equal(proc.rests)
         and stack.equal(proc.stack);
 end;
+
 
 procedure TVProcedure.Complement;
 var i: integer;
@@ -3115,7 +3133,7 @@ var i: integer; uname: unicodestring;
 begin
     uname := UpperCaseU(n);
     result := -1;
-    EnterCriticalSection(symbols_mutex);
+
     for i := high(symbols) downto 0 do
         if symbols[i] = uname then begin
             result := i;
@@ -3127,23 +3145,18 @@ begin
         result := high(symbols);
         symbols[high(symbols)] := uname;
     end;
-    LeaveCriticalSection(symbols_mutex);
+
 end;
 
 class function TVSymbol.symbol_uname(nN: integer): unicodestring;
 begin
-    EnterCriticalSection(symbols_mutex);
     result := symbols[nN];
-    LeaveCriticalSection(symbols_mutex);
 end;
 
 constructor TVSymbol.Gensym;
-var negN: Int64;
 begin
-    EnterCriticalSection(symbols_mutex);
     fN := gensym_n;
     Dec(gensym_n);
-    LeaveCriticalSection(symbols_mutex);
     fName := '#G'+IntToStr(fN);
 end;
 
@@ -3280,23 +3293,10 @@ end;
 function TVList.Copy: TValue;
 var i: integer;
 begin
-    fL.enter_critical_section;
     Inc(fL.ref_count);
-    fL.leave_critical_section;
     result := TVList.Create(fL);
-    //(result as TVList).fL.Capacity := fL.Capacity;
-    //for i := 0 to fL.Count - 1 do
-    //   (result as TVList).fL.Add((fL[i] as TValue).Copy);
 end;
 
-//function TVList.Phantom_Copy: TVList;
-//var i: integer;
-//begin
-//  result := TVList.CreatePhantom;
-//  result.fL.Capacity := fL.Capacity;
-//  for i := 0 to fL.Count - 1 do
-//    result.fL.Add(fL[i]);
-//end;
 
 function TVList.AsString: unicodestring;
 var i: integer;
@@ -3358,19 +3358,11 @@ begin
     fL := body;
 end;
 
-//constructor TVList.CreatePhantom;
-//begin
-//    fL := TListBody.create(false);
-//end;
 
 destructor TVList.Destroy;
-var no_refs: boolean;
 begin
-    fL.enter_critical_section;
     Dec(fl.ref_count);
-    no_refs := fL.ref_count=0;
-    fL.leave_critical_section;
-    if no_refs then fL.Free;
+    if fL.ref_count=0 then fL.Free;
     inherited;
 end;
 
@@ -3400,29 +3392,17 @@ begin
         (result as TVList).fL.Add((fL[i] as TValue).Copy);
 end;
 
-//function TVList.phantom_subseq(istart: integer; iend: integer): TVList;
-//var i: integer;
-//begin
-//    if iend<0 then iend := fL.Count;
-//    result := TVList.CreatePhantom;
-//    result.fL.Capacity := iend - istart;
-//    for i := istart to iend - 1 do
-//        result.fL.Add(fL[i]);
-//end;
 
 function TVList.CopyOnWrite: boolean;
-var i: integer; fL_old: TListBody; no_refs: boolean;
+var i: integer; fL_old: TListBody;
 begin
     if fL.ref_count>1 then begin
         fL_old := fL;
         fL := TListBody.Create(true);
         fL.Capacity := fL_old.Count;
         for i := 0 to fL_old.Count-1 do fL.Add((fL_old[i] as TValue).Copy);
-        fL_old.enter_critical_section;
         Dec(fL_old.ref_count);
-        no_refs := fL_old.ref_count<=0;
-        fL_old.leave_critical_section;
-        if no_refs then fL_old.Free;
+        if fL_old.ref_count<=0 then fL_old.Free;
         result := true;
     end
     else result := false;
@@ -3478,11 +3458,8 @@ end;
 //    for i:=1 to fL.Count-1 do result.fL.Add(fL[i]);
 //end;
 initialization
-    InitCriticalSection(symbols_mutex);
-    InitCriticalSection(console_mutex);
     _ := TVSymbol.Create('_');
+
 finalization
     _.Free;
-    DoneCriticalSection(symbols_mutex);
-    DoneCriticalSection(console_mutex);
 end.
