@@ -165,14 +165,15 @@
     (assertion (= a 1) "block outer"))
 
 (log ">> взаимная рекурсия")
-(var n 5)
-;(var a (procedure (n)
-;    (set n (- n 1))
-;    (if (= n 0) nil (b n))))
-;(var b (procedure (n)
-;    (a n)))
-;(a n)
-;(assertion (= n 0) "взаимная рекурсия")
+(block "взаимная рекурсия"
+    (var n 5)
+    (var a (procedure (n)
+        (set n (- n 1))
+        (if (= n 0) nil (b n))))
+    (var b (procedure (n)
+        (a n)))
+    (a n)
+    (assertion (= n 0) "взаимная рекурсия"))
 
 
 (block

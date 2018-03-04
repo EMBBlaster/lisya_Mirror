@@ -1045,7 +1045,6 @@ var list: TValues; expr: TVlist; i: integer;
     begin
         expr[1] := a.copy;
         expr[2] := b.copy;
-        //TODO: тут нужно переделать на использование фантомного списка
 
         try
             tmp := nil;
@@ -4266,33 +4265,6 @@ finally
 end;
 end;
 
-
-//procedure TEvaluationFlow.expand_ins(PL: TVList);
-//var expand: boolean; i: integer; tmp: TVList;
-//begin
-//    //анализирует список на предмет наличия элементов-списков помеченных
-//    //оператором INS и вклеивает их
-//    expand := false;
-//    for i := 0 to PL.High do
-//        if vpListHeaded_INS(PL.look[i]) then begin expand := true; break; end;
-//    if not expand then exit;
-//    //WriteLn('INS>> ',PL.AsString);
-//    tmp := TVList.Create;
-//    tmp.SetCapacity(PL.Count);
-//    for i:= 0 to PL.High do
-//        if vpListHeaded_INS(PL.look[i])
-//        then begin
-//            if (PL.L[i].Count<>2)// or not tpList(PL.L[i].look[1])
-//            then raise ELE.Malformed('INS')
-//            else tmp.Append(eval(PL.L[i][1]) as TVList)
-//        end
-//        else tmp.Add(PL[i]);
-//    PL.Clear;
-//    PL.Append(tmp);
-//    //TODO: много копировании при разворачивании INS
-//    //TODO: обработку INS нужно перенести в вычислитель параметров функций
-//    //это сделает его более предсказуемым по поведению
-//end;
 
 
 

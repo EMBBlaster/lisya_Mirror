@@ -15,7 +15,7 @@ uses
 
 begin
     {$if declared(UseHeapTrace)}
-    if FileExists('lisya.trc') then deletefile('lisya.trc');
+    if FileExists('lisya.trc') then DeleteFile('lisya.trc');
     SetHeaptraceOutput('lisya.trc');
     {$ifend}
 

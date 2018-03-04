@@ -899,9 +899,9 @@ var vars, links: array of PVariable;
             vars[high(vars)]:=P;
 
             proc := P.V as TVProcedure;
-            for j := 1 to indent do Write('   ');
-            WriteLn(IntToHex(qword(links[i]), 8), '  ', P.references,' ', proc.AsString);
-            Inc(indent);
+            //for j := 1 to indent do Write('   ');
+            //WriteLn(IntToHex(qword(links[i]), 8), '  ', P.references,' ', proc.AsString);
+            //Inc(indent);
             for i:=0 to high(proc.stack.stack) do begin
                 if (proc.stack.stack[i].V<>nil) and tpProcedure(proc.stack.stack[i].V.V)
                 then begin
@@ -909,7 +909,7 @@ var vars, links: array of PVariable;
                     add_link(proc.stack.stack[i].V);
                 end;
             end;
-            dec(indent);
+            //dec(indent);
         end;
     end;
 
@@ -920,14 +920,13 @@ begin
 
     if not tpProcedure(P.V) then Exit;
 
-
     add_link(P);
     add_node(P);
 
-    WriteLn();
+    //WriteLn();
 
-    for i := 0 to high(links) do
-        WriteLn(IntToHex(qword(links[i]),8), '  ', (links[i].V as TVProcedure).AsString);
+    //for i := 0 to high(links) do
+    //    WriteLn(IntToHex(qword(links[i]),8), '  ', (links[i].V as TVProcedure).AsString);
 
 
 
@@ -942,14 +941,15 @@ begin
         if c>vars[i].ref_count then WriteLn('WARNING: нарушение ссылочной целостности');
     end;
 
-    WriteLn(clear);
+    //WriteLn(clear);
 
     if clear then begin
-        for i := 0 to high(vars) do begin
-
-        end;
-
+        for i := 0 to high(vars) do vars[i].ref_count:=-1;
+        for i := 0 to high(vars) do vars[i].V.Free;
+        for i := 0 to high(vars) do Dispose(vars[i]);
     end;
+
+    result := clear;
 
 end;
 
@@ -976,17 +976,29 @@ var no_refs: boolean;
 begin
     if P<>nil then begin
         {$IFDEF RECURSIVERELEASE}
-        ReleaseRecursiveProcedure(P);
-        no_refs := P.ref_count=0;
+        if P.ref_count>0
+        then begin
+            if tpProcedure(P.V) and ReleaseRecursiveProcedure(P)
+            then
+                P := nil
+            else begin
+                Dec(P.ref_count);
+                if P.ref_count=0 then begin
+                    P.V.Free;
+                    Dispose(P);
+                    P := nil;
+                end;
+            end;
+        end;
         {$ELSE}
         Dec(P.ref_count);
         no_refs := P.ref_count<=0;
-        {$ENDIF}
         if no_refs then begin
             P.V.Free;
             Dispose(P);
             P:= nil;
         end;
+        {$ENDIF}
     end;
 end;
 
@@ -3450,13 +3462,7 @@ begin
     for i:=1 to fL.Count-1 do result.Add((fL[i] as TValue).Copy());
 end;
 
-//function TVList.Phantom_CDR: TVList;
-//var i: integer;
-//begin
-//    result := TVList.CreatePhantom;
-//    result.fL.Capacity:= fL.Count - 1;
-//    for i:=1 to fL.Count-1 do result.fL.Add(fL[i]);
-//end;
+
 initialization
     _ := TVSymbol.Create('_');
 
