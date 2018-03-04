@@ -928,8 +928,6 @@ begin
     //for i := 0 to high(links) do
     //    WriteLn(IntToHex(qword(links[i]),8), '  ', (links[i].V as TVProcedure).AsString);
 
-
-
     clear := true;
     for i := 0 to high(vars) do begin
         c := 0;

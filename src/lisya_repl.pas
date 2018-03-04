@@ -15,6 +15,8 @@ uses
 
 procedure REPL;
 
+function EXEC(filename: unicodestring): boolean;
+
 implementation
 
 var
@@ -51,6 +53,23 @@ begin
             end;
         end;
         Write('> ');ReadLn(input_string);
+    end;
+end;
+
+function EXEC(filename: unicodestring): boolean;
+begin
+    result := false;
+    try
+        result := root_evaluation_flow.oph_execute_file(filename);
+    except
+        on E:ELE do begin
+            if E.EClass<>'repl'
+            then begin
+                WriteLn('ERROR during execution ',filename);
+                Write(E.EStack);
+                WriteLn(E.Message,' (',E.EClass,')');
+            end;
+        end;
     end;
 end;
 

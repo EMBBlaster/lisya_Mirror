@@ -49,7 +49,7 @@ type
         procedure oph_bind(s, P: TValue; constant: boolean;
                         st: TVSymbolStack=nil; rests: TVRecord=nil);
         function oph_bind_to_list(s, P: TVList): TVList;
-        procedure oph_execute_file(fn: unicodestring);
+        function oph_execute_file(fn: unicodestring): boolean;
         procedure oph_bind_package(name: unicodestring; import: boolean = false);
 
         function opl_elt(PL: TVList): TVChainPointer;
@@ -2764,33 +2764,38 @@ begin
     params.Free;
 end;
 
-procedure TEvaluationFlow.oph_execute_file(fn: unicodestring);
+function TEvaluationFlow.oph_execute_file(fn: unicodestring): boolean;
 var prog_file: TVStreamPointer; expr, res: TValue;
 begin
-     try
-            prog_file := nil;
-            res := nil;
-            prog_file := TVStreamPointer.Create(
+    result := true;
+    try
+        prog_file := nil;
+        res := nil;
+        prog_file := TVStreamPointer.Create(
                 NewVariable(
                     TVFileStream.Create(DirSep(fn), fmRead, seBOM)));
-            while true do begin
-                expr := nil;
-                expr := dlisp_read.read(prog_file);
+        while true do begin
+            expr := nil;
+            expr := dlisp_read.read(prog_file);
 
-                if ((expr IS TVSymbol) and ((expr as TVSymbol).name='exit'))
-                    or (expr is TVEndOfStream)
-                then begin expr.Free; break; end;
+            if ((expr IS TVSymbol) and ((expr as TVSymbol).uname='EXIT'))
+                or (expr is TVEndOfStream)
+            then begin expr.Free; break; end;
+
+            if ((expr is TVSymbol) and ((expr as TVSymbol).uname='REPL'))
+            then begin expr.Free; result := false; break; end;
 
                 //writeln('expr>> ', expr.AsString());
-                res := eval(expr);
-                if res is TVReturn then break;
-                FreeAndNil(res);
-            end;
-        finally
-            FreeAndNil(prog_file);
+            res := eval(expr);
+            if res is TVReturn then break;
             FreeAndNil(res);
         end;
+    finally
+        FreeAndNil(prog_file);
+        FreeAndNil(res);
+    end;
 end;
+
 
 procedure TEvaluationFlow.oph_bind_package(name: unicodestring; import: boolean);
 var pack: TPackage; prefix: unicodestring;

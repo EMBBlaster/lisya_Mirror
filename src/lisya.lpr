@@ -24,7 +24,8 @@ begin
     {$ENDIF}
 
 
-    if (ParamCount=0) or not execute_file(paramStr(1)) then repl;
+    //if (ParamCount=0) or not execute_file(paramStr(1)) then repl;
+    if (ParamCount=0) or not EXEC(paramStr(1)) then REPL;
 
 end.
 
