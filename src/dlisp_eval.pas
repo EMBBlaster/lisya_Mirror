@@ -840,12 +840,6 @@ begin
 end;
 
 
-function if_repl                (const PL: TVList; {%H-}call: TCallProc): TValue;
-begin
-    result := nil;
-    //TODO: функция REPL
-end;
-
 function if_extract_file_ext    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2367,7 +2361,7 @@ begin
     end;
 end;
 
-const int_fun_count = 109;
+const int_fun_count = 110;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
@@ -2402,8 +2396,6 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'TEST-DYN';              f:if_test_dyn;              s:'(:rest msgs)'),
 //(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
 
-(n:'REPL';                  f:if_repl;                  s:'()'),
-
 
 (n:'EXTRACT-FILE-EXT';      f:if_extract_file_ext;      s:'(s)'),
 (n:'EXTRACT-FILE-NAME';     f:if_extract_file_name;     s:'(s)'),
@@ -2433,11 +2425,13 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'UNION';                 f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION';          f:if_intersection;          s:'(:rest a)'),
+(n:'ПЕРЕСЕЧЕНИЕ';           f:if_intersection;          s:'(:rest a)'),
 (n:'DIFFERENCE';            f:if_difference;            s:'(a b)'),
 (n:'REVERSE';               f:if_reverse;               s:'(a)'),
 (n:'MEMBER';                f:if_member;                s:'(l e)'),
 (n:'POSITION';              f:if_position;              s:'(l e)'),
 (n:'LENGTH';                f:if_length;                s:'(l)'),
+(n:'ДЛИНА';                 f:if_length;                s:'(l)'),
 (n:'LIST';                  f:if_list;                  s:'(:rest e)'),
 (n:'HASH-TABLE';            f:if_hash_table;            s:'()'),
 (n:'CONCATENATE';           f:if_concatenate;           s:'(:rest a)'),
