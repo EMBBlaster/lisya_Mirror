@@ -120,14 +120,10 @@ type
     end;
 
 
-function execute_file(filename: unicodestring): boolean;
-
 implementation
 
 
-var root_evaluation_flow: TEvaluationFlow = nil;
-    base_stack: TVSymbolStack = nil;
-    quote_operator: TVOperator = nil;
+var base_stack: TVSymbolStack = nil;
     T: TVT;
     NULL: TVList;
 
@@ -393,10 +389,6 @@ begin
     for i := 1 to Length(s) do result := stream.stream.write_char(s[i]);
 end;
 
-function ifh_quote(const V: TValue): TVList;
-begin
-    result := TVList.Create([quote_operator.Copy, V.Copy]);
-end;
 
 function ifh_keyword_to_encoding(const V: TValue): TStreamEncoding;
 begin
@@ -1581,64 +1573,6 @@ begin
     end;
 end;
 
-//function if_execute_file        (const PL: TVList; ep: TCallProc): TValue;
-//var prog_file: TVStreamPointer; expr, res: TValue;
-//begin
-//    case params_is(PL, result, [
-//        tpString]) of
-//        1: try
-//            prog_file := nil;
-//            res := nil;
-//            prog_file := TVStreamPointer.Create(
-//                NewVariable(
-//                    TVFileStream.Create(
-//                        DirSep(PL.S[0]), fmRead, seBOM)));
-//            while true do begin
-//                expr := nil;
-//                expr := dlisp_read.read(prog_file);
-//
-//                if ((expr IS TVSymbol) and ((expr as TVSymbol).name='exit'))
-//                    or (expr is TVEndOfStream)
-//                then begin expr.Free; break; end;
-//
-//                //writeln('expr>> ', expr.AsString());
-//                res := ep(expr);
-//                if res is TVReturn then break;
-//                FreeAndNil(res);
-//            end;
-//        finally
-//            FreeAndNil(prog_file);
-//            FreeAndNil(res);
-//            result := TVT.Create;
-//        end;
-//    end;
-//end;
-
-function execute_file(filename: unicodestring): boolean;
-var expr: TVList; res: TValue;
-begin try
-    result := false;
-//    expr := TVList.Create([TVString.Create(filename)]);
-    expr := TVList.Create([TVSymbol.Create('EXECUTE-FILE'), TVString.Create(filename)]);
-    res := nil;
-    try
-//        res := if_execute_file(expr, root_evaluation_flow.eval);
-        res := root_evaluation_flow.op_execute_file(expr);
-        result := true;
-    except
-        on E:ELE do begin
-            if E.EClass<>'repl'
-            then begin
-                WriteLn('ERROR during execution ',filename);
-                Write(E.EStack);
-                WriteLn(E.Message,' (',E.EClass,')');
-            end;
-        end;
-    end;
-finally
-    expr.Free;
-    res.Free;
-end; end;
 
 function if_run_command         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var output: string;
@@ -3966,7 +3900,7 @@ finally
     params.Free;
     proc_stack.Free;
 end;
-    //TODO: при очистке стэка, рекурсивные процедуры не освобождаются
+    //DONE: при очистке стэка, рекурсивные процедуры не освобождаются
 end;
 
 function TEvaluationFlow.call_macro(PL: TVList): TValue;
@@ -4413,17 +4347,13 @@ initialization
     system.Randomize;
     fill_int_fun_signs;
     fill_base_stack;
-    root_evaluation_flow := TEvaluationFlow.Create(base_stack.Copy as TVSymbolStack);
     fill_ops_array;
-    quote_operator := root_evaluation_flow.eval(TVSymbol.Create('QUOTE')) as TVOperator;
     T := TVT.Create;
     NULL := TVList.Create;
 
 finalization
     NULL.Free;
     T.Free;
-    quote_operator.Free;
-    root_evaluation_flow.Free;
     base_stack.Free;
     free_int_fun_signs;
 end.
