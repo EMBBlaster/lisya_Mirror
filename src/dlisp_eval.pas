@@ -18,12 +18,11 @@ uses
     Interfaces, forms,
     lisya_canvas,
     {$ENDIF}
-    process, Classes, SysUtils, math, crc, ucomplex, zstream
+    process, Classes, SysUtils, math, ucomplex, zstream
     , dlisp_values, dlisp_read, lisya_xml, mar,
     lisya_packages
     ,lisya_predicates
     ,lisya_ifh
-    ,lisia_charset
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -2020,6 +2019,19 @@ begin
         end;
 end;
 
+function if_input               (const PL: TVList; {%H-}call: TCallProc): TValue;
+var s: unicodestring;
+begin
+        case params_is(PL, result, [
+            tpString, tpList]) of
+            1: begin;
+                if tpTrue(PL.look[1]) then WriteLn(ifh_format(PL.L[1]));
+                System.Write(PL.S[0]);
+                System.Read(S);
+                result := TVString.Create(S);
+            end;
+        end;
+end;
 
 function if_fmt                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2317,135 +2329,135 @@ end;
 const int_fun_count = 110;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
-(n:'RECORD?';               f:if_structure_p;           s:'(s :optional type)'),
+(n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
 
-(n:'+';                     f:if_add;                   s:'(:rest n)'),
-(n:'-';                     f:if_sub;                   s:'(a :optional b)'),
-(n:'*';                     f:if_mul;                   s:'(:rest n)'),
-(n:'/';                     f:if_div;                   s:'(a :optional b)'),
-(n:'DIV';                   f:if_div_int;               s:'(a b)'),
-(n:'MOD';                   f:if_mod;                   s:'(a b)'),
-(n:'ABS';                   f:if_abs;                   s:'(a)'),
-(n:'**';                    f:if_power;                 s:'(a b)'),
-(n:'SQRT КОРЕНЬ';           f:if_sqrt;                  s:'(a)'),
-(n:'ROUND';                 f:if_round;                 s:'(a)'),
-(n:'RANGE';                 f:if_range;                 s:'(l :optional h)'),
-(n:'SYMBOL';                f:if_symbol;                s:'(:optional n)'),
-(n:'RANDOM';                f:if_random;                s:'(:optional r)'),
-(n:'RE';                    f:if_re;                    s:'(a)'),
-(n:'IM';                    f:if_im;                    s:'(a)'),
-(n:'HASH';                  f:if_hash;                  s:'(a)'),
+(n:'+';                         f:if_add;                   s:'(:rest n)'),
+(n:'-';                         f:if_sub;                   s:'(a :optional b)'),
+(n:'*';                         f:if_mul;                   s:'(:rest n)'),
+(n:'/';                         f:if_div;                   s:'(a :optional b)'),
+(n:'DIV';                       f:if_div_int;               s:'(a b)'),
+(n:'MOD';                       f:if_mod;                   s:'(a b)'),
+(n:'ABS';                       f:if_abs;                   s:'(a)'),
+(n:'**';                        f:if_power;                 s:'(a b)'),
+(n:'SQRT КОРЕНЬ';               f:if_sqrt;                  s:'(a)'),
+(n:'ROUND';                     f:if_round;                 s:'(a)'),
+(n:'RANGE';                     f:if_range;                 s:'(l :optional h)'),
+(n:'SYMBOL';                    f:if_symbol;                s:'(:optional n)'),
+(n:'RANDOM';                    f:if_random;                s:'(:optional r)'),
+(n:'RE';                        f:if_re;                    s:'(a)'),
+(n:'IM';                        f:if_im;                    s:'(a)'),
+(n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 
-(n:'=';                     f:if_equal;                 s:'(a b)'),
-(n:'>';                     f:if_more;                  s:'(a b)'),
-(n:'<';                     f:if_less;                  s:'(a b)'),
-(n:'>=';                    f:if_more_or_equal;         s:'(a b)'),
-(n:'<=';                    f:if_less_or_equal;         s:'(a b)'),
-(n:'<>';                    f:if_not_equal;             s:'(a b)'),
-(n:'NOT НЕ';                f:if_not;                   s:'(a)'),
-(n:'EQUAL-CASE-INSENSITIVE';f:if_equal_case_insensitive;s:'(s s)'),
-(n:'EQUAL-SETS';            f:if_equal_sets;            s:'(a b)'),
-(n:'LENGTH-MORE';           f:if_length_more;           s:'(a b)'),
-(n:'LENGTH-LESS';           f:if_length_less;           s:'(a b)'),
+(n:'=';                         f:if_equal;                 s:'(a b)'),
+(n:'>';                         f:if_more;                  s:'(a b)'),
+(n:'<';                         f:if_less;                  s:'(a b)'),
+(n:'>=';                        f:if_more_or_equal;         s:'(a b)'),
+(n:'<=';                        f:if_less_or_equal;         s:'(a b)'),
+(n:'<>';                        f:if_not_equal;             s:'(a b)'),
+(n:'NOT НЕ';                    f:if_not;                   s:'(a)'),
+(n:'EQUAL-CASE-INSENSITIVE';    f:if_equal_case_insensitive;s:'(s s)'),
+(n:'EQUAL-SETS';                f:if_equal_sets;            s:'(a b)'),
+(n:'LENGTH-MORE';               f:if_length_more;           s:'(a b)'),
+(n:'LENGTH-LESS';               f:if_length_less;           s:'(a b)'),
 
-(n:'TEST-DYN';              f:if_test_dyn;              s:'(:rest msgs)'),
+(n:'TEST-DYN';                  f:if_test_dyn;              s:'(:rest msgs)'),
 //(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
 
 
-(n:'EXTRACT-FILE-EXT';      f:if_extract_file_ext;      s:'(s)'),
-(n:'EXTRACT-FILE-NAME';     f:if_extract_file_name;     s:'(s)'),
-(n:'EXTRACT-FILE-PATH';     f:if_extract_file_path;     s:'(s)'),
-(n:'FILE-EXISTS';           f:if_file_exists;           s:'(n)'),
-(n:'DIRECTORY-EXISTS';      f:if_directory_exists;      s:'(d)'),
-(n:'COMMAND-LINE';          f:if_command_line;          s:'()'),
-(n:'CHANGE-DIRECTORY';      f:if_change_directory;      s:'(d)'),
-(n:'DELETE-FILE';           f:if_delete_file;           s:'(f)'),
-(n:'RENAME-FILE';           f:if_rename_file;           s:'(o n)'),
-(n:'CREATE-DIRECTORY';      f:if_create_directory;      s:'(d)'),
-(n:'REMOVE-DIRECTORY';      f:if_remove_directory;      s:'(d)'),
-(n:'GUID';                  f:if_guid;                  s:'()'),
+(n:'EXTRACT-FILE-EXT';          f:if_extract_file_ext;      s:'(s)'),
+(n:'EXTRACT-FILE-NAME';         f:if_extract_file_name;     s:'(s)'),
+(n:'EXTRACT-FILE-PATH';         f:if_extract_file_path;     s:'(s)'),
+(n:'FILE-EXISTS';               f:if_file_exists;           s:'(n)'),
+(n:'DIRECTORY-EXISTS';          f:if_directory_exists;      s:'(d)'),
+(n:'COMMAND-LINE';              f:if_command_line;          s:'()'),
+(n:'CHANGE-DIRECTORY';          f:if_change_directory;      s:'(d)'),
+(n:'DELETE-FILE УДАЛИТЬ-ФАЙЛ';  f:if_delete_file;           s:'(f)'),
+(n:'RENAME-FILE ПЕРЕИМЕНОВАТЬ-ФАЙЛ';f:if_rename_file;           s:'(o n)'),
+(n:'CREATE-DIRECTORY СОЗДАТЬ-ПАПКУ';f:if_create_directory;      s:'(d)'),
+(n:'REMOVE-DIRECTORY УДАЛИТЬ-ПАПКУ';f:if_remove_directory;      s:'(d)'),
+(n:'GUID';                      f:if_guid;                  s:'()'),
 
-(n:'EVERY';                 f:if_every;                 s:'(p :rest l)'),
-(n:'SOME';                  f:if_some;                  s:'(p :rest l)'),
-(n:'CAR';                   f:if_car;                   s:'(l)'),
-(n:'SUBSEQ';                f:if_subseq;                s:'(s b :optional e)'),
-(n:'SORT';                  f:if_sort;                  s:'(s :optional p)'),
-(n:'SLOTS';                 f:if_slots;                 s:'(r)'),
-(n:'CURRY ШФ';              f:if_curry;                 s:'(f :rest p)'),
-(n:'FILTER';                f:if_filter;                s:'(p l)'),
-(n:'FOLD';                  f:if_fold;                  s:'(p l)'),
-(n:'MAP ОТОБРАЗИТЬ';        f:if_map;                   s:'(p :rest l)'),
-
-
-(n:'UNION';                 f:if_union;                 s:'(:rest a)'),
-(n:'INTERSECTION';          f:if_intersection;          s:'(:rest a)'),
-(n:'ПЕРЕСЕЧЕНИЕ';           f:if_intersection;          s:'(:rest a)'),
-(n:'DIFFERENCE';            f:if_difference;            s:'(a b)'),
-(n:'REVERSE';               f:if_reverse;               s:'(a)'),
-(n:'MEMBER';                f:if_member;                s:'(l e)'),
-(n:'POSITION';              f:if_position;              s:'(l e)'),
-(n:'LENGTH ДЛИНА';          f:if_length;                s:'(l)'),
-(n:'LIST СПИСОК';           f:if_list;                  s:'(:rest e)'),
-(n:'HASH-TABLE';            f:if_hash_table;            s:'()'),
-(n:'CONCATENATE';           f:if_concatenate;           s:'(:rest a)'),
-(n:'KEY';                   f:if_key;                   s:'(l k)'),
-(n:'GROUP ГРУППИРОВАТЬ';    f:if_group;                 s:'(s :rest p)'),
-(n:'MISMATCH';              f:if_mismatch;              s:'(a :rest b)'),
-
-(n:'BYTE-VECTOR';           f:if_byte_vector;           s:'(:rest b)'),
-(n:'BITWISE-AND';           f:if_bitwise_and;           s:'(a b)'),
-(n:'BITWISE-NOT';           f:if_bitwise_not;           s:'(a)'),
-(n:'BITWISE-OR';            f:if_bitwise_or;            s:'(a b)'),
-(n:'BITWISE-XOR';           f:if_bitwise_xor;           s:'(a b)'),
-(n:'CRC32';                 f:if_crc32;                 s:'(b)'),
-(n:'CHARACTER';             f:if_character;             s:'(n)'),
-
-(n:'ASSERTION';             f:if_assertion;             s:'(c m)'),
-(n:'DOCUMENTATION';         f:if_documentation;         s:'(a)'),
-(n:'DIRECTORY';             f:if_directory;             s:'(d)'),
-(n:'SLEEP';                 f:if_sleep;                 s:'(m)'),
-//(n:'EXECUTE-FILE';          f:if_execute_file;          s:'(n)'),
-(n:'RUN-COMMAND';           f:if_run_command;           s:'(c :optional d)'),
-(n:'NOW';                   f:if_now;                   s:'()'),
+(n:'EVERY КАЖДЫЙ';              f:if_every;                 s:'(p :rest l)'),
+(n:'SOME ЛЮБОЙ';                f:if_some;                  s:'(p :rest l)'),
+(n:'CAR ГОЛОВА';                f:if_car;                   s:'(l)'),
+(n:'SUBSEQ';                    f:if_subseq;                s:'(s b :optional e)'),
+(n:'SORT';                      f:if_sort;                  s:'(s :optional p)'),
+(n:'SLOTS';                     f:if_slots;                 s:'(r)'),
+(n:'CURRY ШФ';                  f:if_curry;                 s:'(f :rest p)'),
+(n:'FILTER';                    f:if_filter;                s:'(p l)'),
+(n:'FOLD';                      f:if_fold;                  s:'(p l)'),
+(n:'MAP ОТОБРАЖЕНИЕ';           f:if_map;                   s:'(p :rest l)'),
 
 
-(n:'OPEN-FILE';             f:if_open_file;             s:'(n :key mode encoding)'),
-(n:'CLOSE-FILE';            f:if_close_stream;          s:'(s)'),
-(n:'DEFLATE';               f:if_deflate;               s:'(s :key encoding header)'),
-(n:'INFLATE';               f:if_inflate;               s:'(s :key encoding header)'),
-(n:'MEMORY-STREAM';         f:if_memory_stream;         s:'(:optional bv)'),
-(n:'SET-ENCODING';          f:if_set_encoding;          s:'(s e)'),
-//(n:'SET-COMPRESSION-METHOD';f:if_set_compression_method;s:'(s c)'),
-(n:'STREAM-POSITION';       f:if_stream_position;       s:'(s :optional p)'),
-(n:'STREAM-LENGTH';         f:if_stream_length;         s:'(s)'),
-(n:'READ-BYTE';             f:if_read_byte;             s:'(s)'),
-(n:'READ-BYTES';            f:if_read_bytes;            s:'(s c)'),
-(n:'WRITE-BYTE';            f:if_write_byte;            s:'(s i)'),
-(n:'READ-CHARACTER';        f:if_read_character;        s:'(:optional s)'),
-(n:'WRITE-STRING';          f:if_write_string;          s:'(s s)'),
-(n:'READ-LINE';             f:if_read_line;             s:'(:optional s)'),
-(n:'WRITE-LINE';            f:if_write_line;            s:'(s l)'),
-(n:'READ-BOM';              f:if_read_bom;              s:'(s)'),
-(n:'WRITE-BOM';             f:if_write_bom;             s:'(s)'),
+(n:'UNION';                     f:if_union;                 s:'(:rest a)'),
+(n:'INTERSECTION ПЕРЕСЕЧЕНИЕ';  f:if_intersection;          s:'(:rest a)'),
+(n:'DIFFERENCE';                f:if_difference;            s:'(a b)'),
+(n:'REVERSE';                   f:if_reverse;               s:'(a)'),
+(n:'MEMBER';                    f:if_member;                s:'(l e)'),
+(n:'POSITION';                  f:if_position;              s:'(l e)'),
+(n:'LENGTH ДЛИНА';              f:if_length;                s:'(l)'),
+(n:'LIST СПИСОК';               f:if_list;                  s:'(:rest e)'),
+(n:'HASH-TABLE';                f:if_hash_table;            s:'()'),
+(n:'CONCATENATE';               f:if_concatenate;           s:'(:rest a)'),
+(n:'KEY';                       f:if_key;                   s:'(l k)'),
+(n:'GROUP ГРУППИРОВКА';         f:if_group;                 s:'(s :rest p)'),
+(n:'MISMATCH';                  f:if_mismatch;              s:'(a :rest b)'),
 
-(n:'READ';                  f:if_read;                  s:'(:optional s)'),
-(n:'WRITE';                 f:if_write;                 s:'(s a)'),
-(n:'PRINT';                 f:if_print;                 s:'(s a)'),
+(n:'BYTE-VECTOR';               f:if_byte_vector;           s:'(:rest b)'),
+(n:'BITWISE-AND';               f:if_bitwise_and;           s:'(a b)'),
+(n:'BITWISE-NOT';               f:if_bitwise_not;           s:'(a)'),
+(n:'BITWISE-OR';                f:if_bitwise_or;            s:'(a b)'),
+(n:'BITWISE-XOR';               f:if_bitwise_xor;           s:'(a b)'),
+(n:'CRC32';                     f:if_crc32;                 s:'(b)'),
+(n:'CHARACTER';                 f:if_character;             s:'(n)'),
 
-(n:'FMT';                   f:if_fmt;                   s:'(stream :rest s)'),
-(n:'LOG';                   f:if_log;                   s:'(:rest s)'),
-(n:'HEX';                   f:if_hex;                   s:'(i :optional d)'),
-(n:'FIXED';                 f:if_fixed;                 s:'(f :optional d)'),
-(n:'COL';                   f:if_col;                   s:'(w v :optional a)'),
-(n:'LST';                   f:if_fmt_list;              s:'(l :optional s b e)'),
-(n:'UPPER-CASE';            f:if_upper_case;            s:'(s)'),
-(n:'LOWER-CASE';            f:if_lower_case;            s:'(s)'),
+(n:'ASSERTION';                 f:if_assertion;             s:'(c m)'),
+(n:'DOCUMENTATION';             f:if_documentation;         s:'(a)'),
+(n:'DIRECTORY';                 f:if_directory;             s:'(d)'),
+(n:'SLEEP';                     f:if_sleep;                 s:'(m)'),
 
-(n:'XML:READ-FROM-STRING';  f:if_xml_read_from_string;  s:'(s :flag separate)'),
+(n:'RUN-COMMAND';               f:if_run_command;           s:'(c :optional d)'),
+(n:'NOW';                       f:if_now;                   s:'()'),
 
-(n:'SQL:MYSQL-CONNECTION';  f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
-(n:'SQL:QUERY';             f:if_sql_query;             s:'(db :rest q)'),
-(n:'SQL:QUERY-LIST';        f:if_sql_query_list;        s:'(db :rest q)')
+
+(n:'OPEN-FILE FILE ФАЙЛ';       f:if_open_file;             s:'(n :key mode encoding)'),
+(n:'CLOSE-FILE';                f:if_close_stream;          s:'(s)'),
+(n:'DEFLATE';                   f:if_deflate;               s:'(s :key encoding header)'),
+(n:'INFLATE';                   f:if_inflate;               s:'(s :key encoding header)'),
+(n:'MEMORY-STREAM';             f:if_memory_stream;         s:'(:optional bv)'),
+(n:'SET-ENCODING';              f:if_set_encoding;          s:'(s e)'),
+
+(n:'STREAM-POSITION';           f:if_stream_position;       s:'(s :optional p)'),
+(n:'STREAM-LENGTH';             f:if_stream_length;         s:'(s)'),
+(n:'READ-BYTE';                 f:if_read_byte;             s:'(s)'),
+(n:'READ-BYTES';                f:if_read_bytes;            s:'(s c)'),
+(n:'WRITE-BYTE';                f:if_write_byte;            s:'(s i)'),
+(n:'READ-CHARACTER';            f:if_read_character;        s:'(:optional s)'),
+(n:'WRITE-STRING';              f:if_write_string;          s:'(s s)'),
+(n:'READ-LINE';                 f:if_read_line;             s:'(:optional s)'),
+(n:'WRITE-LINE';                f:if_write_line;            s:'(s l)'),
+(n:'READ-BOM';                  f:if_read_bom;              s:'(s)'),
+(n:'WRITE-BOM';                 f:if_write_bom;             s:'(s)'),
+
+(n:'READ';                      f:if_read;                  s:'(:optional s)'),
+(n:'WRITE';                     f:if_write;                 s:'(s a)'),
+(n:'PRINT';                     f:if_print;                 s:'(s a)'),
+(n:'INPUT ВВОД';                f:if_input;                 s:'(prompt :rest query)'),
+
+(n:'FMT';                       f:if_fmt;                   s:'(stream :rest s)'),
+(n:'LOG';                       f:if_log;                   s:'(:rest s)'),
+(n:'HEX';                       f:if_hex;                   s:'(i :optional d)'),
+(n:'FIXED';                     f:if_fixed;                 s:'(f :optional d)'),
+(n:'COL';                       f:if_col;                   s:'(w v :optional a)'),
+(n:'LST';                       f:if_fmt_list;              s:'(l :optional s b e)'),
+(n:'UPPER-CASE';                f:if_upper_case;            s:'(s)'),
+(n:'LOWER-CASE';                f:if_lower_case;            s:'(s)'),
+
+(n:'XML:READ-FROM-STRING';      f:if_xml_read_from_string;  s:'(s :flag separate)'),
+
+(n:'SQL:MYSQL-CONNECTION';      f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
+(n:'SQL:QUERY';                 f:if_sql_query;             s:'(db :rest q)'),
+(n:'SQL:QUERY-LIST';            f:if_sql_query_list;        s:'(db :rest q)')
 );
 
 
