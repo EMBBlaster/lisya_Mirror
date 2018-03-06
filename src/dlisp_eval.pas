@@ -2193,6 +2193,37 @@ begin
     end;
 end;
 
+
+function ifh_SQL_datatype(F: TField): TValue;
+begin
+    case F.DataType of
+        ftUnknown, ftString, ftWideString,ftFmtMemo, ftMemo, ftFixedWideChar,
+        ftWideMemo,ftFixedChar:
+            result := TVString.Create(F.AsString);
+
+        ftSmallint, ftInteger, ftWord:
+            result := TVInteger.Create(F.AsInteger);
+
+        ftBoolean:
+            bool_to_TV(F.AsBoolean, result);
+
+        ftFloat:
+            result := TVFloat.Create(F.AsFloat);
+
+        ftDateTime, ftDate, ftTimeStamp:
+            result := TVDateTime.Create(F.AsDateTime);
+
+        ftTime: result := TVTimeInterval.Create(F.AsDateTime);
+
+        //ftCurrency, ftBCD,
+        //ftBytes, ftVarBytes, ftAutoInc, ftBlob, , ftGraphic, ,
+        //ftParadoxOle, ftDBaseOle, ftTypedBinary, ftCursor,
+        //, ftLargeint, ftADT, ftArray, ftReference,
+        //ftDataSet, ftOraBlob, ftOraClob, ftVariant, ftInterface,
+        //ftIDispatch, ftGuid, ftFMTBcd, );
+    end;
+end;
+
 function if_sql_query           (const PL: TVList; {%H-}call: TCallProc): TValue;
 var rec: TVRecord; i,j: integer;
     ucommand: unicodestring;
@@ -2226,34 +2257,8 @@ begin
                 for j := 0 to FieldCount-1 do
                     if VarIsNull(fields[j].Value)
                     then rec[j] := TVList.Create
-                    else
-                    case Fields[j].DataType of
-                        ftUnknown, ftString, ftWideString,
-                        ftFmtMemo, ftMemo, ftFixedWideChar,
-                        ftWideMemo,
-                        ftFixedChar: rec[j] :=
-                            TVString.Create(Fields[j].AsString);
-                        ftSmallint, ftInteger,
-                        ftWord: rec[j] :=
-                            TVInteger.Create(Fields[j].AsInteger);
-                        ftBoolean: if Fields[j].AsBoolean
-                            then rec[j] := TVT.Create
-                            else rec[j] := TVList.Create;
-                        ftFloat: rec[j] :=
-                            TVFloat.Create(Fields[j].AsFloat);
-                        ftDateTime, ftDate, ftTimeStamp: rec[j] :=
-                            TVDateTime.Create(Fields[j].AsDateTime);
-                        ftTime: rec[j] :=
-                            TVTimeInterval.Create(Fields[j].AsDateTime);
+                    else rec[j] := ifh_SQL_datatype(Fields[j]);
 
-
-                        //ftCurrency, ftBCD,
-                        //ftBytes, ftVarBytes, ftAutoInc, ftBlob, , ftGraphic, ,
-                        //ftParadoxOle, ftDBaseOle, ftTypedBinary, ftCursor,
-                        //, ftLargeint, ftADT, ftArray, ftReference,
-                        //ftDataSet, ftOraBlob, ftOraClob, ftVariant, ftInterface,
-                        //ftIDispatch, ftGuid, ftFMTBcd, );
-                    end;
                 (result as TVList).Add(rec.Copy);
                 Next;
             end;
@@ -2289,35 +2294,35 @@ begin
             for i := 0 to RecordCount-1 do begin
                 if VarIsNull(fields[0].Value)
                 then (result as TVList).Add(TVList.Create)
-                else
-                case Fields[0].DataType of
-                    ftUnknown, ftString, ftWideString, ftFmtMemo, ftMemo,
-                    ftFixedWideChar, ftWideMemo,ftFixedChar:
-                        (result as TVList).Add(
-                            TVString.Create(Fields[0].AsString));
-                    ftSmallint, ftInteger,ftWord:
-                        (result as TVList).Add(
-                            TVInteger.Create(Fields[0].AsInteger));
-                    ftBoolean: if Fields[0].AsBoolean
-                            then (result as TVList).Add(TVT.Create)
-                            else (result as TVList).Add(TVList.Create);
-                    ftFloat:
-                        (result as TVList).Add(
-                            TVFloat.Create(Fields[0].AsFloat));
-                    ftDateTime, ftDate, ftTimeStamp:
-                        (result as TVList).Add(
-                            TVDateTime.Create(Fields[0].AsDateTime));
-                    ftTime:
-                        (result as TVList).Add(
-                            TVTimeInterval.Create(Fields[0].AsDateTime));
-
-                        //ftCurrency, ftBCD,
-                        //ftBytes, ftVarBytes, ftAutoInc, ftBlob, , ftGraphic, ,
-                        //ftParadoxOle, ftDBaseOle, ftTypedBinary, ftCursor,
-                        //, ftLargeint, ftADT, ftArray, ftReference,
-                        //ftDataSet, ftOraBlob, ftOraClob, ftVariant, ftInterface,
-                        //ftIDispatch, ftGuid, ftFMTBcd, );
-                end;
+                else (result as TVList).Add(ifh_sql_datatype(Fields[0]));
+                //case Fields[0].DataType of
+                //    ftUnknown, ftString, ftWideString, ftFmtMemo, ftMemo,
+                //    ftFixedWideChar, ftWideMemo,ftFixedChar:
+                //        (result as TVList).Add(
+                //            TVString.Create(Fields[0].AsString));
+                //    ftSmallint, ftInteger,ftWord:
+                //        (result as TVList).Add(
+                //            TVInteger.Create(Fields[0].AsInteger));
+                //    ftBoolean: if Fields[0].AsBoolean
+                //            then (result as TVList).Add(TVT.Create)
+                //            else (result as TVList).Add(TVList.Create);
+                //    ftFloat:
+                //        (result as TVList).Add(
+                //            TVFloat.Create(Fields[0].AsFloat));
+                //    ftDateTime, ftDate, ftTimeStamp:
+                //        (result as TVList).Add(
+                //            TVDateTime.Create(Fields[0].AsDateTime));
+                //    ftTime:
+                //        (result as TVList).Add(
+                //            TVTimeInterval.Create(Fields[0].AsDateTime));
+                //
+                //        //ftCurrency, ftBCD,
+                //        //ftBytes, ftVarBytes, ftAutoInc, ftBlob, , ftGraphic, ,
+                //        //ftParadoxOle, ftDBaseOle, ftTypedBinary, ftCursor,
+                //        //, ftLargeint, ftADT, ftArray, ftReference,
+                //        //ftDataSet, ftOraBlob, ftOraClob, ftVariant, ftInterface,
+                //        //ftIDispatch, ftGuid, ftFMTBcd, );
+                //end;
                 Next;
             end;
         finally
@@ -2387,7 +2392,6 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'FILTER';                    f:if_filter;                s:'(p l)'),
 (n:'FOLD';                      f:if_fold;                  s:'(p l)'),
 (n:'MAP ОТОБРАЖЕНИЕ';           f:if_map;                   s:'(p :rest l)'),
-
 
 (n:'UNION';                     f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION ПЕРЕСЕЧЕНИЕ';  f:if_intersection;          s:'(:rest a)'),
