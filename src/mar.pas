@@ -7,9 +7,13 @@ interface
 uses
     Classes, SysUtils;
 
+type
+    TStringArray = array of unicodestring;
+
 function PosU(const ss, s: unicodestring; offset: integer = 1): integer;
 function UpperCaseU(s: unicodestring): unicodestring;
 function LowerCaseU(s: unicodestring): unicodestring;
+function SplitString(S: unicodestring; separator: unicodestring = ' '): TStringArray;
 
 implementation
 
@@ -109,6 +113,22 @@ begin
             'Ю': result[i] := 'ю';
             'Я': result[i] := 'я';
         end;
+end;
+
+function SplitString(S: unicodestring; separator: unicodestring = ' '): TStringArray;
+var p1, p2: integer;
+begin
+    SetLength(result, 0);
+    p1 := 1;
+    p2 := PosU(separator, S);
+    while p2>0 do begin
+        SetLength(result, Length(result)+1);
+        result[high(result)] := S[p1..p2-1];
+        p1 := p2+Length(separator);
+        p2 := PosU(separator, S, p1+1);
+    end;
+    SetLength(result, Length(result)+1);
+    result[high(result)] := S[p1..Length(s)];
 end;
 
 end.

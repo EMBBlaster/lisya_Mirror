@@ -818,6 +818,27 @@ begin
 end;
 
 
+function if_length_more           (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpList, tpList,
+        tpString, tpString]) of
+        1: bool_to_TV(PL.L[0].Count > PL.L[1].Count, result);
+        2: bool_to_TV(Length(PL.S[0]) > Length(PL.S[1]), result);
+    end;
+end;
+
+function if_length_less           (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpList, tpList,
+        tpString, tpString]) of
+        1: bool_to_TV(PL.L[0].Count < PL.L[1].Count, result);
+        2: bool_to_TV(Length(PL.S[0]) < Length(PL.S[1]), result);
+    end;
+end;
+
+
 function if_test_dyn            (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
@@ -2123,8 +2144,6 @@ end;
 
 
 
-
-
 function if_xml_read_from_string(const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2308,7 +2327,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'MOD';                   f:if_mod;                   s:'(a b)'),
 (n:'ABS';                   f:if_abs;                   s:'(a)'),
 (n:'**';                    f:if_power;                 s:'(a b)'),
-(n:'SQRT';                  f:if_sqrt;                  s:'(a)'),
+(n:'SQRT КОРЕНЬ';           f:if_sqrt;                  s:'(a)'),
 (n:'ROUND';                 f:if_round;                 s:'(a)'),
 (n:'RANGE';                 f:if_range;                 s:'(l :optional h)'),
 (n:'SYMBOL';                f:if_symbol;                s:'(:optional n)'),
@@ -2323,9 +2342,11 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'>=';                    f:if_more_or_equal;         s:'(a b)'),
 (n:'<=';                    f:if_less_or_equal;         s:'(a b)'),
 (n:'<>';                    f:if_not_equal;             s:'(a b)'),
-(n:'NOT';                   f:if_not;                   s:'(a)'),
+(n:'NOT НЕ';                f:if_not;                   s:'(a)'),
 (n:'EQUAL-CASE-INSENSITIVE';f:if_equal_case_insensitive;s:'(s s)'),
 (n:'EQUAL-SETS';            f:if_equal_sets;            s:'(a b)'),
+(n:'LENGTH-MORE';           f:if_length_more;           s:'(a b)'),
+(n:'LENGTH-LESS';           f:if_length_less;           s:'(a b)'),
 
 (n:'TEST-DYN';              f:if_test_dyn;              s:'(:rest msgs)'),
 //(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
@@ -2350,11 +2371,10 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SUBSEQ';                f:if_subseq;                s:'(s b :optional e)'),
 (n:'SORT';                  f:if_sort;                  s:'(s :optional p)'),
 (n:'SLOTS';                 f:if_slots;                 s:'(r)'),
-(n:'ШФ';                    f:if_curry;                 s:'(f :rest p)'),
-(n:'CURRY';                 f:if_curry;                 s:'(f :rest p)'),
+(n:'CURRY ШФ';              f:if_curry;                 s:'(f :rest p)'),
 (n:'FILTER';                f:if_filter;                s:'(p l)'),
 (n:'FOLD';                  f:if_fold;                  s:'(p l)'),
-(n:'MAP';                   f:if_map;                   s:'(p :rest l)'),
+(n:'MAP ОТОБРАЗИТЬ';        f:if_map;                   s:'(p :rest l)'),
 
 
 (n:'UNION';                 f:if_union;                 s:'(:rest a)'),
@@ -2364,13 +2384,12 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'REVERSE';               f:if_reverse;               s:'(a)'),
 (n:'MEMBER';                f:if_member;                s:'(l e)'),
 (n:'POSITION';              f:if_position;              s:'(l e)'),
-(n:'LENGTH';                f:if_length;                s:'(l)'),
-(n:'ДЛИНА';                 f:if_length;                s:'(l)'),
-(n:'LIST';                  f:if_list;                  s:'(:rest e)'),
+(n:'LENGTH ДЛИНА';          f:if_length;                s:'(l)'),
+(n:'LIST СПИСОК';           f:if_list;                  s:'(:rest e)'),
 (n:'HASH-TABLE';            f:if_hash_table;            s:'()'),
 (n:'CONCATENATE';           f:if_concatenate;           s:'(:rest a)'),
 (n:'KEY';                   f:if_key;                   s:'(l k)'),
-(n:'GROUP';                 f:if_group;                 s:'(s :rest p)'),
+(n:'GROUP ГРУППИРОВАТЬ';    f:if_group;                 s:'(s :rest p)'),
 (n:'MISMATCH';              f:if_mismatch;              s:'(a :rest b)'),
 
 (n:'BYTE-VECTOR';           f:if_byte_vector;           s:'(:rest b)'),
@@ -2518,17 +2537,22 @@ begin
 end;
 
 procedure fill_base_stack;
-var i: integer;
+var i, j: integer; fun_names: TStringArray;
 begin
     base_stack := TVSymbolStack.Create(nil);
-    for i := low(int_fun) to high(int_fun) do
-        base_stack.new_var(
-            int_fun[i].n,
-            TVInternalFunction.Create(
-                    int_fun_sign[i],
-                    int_fun[i].f,
-                    int_fun[i].n),
-            true);
+
+    //загрузка внутренних функций
+    for i := low(int_fun) to high(int_fun) do begin
+        fun_names := SplitString(int_fun[i].n);
+        for j := 0 to high(fun_names) do
+            base_stack.new_var(
+                fun_names[j],
+                TVInternalFunction.Create(
+                        int_fun_sign[i],
+                        int_fun[i].f,
+                        fun_names[j]),
+                true);
+    end;
 
     //загрузка предикатов
     for i := low(predicates) to high(predicates) do

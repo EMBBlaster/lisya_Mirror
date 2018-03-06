@@ -348,12 +348,6 @@ begin
     end
     else
 
-    if (Length(acc)>=2) and (acc[1]='/')
-    then begin
-        set_ss(Copy(acc,2,length(acc)-1));
-        result := TVList.Create([TVSymbol.Create('INS'), read_u(nil, @ss)]);
-    end
-    else
 
     if str_is_datetime(acc, dt)
     then result := TVDateTime.Create(dt)
