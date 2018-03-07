@@ -35,7 +35,6 @@
     (procedure p (a) a)
     (assertion (= 1 (p 1)) "eval params"))
 
-(log "")
 ;(log "WARNING не тестируются рекурсивные процедуры")
 (block "рекурсивные процедуры"
     (procedure p (n) (if (> n 0) (p (- n 1))))
@@ -61,6 +60,10 @@
     (assertion (= \("a" 5 6 7 "b") (p1 "a" "b")) "curry 3")
     )
 
+(block "map-concatenate"
+    (procedure p (x) (list x x))
+    (const d \(1 2))
+    (assertion (= \(1 1 2 2) (map-concatenate p d)) "map-concatenate"))
 
 (log " успешно")
 

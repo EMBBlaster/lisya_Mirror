@@ -1213,6 +1213,15 @@ begin
     end;
 end;
 
+function if_map_concatenate     (const PL: TVList; call: TCallProc): TValue;
+var L: TVList; i: integer;
+begin
+    L := if_map(PL, call) as TVList;
+    result := TVList.Create;
+    for i := 0 to L.high do (result as TVList).Append(L[i] as TVList);
+    L.Free;
+end;
+
 function if_union               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [tpListOfLists]) of
@@ -2243,7 +2252,6 @@ begin
             else begin
                 result := TVT.Create;
                 ExecSQL;
-                //(PL.look[0] as TVSQLPointer).Commit;
                 Exit;
             end;
             Last;
@@ -2252,6 +2260,7 @@ begin
             for j := 0 to FieldCount-1 do
                 rec.AddSlot(Fields[j].DisplayName, TVT.Create);
             result := TVList.Create;
+
             First;
             for i := 0 to RecordCount-1 do begin
                 for j := 0 to FieldCount-1 do
@@ -2282,9 +2291,8 @@ begin
             if (Pos('SELECT', ucommand)=1)
                 or (Pos('SHOW', ucommand)=1)
             then Active := true
-            else begin
-                raise ELE.Create('invalid query for list', 'sql');
-            end;
+            else raise ELE.Create('invalid query for list', 'sql');
+
             Last;
 
             if FieldCount<>1 then raise ELE.Create('запрос вернул не одну колонку', 'sql');
@@ -2294,7 +2302,7 @@ begin
             for i := 0 to RecordCount-1 do begin
                 if VarIsNull(fields[0].Value)
                 then (result as TVList).Add(TVList.Create)
-                else (result as TVList).Add(ifh_sql_datatype(Fields[0]));
+                else (result as TVList).Add(ifh_SQL_datatype(Fields[0]));
                 //case Fields[0].DataType of
                 //    ftUnknown, ftString, ftWideString, ftFmtMemo, ftMemo,
                 //    ftFixedWideChar, ftWideMemo,ftFixedChar:
@@ -2331,7 +2339,7 @@ begin
     end;
 end;
 
-const int_fun_count = 110;
+const int_fun_count = 111;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2392,6 +2400,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'FILTER';                    f:if_filter;                s:'(p l)'),
 (n:'FOLD';                      f:if_fold;                  s:'(p l)'),
 (n:'MAP ОТОБРАЖЕНИЕ';           f:if_map;                   s:'(p :rest l)'),
+(n:'MAP-CONCATENATE';           f:if_map_concatenate;       s:'(p :rest l)'),
 
 (n:'UNION';                     f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION ПЕРЕСЕЧЕНИЕ';  f:if_intersection;          s:'(:rest a)'),
