@@ -1519,10 +1519,10 @@ end;
 function if_assertion           (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpTrue, tpString,
-        tpNIL,  tpString]) of
+        tpTrue, tpList,
+        tpNIL,  tpList]) of
         1: result := TVT.Create;
-        2: raise ELE.Create(PL.S[1], 'assertion');
+        2: raise ELE.Create(ifh_format(PL.L[1]), 'assertion');
     end;
 end;
 
@@ -2424,7 +2424,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'CRC32';                     f:if_crc32;                 s:'(b)'),
 (n:'CHARACTER';                 f:if_character;             s:'(n)'),
 
-(n:'ASSERTION';                 f:if_assertion;             s:'(c m)'),
+(n:'ASSERTION';                 f:if_assertion;             s:'(c :rest m)'),
 (n:'DOCUMENTATION';             f:if_documentation;         s:'(a)'),
 (n:'DIRECTORY';                 f:if_directory;             s:'(d)'),
 (n:'SLEEP';                     f:if_sleep;                 s:'(m)'),
