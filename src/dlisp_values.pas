@@ -884,7 +884,7 @@ type
     TVZIPFileStream = class (TVFileStream)
         body: PVariable;
 
-        constructor Create(_Z: PVariable; fn: unicodestring);
+        constructor Create(_Z: PVariable; fn: unicodestring; enc: TStreamEncoding);
         destructor Destroy; override;
 
         function AsString: unicodestring; override;
@@ -1057,11 +1057,13 @@ end;
 
 { TVZIPFileStream }
 
-constructor TVZIPFileStream.Create(_Z: PVariable; fn: unicodestring);
+constructor TVZIPFileStream.Create(_Z: PVariable; fn: unicodestring;
+    enc: TStreamEncoding);
 begin
     body := _z;
     file_name := fn;
     fstream := (body.V as TVZIPFile).Z.GetFileStream(fn);
+    if enc=seBOM then read_BOM else encoding := enc;
 end;
 
 destructor TVZIPFileStream.Destroy;
@@ -1115,8 +1117,7 @@ end;
 
 { TVZIPFile }
 
-constructor TVZIPFile.Create(fn: unicodestring; mode: WORD; enc: TStreamEncoding
-    );
+constructor TVZIPFile.Create(fn: unicodestring; mode: WORD; enc: TStreamEncoding);
 begin
     file_name := fn;
     case mode of
@@ -1691,7 +1692,7 @@ procedure TVStream.read_BOM;
 var p: integer;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
-    p := (fstream as TFileStream).Position;
+    p := fstream.Position;
     //UTF-8
     if (b=$EF) and (b=$BB) and (b=$BF) then begin
         encoding := seUTF8;

@@ -408,6 +408,14 @@ begin
 end;
 
 
+function ifh_keyword_to_file_mode(const V: TValue): WORD;
+begin
+    if tpNIL(V)             then result := fmOpenRead else
+    if vpKeyword_READ(V)    then result := fmOpenRead else
+    if vpKeyword_WRITE(V)   then result := fmCreate else
+    if vpKeyword_APPEND(V)  then result := fmOpenReadWrite else
+    raise ELE.Create('invalid file mode '+V.AsString, 'invalid parameters');
+end;
 
 function if_structure_p         (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -1722,12 +1730,7 @@ begin
     case params_is(PL, result, [
         tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
         1: begin
-            if tpNIL(PL.look[1]) then mode := fmOpenRead else
-            if vpKeyword_READ(PL.look[1]) then mode := fmOpenRead else
-            if vpKeyword_WRITE(PL.look[1]) then mode := fmCreate else
-            if vpKeyword_APPEND(PL.look[1]) then mode := fmOpenReadWrite else
-                raise ELE.InvalidParameters;
-
+            mode := ifh_keyword_to_file_mode(PL.look[1]);
             enc := ifh_keyword_to_encoding(PL.look[2]);
 
             if fileExists(DirSep(PL.S[0])) or (mode <> fmOpenRead)
@@ -1737,8 +1740,6 @@ begin
         end;
     end;
 end;
-
-
 
 function if_zip_filelist        (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; file_names: TStringArray;
@@ -1756,14 +1757,16 @@ end;
 
 
 function if_zip_file            (const PL: TVList; {%H-}call: TCallProc): TValue;
-var zfs: TVZIPFileStream;
+var zfs: TVZIPFileStream;  mode: WORD; enc: TStreamEncoding;
 begin
     case params_is(PL, result, [
-        tpZIPFilePointer, tpString]) of
+        tpZIPFilePointer, tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
         1: begin
+            mode := ifh_keyword_to_file_mode(PL.look[2]);
+            enc := ifh_keyword_to_encoding(PL.look[3]);
             zfs := TVZIPFileStream.Create(
                 RefVariable((PL.look[0] as TVZipFilePointer).body),
-                PL.S[1]);
+                PL.S[1], enc);
             if zfs.fstream<>nil then begin
                 result := TVStreamPointer.Create(NewVariable(zfs));
             end
@@ -1885,8 +1888,8 @@ end;
 function if_stream_position     (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpStreamPointer, vpIntegerNotNegative,
-        tpStreamPointer, tpNIL]) of
+        vpStreamPointerActive, vpIntegerNotNegative,
+        vpStreamPointerActive, tpNIL]) of
         1: begin
             (PL.look[0] as TVStreamPointer).stream.fstream.Position := PL.I[1];
             result := TVT.Create;
@@ -2516,7 +2519,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'ZIP:OPEN';                  f:if_zip_open;              s:'(n :key mode encoding)'),
 (n:'ZIP:FILELIST';              f:if_zip_filelist;          s:'(z)'),
-(n:'ZIP:FILE';                  f:if_zip_file;              s:'(z fn)'),
+(n:'ZIP:FILE';                  f:if_zip_file;              s:'(z fn :key mode encoding)'),
 
 (n:'STREAM-POSITION';           f:if_stream_position;       s:'(s :optional p)'),
 (n:'STREAM-LENGTH';             f:if_stream_length;         s:'(s)'),
@@ -2552,7 +2555,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 );
 
 
-const predicates: array[1..14] of record n: unicodestring; f: TTypePredicate; end = (
+const predicates: array[1..15] of record n: unicodestring; f: TTypePredicate; end = (
 (n:'T?';                    f:tpT),
 (n:'NIL?';                  f:tpNIL),
 (n:'TRUE?';                 f:tpTRUE),
@@ -2567,7 +2570,8 @@ const predicates: array[1..14] of record n: unicodestring; f: TTypePredicate; en
 (n:'KEYWORD?';              f:tpKeyword),
 (n:'STRING?';               f:tpString),
 (n:'POSITIVE?';             f:vpRealPositive),
-(n:'NEGATIVE?';             f:vpRealNegative)
+(n:'NEGATIVE?';             f:vpRealNegative),
+(n:'EOS?';                  f:vpStreamEnd)
 
 );
 

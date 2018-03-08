@@ -278,6 +278,8 @@ function vpStringEmpty                              (V: TValue): boolean;
 
 function vpStreamPointerActive                      (V: TValue): boolean;
 
+function vpStreamEnd                                (V: TValue): boolean;
+
 function vpSymbol__                                 (V: TValue): boolean;
 
 function vpSymbol_IN                                (V: TValue): boolean;
@@ -1066,6 +1068,12 @@ begin
     result := (V is TVString) and ((V as TVString).S = '');
 end;
 
+function vpStreamEnd(V: TValue): boolean;
+begin
+    result :=
+    (V as TVStreamPointer).stream.fstream.Position =
+        (V as TVStreamPointer).stream.fstream.Size;
+end;
 
 function vpSymbol__                                 (V: TValue): boolean;
 begin
