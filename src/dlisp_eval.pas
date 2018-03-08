@@ -23,6 +23,7 @@ uses
     lisya_packages
     ,lisya_predicates
     ,lisya_ifh
+    ,lisya_zip
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -1032,6 +1033,19 @@ begin
     end;
 end;
 
+//function if_last                (const PL: TVList; {%H-}call: TCallProc): TValue;
+//begin
+//    //print_stdout_ln(pl);
+//    case params_is(PL, result, [
+//    {1} tpNIL,
+//    {2} tpList,
+//    {3} tpString]) of
+//        1: result := TVList.Create;
+//        2: result := PL.L[0][PL.L[0].high];
+//        3: result := TVString.Create(PL.S[0][Length(PL.S[0])]);
+//    end;
+//end;
+
 function if_subseq              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     //print_stdout_ln(pl);
@@ -1702,6 +1716,65 @@ begin
     end;
 end;
 
+function if_zip_open            (const PL: TVList; {%H-}call: TCallProc): TValue;
+var mode: WORD; enc: TStreamEncoding;
+begin
+    case params_is(PL, result, [
+        tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
+        1: begin
+            if tpNIL(PL.look[1]) then mode := fmOpenRead else
+            if vpKeyword_READ(PL.look[1]) then mode := fmOpenRead else
+            if vpKeyword_WRITE(PL.look[1]) then mode := fmCreate else
+            if vpKeyword_APPEND(PL.look[1]) then mode := fmOpenReadWrite else
+                raise ELE.InvalidParameters;
+
+            enc := ifh_keyword_to_encoding(PL.look[2]);
+
+            if fileExists(DirSep(PL.S[0])) or (mode <> fmOpenRead)
+            then result := TVZIPFilePointer.Create(
+                NewVariable(TVZIPFile.Create(DirSep(PL.S[0]), mode)))
+            else raise ELE.Create(PL.S[0], 'file not found');
+        end;
+    end;
+end;
+
+
+
+function if_zip_filelist        (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer; file_names: TStringArray;
+begin
+    case params_is(PL, result, [
+        tpZIPFilePointer]) of
+        1: begin
+            file_names := (PL.look[0] as TVZIPFilePointer).Z.FileList;
+            result := TVList.Create;
+            for i := 0 to high(file_names) do
+                (result as TVList).Add(TVString.Create(file_names[i]));
+        end;
+    end;
+end;
+
+
+function if_zip_file            (const PL: TVList; {%H-}call: TCallProc): TValue;
+var zfs: TVZIPFileStream;
+begin
+    case params_is(PL, result, [
+        tpZIPFilePointer, tpString]) of
+        1: begin
+            zfs := TVZIPFileStream.Create(
+                RefVariable((PL.look[0] as TVZipFilePointer).body),
+                PL.S[1]);
+            if zfs.fstream<>nil then begin
+                result := TVStreamPointer.Create(NewVariable(zfs));
+            end
+            else begin
+                zfs.Free;
+                result := TVList.Create;
+            end;
+        end;
+    end;
+end;
+
 function if_close_stream        (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2339,7 +2412,7 @@ begin
     end;
 end;
 
-const int_fun_count = 111;
+const int_fun_count = 114;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2393,6 +2466,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'EVERY КАЖДЫЙ';              f:if_every;                 s:'(p :rest l)'),
 (n:'SOME ЛЮБОЙ';                f:if_some;                  s:'(p :rest l)'),
 (n:'CAR ГОЛОВА';                f:if_car;                   s:'(l)'),
+//(n:'LAST';                      f:if_last;                  s:'(l)'),
 (n:'SUBSEQ';                    f:if_subseq;                s:'(s b :optional e)'),
 (n:'SORT';                      f:if_sort;                  s:'(s :optional p)'),
 (n:'SLOTS';                     f:if_slots;                 s:'(r)'),
@@ -2439,6 +2513,10 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'INFLATE';                   f:if_inflate;               s:'(s :key encoding header)'),
 (n:'MEMORY-STREAM';             f:if_memory_stream;         s:'(:optional bv)'),
 (n:'SET-ENCODING';              f:if_set_encoding;          s:'(s e)'),
+
+(n:'ZIP:OPEN';                  f:if_zip_open;              s:'(n :key mode encoding)'),
+(n:'ZIP:FILELIST';              f:if_zip_filelist;          s:'(z)'),
+(n:'ZIP:FILE';                  f:if_zip_file;              s:'(z fn)'),
 
 (n:'STREAM-POSITION';           f:if_stream_position;       s:'(s :optional p)'),
 (n:'STREAM-LENGTH';             f:if_stream_length;         s:'(s)'),
