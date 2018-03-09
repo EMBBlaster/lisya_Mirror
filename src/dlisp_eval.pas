@@ -24,6 +24,7 @@ uses
     ,lisya_predicates
     ,lisya_ifh
     ,lisya_zip
+    ,lisia_charset
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}

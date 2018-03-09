@@ -33,7 +33,7 @@ type
         extraFieldLength:       WORD;
         filename:               unicodestring;
         extraField:             TBytes;
-        data:                   TMemoryStream;
+        data:                   TBytesStream;
     end;
 
     TDDR = record // STREAMING DATA DESCRIPTION
@@ -65,7 +65,7 @@ type
         extraFieldLength:       WORD;
         fileCommentLength:      WORD;
         diskNumber:             WORD;   //номер диска на котором начинается этот файл
-        internalFileAttributes: DWORD;  // bit 0 - текстовый файл
+        internalFileAttributes: WORD;  // bit 0 - текстовый файл
         externalFileAttributes: DWORD;
         localFileHeaderOffset:  DWORD;  //смещение от начала диска до LFH
         filename:               unicodestring;
@@ -80,7 +80,7 @@ type
         startDiskNumber:        WORD;   // номер диска с которого начинается CD
         numberCentralDirectoryRecord:   WORD; // количество CDFH на этом диске
         totalCentralDirectoryRecord:    WORD; // всего файлов
-        sizeOfCentralDirectory:         DWORD;  //включая AED CDFH и EOCD
+        sizeOfCentralDirectory:         DWORD;  //включая AED и CDFH
         centralDirectoryOffset:         DWORD; // смещение от начала диска до CD
         commentLength:          WORD;
         comment:                unicodestring;
@@ -120,6 +120,14 @@ begin
     for i := 1 to count do result := result + cp1251_cp[f.ReadByte];
 end;
 
+procedure write_string(f: TFileStream; s: unicodestring);
+var i: integer;
+begin
+    for i := 1 to length(s) do begin
+        f.WriteByte(ord(s[i]));
+    end;
+end;
+
 function read_bytes(f: TStream; count: integer): TBytes;
 var i: integer;
 begin
@@ -127,19 +135,30 @@ begin
     for i := 0 to count-1 do result[i] := f.ReadByte;
 end;
 
-function read_to_stream(f: TStream; count: integer; crc: DWORD): TMemoryStream;
+procedure write_bytes(f: TStream; bb: TBytes);
+var i: integer;
+begin
+    for i := low(bb) to high(bb) do f.WriteByte(bb[i]);
+end;
+
+function read_to_stream(f: TStream; count: integer; crc: DWORD): TBytesStream;
 var i: integer; acc: DWORD; b: byte;
 begin
-    result := TMemoryStream.Create;
+    result := TBytesStream.Create;
     result.SetSize(count);
     acc := 0;
-    for i := 1 to count do begin
-        b := f.ReadByte;
-        acc := crc32(acc, @b, 1);
-        result.WriteByte(b);
-    end;
-    if acc<>crc then raise EZIP.Create('Нарушение контрольной суммы');
+    //for i := 1 to count do begin
+    //    b := f.ReadByte;
+    //    acc := crc32(acc, @b, 1);
+    //    result.WriteByte(b);
+    //end;
+    for i := 1 to count do result.WriteByte(f.ReadByte);
+
+    //if acc<>crc then raise EZIP.Create('Нарушение контрольной суммы');
+    if crc32(0,@(result.Bytes[0]), count)<>crc
+    then raise EZIP.Create('Нарушение контрольной суммы');
 end;
+
 
 function read_DDR(f: TFileStream): TDDR;
 begin
@@ -226,12 +245,85 @@ begin
 end;
 
 
+procedure write_LFH(f: TFileStream; var lfh: TLFH; var cdfh: TCDFH);
+var p_cs, p_db, p_de, p_fnl, p_fnb, p_fne: DWORD; deflate: TCompressionStream;
+begin
+    if lfh.versionToExtract<20 then lfh.versionToExtract:=20;
+    lfh.generalPurposeBitFlag := 0; //2048; //имя файла в UTF-8
+    if lfh.data.Size<200
+    then lfh.compressionMethod:= 0
+    else lfh.compressionMethod:= 8;
+    lfh.crc32 := crc32(0, @(lfh.data.Bytes[0]), lfh.data.Size);
+    lfh.uncompressedSize := lfh.data.Size;
+
+    cdfh.localFileHeaderOffset := f.Position-4;
+
+
+    f.WriteWord(lfh.versionToExtract);
+    f.WriteWord(lfh.generalPurposeBitFlag);
+    f.WriteWord(lfh.compressionMethod);
+    f.WriteWord(lfh.modificationTime);
+    f.WriteWord(lfh.modificationDate);
+    f.WriteDWord(lfh.crc32);
+    p_cs := f.Position;
+    f.WriteDWord(0);
+    f.WriteDWord(lfh.uncompressedSize);
+    p_fnl := f.Position;
+    f.WriteWord(0);
+    f.WriteWord(lfh.extraFieldLength);
+    p_fnb := f.Position;
+    write_string(f, lfh.filename);
+    p_fne := f.Position;
+    write_bytes(f, lfh.extraField);
+    p_db := f.Position;
+    case lfh.compressionMethod of
+        0: begin
+            //write_bytes(f, lfh.data.Bytes, lfh.data.Size)
+            lfh.data.SaveToStream(f);
+        end;
+        8: begin
+            deflate := TCompressionStream.Create(cldefault, f, true);
+            //write_bytes(deflate, lfh.data.Bytes, lfh.data.Size);
+            lfh.data.SaveToStream(f);
+            deflate.Free;
+        end;
+    end;
+    p_de := f.Position;
+    f.Position := p_cs;
+    lfh.compressedSize := p_de - p_db;
+    f.WriteDWord(lfh.compressedSize);
+    f.Position := p_fnl;
+    lfh.filenameLength := p_fne - p_fnb;
+    f.WriteWord(lfh.filenameLength);
+    f.Position := p_de;
+
+    cdfh.versionToExtract:=lfh.versionToExtract;
+    cdfh.generalPurposeBitFlag:=lfh.generalPurposeBitFlag;
+    cdfh.compressionMethod:=lfh.compressionMethod;
+    cdfh.modificationTime:=lfh.modificationTime;
+    cdfh.modificationDate:=lfh.modificationDate;
+    cdfh.crc32:=lfh.crc32;
+    cdfh.compressedSize:=lfh.compressedSize;
+    cdfh.uncompressedSize:=lfh.uncompressedSize;
+    cdfh.filenameLength:=lfh.filenameLength;
+
+
+    cdfh.filename:=lfh.filename;
+    cdfh.diskNumber:=0;
+end;
+
 function read_AED(f: TFileStream): TAED;
 begin
     with result do begin
         extraFieldLength :=     f.ReadDWord;
         extraField := read_bytes(f, extraFieldLength);
     end;
+end;
+
+procedure write_AED(f: TFileStream; aed: TAED);
+begin
+    f.WriteDWord(aed.extraFieldLength);
+    write_bytes(f, aed.extraField);
 end;
 
 function read_CDFH(f: TFileStream): TCDFH;
@@ -259,6 +351,37 @@ begin
     end;
 end;
 
+procedure write_CDFH(f: TFileStream; var cdfh: TCDFH);
+var p_fcl, p_fcb, p_fce: cardinal;
+begin
+    f.WriteWord(cdfh.versionMadeBy);
+    f.WriteWord(cdfh.versionToExtract);
+    f.WriteWord(cdfh.generalPurposeBitFlag);
+    f.WriteWord(cdfh.compressionMethod);
+    f.WriteWord(cdfh.modificationTime);
+    f.WriteWord(cdfh.modificationDate);
+    f.WriteDWord(cdfh.crc32);
+    f.WriteDWord(cdfh.compressedSize);
+    f.WriteDWord(cdfh.uncompressedSize);
+    f.WriteWord(cdfh.filenameLength);
+    f.WriteWord(cdfh.extraFieldLength);
+    p_fcl := f.Position;
+    f.WriteWord(0);
+    f.WriteWord(cdfh.diskNumber);
+    f.WriteWord(cdfh.internalFileAttributes);
+    f.WriteDWord(cdfh.externalFileAttributes);
+    f.WriteDWord(cdfh.localFileHeaderOffset);
+    write_string(f, cdfh.filename);
+    write_bytes(f, cdfh.extraField);
+    p_fcb := f.Position;
+    write_string(f, cdfh.fileComment);
+    p_fce := f.Position;
+
+    f.Position := p_fcl;
+    cdfh.fileCommentLength := p_fce - p_fcb;
+    f.WriteWord(cdfh.fileCommentLength);
+    f.Position := p_fce;
+end;
 
 function read_EOCD(f: TFileStream): TEOCD;
 begin
@@ -274,6 +397,31 @@ begin
     end;
 end;
 
+procedure write_EOCD(f: TFileStream; var eocd: TEOCD);
+var p_cl, p_cb, p_ce: cardinal;
+begin
+    eocd.diskNumber := 0;
+    eocd.startDiskNumber := 0;
+    eocd.numberCentralDirectoryRecord := eocd.totalCentralDirectoryRecord;
+
+    f.WriteWord(eocd.diskNumber);
+    f.WriteWord(eocd.startDiskNumber);
+    f.WriteWord(eocd.numberCentralDirectoryRecord);
+    f.WriteWord(eocd.totalCentralDirectoryRecord);
+    f.WriteDWord(eocd.sizeOfCentralDirectory);
+    f.WriteDWord(eocd.centralDirectoryOffset);
+    p_cl := f.Position;
+    f.WriteWord(0);
+    p_cb := f.Position;
+    write_string(f, eocd.comment);
+    p_ce := f.Position;
+
+    f.Position := p_cl;
+    eocd.commentLength := p_ce - p_cb;
+    f.WriteWord(eocd.commentLength);
+    f.Position := p_ce;
+end;
+
 { TZipFile }
 
 procedure TZipFile.Open(fn: unicodestring; mode: word);
@@ -283,6 +431,7 @@ begin
     SetLength(lfh, 0);
     SetLength(cdfh, 0);
     SetLength(ddr, 0);
+    aed.extraFieldLength := 0;
 
     repeat
         sign := f.ReadDWord;
@@ -323,8 +472,31 @@ end;
 procedure TZipFile.Close(rollback: boolean);
 var i: integer;
 begin
-    for i := 0 to high(lfh) do FreeAndNil(lfh[i].data);
-    if f<>nil then FreeAndNil(f);
+    if f=nil then raise EZIP.Create('Архив открыт только для чтения');
+    f.Position:=0;
+    for i := 0 to high(lfh) do begin
+        f.WriteDWord(lfh_sign);
+        write_lfh(f, lfh[i], cdfh[i]);
+        FreeAndNil(lfh[i].data);
+    end;
+    eocd.centralDirectoryOffset := f.Position;
+    eocd.totalCentralDirectoryRecord := Length(lfh);
+    if aed.extraFieldLength>0 then begin
+        f.WriteDWord(aed_sign);
+        write_AED(f, aed);
+    end;
+    for i := 0 to high(cdfh) do begin
+        f.WriteDWord(cdfh_sign);
+        write_cdfh(f, cdfh[i]);
+    end;
+    eocd.sizeOfCentralDirectory := f.Position - eocd.centralDirectoryOffset;
+    f.WriteDWord(eocd_sign);
+    write_EOCD(f, eocd);
+
+    f.Size:=f.Position;
+    //for i := 0 to high(lfh) do FreeAndNil(lfh[i].data);
+    FreeAndNil(f);
+    //if f<>nil then FreeAndNil(f);
 end;
 
 function TZipFile.GetFileStream(fn: unicodestring): TStream;
@@ -339,6 +511,8 @@ begin
             Exit;
         end;
 end;
+
+
 
 
 

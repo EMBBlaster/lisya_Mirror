@@ -753,8 +753,8 @@ type
 
 
     TFileMode = (fmRead, fmWrite, fmAppend);
-    TStreamEncoding = (seBOM, seUTF8, seCP1251, seCP1252, seUTF16BE, seUTF16LE, seUTF32BE,
-                        seUTF32LE, seCP866, seKOI8R);
+    //TStreamEncoding = (seBOM, seUTF8, seCP1251, seCP1252, seUTF16BE, seUTF16LE, seUTF32BE,
+    //                    seUTF32LE, seCP866, seKOI8R);
 
 
     { TVStream }
@@ -1622,52 +1622,40 @@ end;
 function TVStream.read_byte(out b: byte): boolean;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
-try
-    //EnterCriticalSection(mutex);
-try
-    b := fstream.ReadByte;
-    result := true;
-except
-    on E:EStreamError do result := false;
-end;
-finally
-    //LeaveCriticalSection(mutex);
-end;
+    try
+        b := fstream.ReadByte;
+        result := true;
+    except
+        on E:EStreamError do result := false;
+    end;
 end;
 
 function TVStream.read_bytes(var bb: TBytes; count: integer): boolean;
 var i: integer;
-begin try
+begin
     Assert(fstream<>nil, 'operation on closed stream');
-    //EnterCriticalSection(mutex);
-    if count>0 then begin
-        SetLength(bb, count);
-        for i := 0 to count-1 do bb[i] := fStream.ReadByte;
-        //fStream.ReadBuffer(bb, count);
-        //TODO: по загадочным причинам readbuffer вызывает разрушение памяти при освобождении буфера
-        result := true;
-    end
-    else begin
-        //WriteLn('size>> ', fStream.Size, '   ', fStream.Position);
-        SetLength(bb, fStream.Size - fStream.Position);
-        for i := 0 to fStream.Size - fStream.Position - 1 do bb[i] := fStream.ReadByte;
-        //fStream.ReadBuffer(bb, fStream.Size - fStream.Position);
-        result := true;
+    try
+        if count>0 then begin
+            SetLength(bb, count);
+            for i := 0 to count-1 do bb[i] := fStream.ReadByte;
+            //TODO: по загадочным причинам readbuffer вызывает разрушение памяти
+            //при освобождении буфера
+            result := true;
+        end
+        else begin
+            SetLength(bb, fStream.Size - fStream.Position);
+            for i := 0 to fStream.Size - fStream.Position - 1 do bb[i] := fStream.ReadByte;
+            result := true;
+        end;
+    except
+        on E:EStreamError do result := false;
     end;
-finally
-    //LeaveCriticalSection(mutex);
-end;
 end;
 
 function TVStream.write_byte(b: byte): boolean;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
-    try
-       // EnterCriticalSection(mutex);
-        fstream.WriteByte(b);
-    finally
-      //  LeaveCriticalSection(mutex);
-    end;
+    fstream.WriteByte(b);
     result := true;
 end;
 
@@ -1675,167 +1663,38 @@ function TVStream.write_bytes(bb: TBytes): boolean;
 var i: integer;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
-//    WriteLn('write_bytes>> ', Length(bb));
-    try
-       // EnterCriticalSection(mutex);
-        for i := 0 to high(bb) do fStream.WriteByte(bb[i]);
-    finally
-       // LeaveCriticalSection(mutex);
-    end;
+    for i := 0 to high(bb) do fStream.WriteByte(bb[i]);
     //TODO: writeBuffer глючит так же как readbuffer
-    //fStream.WriteBuffer(bb, Length(bb));
     result := true;
 end;
 
 procedure TVStream.read_BOM;
-    function b: byte; begin result := fstream.ReadByte; end;
-var p: integer;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
-    p := fstream.Position;
-    //UTF-8
-    if (b=$EF) and (b=$BB) and (b=$BF) then begin
-        encoding := seUTF8;
-        exit;
-    end else fstream.Seek(p,0);
-    //UTF16BE
-    if (b=$FE) and (b=$FF) then begin
-        encoding := seUTF16BE;
-        exit;
-    end else fstream.Seek(p,0);
-    //UTF32BE
-    if (b=$00) and (b=$00) and (b=$FE) and (b=$FF) then begin
-        encoding := seUTF32BE;
-        exit;
-    end else fstream.Seek(p,0);
-    //UTF32LE
-    if (b=$FF) and (b=$FE) and (b=$00) and (b=$00) then begin
-        encoding := seUTF32LE;
-        exit;
-    end else fstream.Seek(p,0);
-    //UTF16LE
-    if (b=$FF) and (b=$FE) then begin
-        encoding := seUTF16LE;
-        exit;
-    end else fstream.Seek(p,0);
-
-    encoding := seCP1251;
+    encoding := lisia_charset.read_BOM(fstream, seCP1251);
 end;
 
 procedure TVStream.write_BOM;
-    procedure b(b: byte); begin write_byte(b); end;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
-    case encoding of
-        seUTF8:    begin b($EF); b($BB); b($BF); end;
-        seUTF16BE: begin b($FE); b($FF); end;
-        seUTF16LE: begin b($FF); b($FE); end;
-        seUTF32BE: begin b($00); b($00); b($FE); b($FF); end;
-        seUTF32LE: begin b($FF); b($FE); b($00); b($00); end;
-    end;
+    lisia_charset.write_BOM(fstream, encoding);
 end;
 
 function TVStream.read_char(out ch: unicodechar): boolean;
-var b1, b2, b3, b4: byte;
-    function read8bit(const enc: TCodePage): boolean;
-    begin
-        result := read_byte(b1);
-        ch := enc[b1];
-    end;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
-    case encoding of
-        seUTF8: begin
-            //TODO: read_char кошмарик
-            result := read_byte(b1);
-            if result and ((b1 shr 6)=3) then result := read_byte(b2{%H-});
-            if result and ((b1 shr 5)=7) then result := read_byte(b3{%H-});
-            if result and ((b1 shr 4)=15) then result := read_byte(b4{%H-});
-
-            ch := unicodechar(b1);
-            if (b1 shr 6)=3 then ch := unicodechar(64*(b1 and 31)
-                                                    + (b2 and 63));
-            if (b1 shr 5)=7 then ch := unicodechar(64*64*(b1 and 15)
-                                                    + 64*(b2 and 63)
-                                                    + (b3 and 63));
-            if (b1 shr 4)=15 then ch :=unicodechar(64*64*64*(b1 and 7)
-                                                    + 64*64*(b2 and 63)
-                                                    + 64*(b3 and 64)
-                                                    + (b4 and 64));
-        end;
-        seUTF16LE: begin
-            result := read_byte(b1) and read_byte(b2);
-            ch := unicodechar(b1+b2*256);
-            //TODO: суррогатные пары не поддерживаются
-        end;
-        seUTF16BE: begin
-            result := read_byte(b1) and read_byte(b2);
-            ch := unicodechar(256*b1+b2);
-            //TODO: суррогатные пары не поддерживаются
-        end;
-        seUTF32LE: begin
-            result := read_byte(b1) and read_byte(b2) and read_byte(b3)
-                        and read_byte(b4);
-            ch := unicodechar(b1+b2*256+b3*256*256+b4*256*256*256);
-        end;
-        seUTF32BE: begin
-            result := read_byte(b1) and read_byte(b2) and read_byte(b3)
-                        and read_byte(b4);
-            ch := unicodechar(256*256*256*b1+256*256*b2+256*b3+b4);
-        end;
-        seCP1251: result := read8bit(cp1251_cp);
-        seCP1252: result := read8bit(cp1252_cp);
-        seCP866:  result := read8bit(cp866_cp);
-        seKOI8R:  result := read8bit(KOI8_R_cp);
-        else begin result := read_byte(b1); ch := unicodechar(b1); end;
-    end
+    try
+        ch := lisia_charset.read_character(fstream, encoding);
+        result := true;
+    except
+        on E:EStreamError do result := false;
+    end;
 end;
 
 function TVStream.write_char(ch: unicodechar): boolean;
-var cp: integer;
-    function write8bit(const enc: TCodePage): boolean;
-    var i: byte;
-    begin
-        for i := 0 to 255 do
-            if enc[i]=ch then begin
-                result := write_byte(i);
-                exit;
-            end;
-        result := write_byte(ord('?'));
-    end;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
-    cp := ord(ch);
-    case encoding of
-        seUTF8: case cp of
-                0..127: result := write_byte(cp);
-                128..2047: result := write_byte((cp shr 6) or 192)
-                                and write_byte((cp and 63) or 128);
-                2048..65535: result := write_byte((cp shr 12) or 224)
-                                and write_byte(((cp shr 6) and 63) or 128)
-                                and write_byte((cp and 63) or 128);
-                65536..2097152: result := write_byte((cp shr 18) or 240)
-                                and write_byte(((cp shr 12) and 63) or 128)
-                                and write_byte(((cp shr 6) and 63) or 128)
-                                and write_byte((cp and 63) or 128);
-                else result := false;
-            end;
-        seUTF16LE: result := write_byte(cp and $FF) and write_byte(cp shr 8);
-        seUTF16BE: result := write_byte(cp shr 8) and write_byte(cp and $FF);
-        seUTF32LE: result := write_byte(cp and $FF)
-                            and write_byte((cp shr 8) and $FF)
-                            and write_byte((cp shr 16) and $FF)
-                            and write_byte((cp shr 24) and $FF);
-        seUTF32BE: result := write_byte((cp shr 24) and $FF)
-                            and write_byte((cp shr 16) and $FF)
-                            and write_byte((cp shr 8) and $FF)
-                            and write_byte(cp and $FF);
-        seCP1251: result := write8bit(cp1251_cp);
-        seCP1252: result := write8bit(cp1252_cp);
-        seCP866:  result := write8bit(cp866_cp);
-        seKOI8R: result := write8bit(KOI8_R_cp);
-        else raise ELE.Create('неизвестная кодировка','invalid parameters');
-    end
+    lisia_charset.write_character(fstream, ch, encoding);
 end;
 
 { TVKeyword }
