@@ -2556,7 +2556,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 );
 
 
-const predicates: array[1..15] of record n: unicodestring; f: TTypePredicate; end = (
+const predicates: array[1..16] of record n: unicodestring; f: TTypePredicate; end = (
 (n:'T?';                    f:tpT),
 (n:'NIL?';                  f:tpNIL),
 (n:'TRUE?';                 f:tpTRUE),
@@ -2572,7 +2572,8 @@ const predicates: array[1..15] of record n: unicodestring; f: TTypePredicate; en
 (n:'STRING?';               f:tpString),
 (n:'POSITIVE?';             f:vpRealPositive),
 (n:'NEGATIVE?';             f:vpRealNegative),
-(n:'EOS?';                  f:vpStreamEnd)
+(n:'END-OF-STREAM?';        f:vpStreamEnd),
+(n:'END-OF-FILE?';          f:vpStreamEnd),
 
 );
 
