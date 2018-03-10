@@ -102,6 +102,7 @@ type
         function FileList: TStringArray;
         procedure Close(rollback: boolean = false);
         function GetFileStream(fn: unicodestring): TStream;
+        procedure Delete(fn: unicodestring);
     end;
     PZipFile = ^TZipFile;
 
@@ -501,12 +502,11 @@ begin
 end;
 
 function TZipFile.GetFileStream(fn: unicodestring): TStream;
-var i, n: integer; uname: unicodestring;
+var i, n: integer;
 begin
     result := nil;
-    uname := UpperCaseU(fn);
     for i := 0 to high(lfh) do
-        if uname = UpperCaseU(lfh[i].filename) then begin
+        if fn = lfh[i].filename then begin
             result := lfh[i].data;
             lfh[i].data.Position := 0;
             Exit;
@@ -518,12 +518,35 @@ begin
     lfh[n].filename:=fn;
     lfh[n].data := TBytesStream.Create;
 
-    cdfh[n].versionMadeBy := $031E; // OS UNIX / версия 3.0;
+    {$IFDEF UNIX}
+    cdfh[n].versionMadeBy := $0314; // OS UNIX / версия 2.0;
     cdfh[n].externalFileAttributes := $81A40000; // -rw-r--r--
+    {$ELSE}
+    cdfh[n].versionMadeBy := $0014; // OS DOS / версия 2.0;
+    cdfh[n].externalFileAttributes := $00000000;
+    {$ENDIF}
+
+
     cdfh[n].filename:=fn;
     cdfh[n].fileComment:='';
 
     result := lfh[n].data;
+end;
+
+procedure TZipFile.Delete(fn: unicodestring);
+var i, j: integer;
+begin
+    for i := 0 to high(lfh) do
+        if fn = lfh[i].filename then begin
+            FreeAndNil(lfh[i].data);
+            for j := i to high(lfh)-1 do begin
+                lfh[j] := lfh[j+1];
+                cdfh[j] := cdfh[j+1];
+            end;
+            Break;
+        end;
+    SetLength(lfh, Length(lfh)-1);
+    SetLength(cdfh, Length(cdfh)-1);
 end;
 
 

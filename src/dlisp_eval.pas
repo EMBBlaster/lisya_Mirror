@@ -1791,6 +1791,18 @@ begin
     end;
 end;
 
+function if_zip_delete          (const PL: TVList; {%H-}call: TCallProc): TValue;
+var zfs: TVZIPFileStream;  mode: WORD; enc: TStreamEncoding;
+begin
+    case params_is(PL, result, [
+        tpZIPFilePointer, tpString]) of
+        1: begin
+            (PL.look[0] as TVZipFilePointer).Z.Delete(PL.S[1]);
+            result := TVT.Create;
+        end;
+    end;
+end;
+
 function if_close_stream        (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2433,7 +2445,7 @@ begin
     end;
 end;
 
-const int_fun_count = 115;
+const int_fun_count = 116;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2539,6 +2551,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'ZIP:OPEN';                  f:if_zip_open;              s:'(n :key mode encoding)'),
 (n:'ZIP:FILELIST';              f:if_zip_filelist;          s:'(z)'),
 (n:'ZIP:FILE';                  f:if_zip_file;              s:'(z fn :key mode encoding)'),
+(n:'ZIP:DELETE';                f:if_zip_delete;            s:'(z fn)'),
 
 (n:'STREAM-POSITION';           f:if_stream_position;       s:'(s :optional p)'),
 (n:'STREAM-LENGTH';             f:if_stream_length;         s:'(s :optional l)'),

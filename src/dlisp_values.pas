@@ -1123,7 +1123,7 @@ begin
     file_name := fn;
     case mode of
         fmOpenRead: Z.Open(fn, fmOpenRead, enc);
-        fmCreate: raise ELE.Create('Создание ZIP архивов не поддерживается');
+        fmCreate: Z.Open(fn, fmCreate, enc);
         fmOpenReadWrite: Z.Open(fn, fmOpenReadWrite, enc);
     end;
     //encoding := enc;
