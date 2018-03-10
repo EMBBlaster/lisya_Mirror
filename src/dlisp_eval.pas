@@ -1915,9 +1915,14 @@ end;
 function if_stream_length       (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        vpStreamPointerActive]) of
+        vpStreamPointerActive, tpNIL,
+        vpStreamPointerActive, vpIntegerNotNegative]) of
         1: result := TVInteger.Create(
             (PL.look[0] as TVStreamPointer).stream.fstream.Size);
+        2: begin
+            (PL.look[0] as TVStreamPointer).stream.fstream.Size := PL.I[1];
+            result := TVT.Create;
+        end;
     end;
 end;
 
@@ -2536,7 +2541,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'ZIP:FILE';                  f:if_zip_file;              s:'(z fn :key mode encoding)'),
 
 (n:'STREAM-POSITION';           f:if_stream_position;       s:'(s :optional p)'),
-(n:'STREAM-LENGTH';             f:if_stream_length;         s:'(s)'),
+(n:'STREAM-LENGTH';             f:if_stream_length;         s:'(s :optional l)'),
 (n:'READ-BYTE';                 f:if_read_byte;             s:'(s)'),
 (n:'READ-BYTES';                f:if_read_bytes;            s:'(s c)'),
 (n:'WRITE-BYTE';                f:if_write_byte;            s:'(s i)'),

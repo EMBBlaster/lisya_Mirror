@@ -442,7 +442,6 @@ begin
                 lfh[high(lfh)] := read_LFH(f, encoding);
             end;
             ddr_sign: begin
-                //raise EZIP.Create('Неподдерживаемый формат');
                 SetLength(ddr, Length(ddr)+1);
                 ddr[high(ddr)] := read_DDR(f);
             end;
