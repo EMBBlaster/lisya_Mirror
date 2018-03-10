@@ -59,6 +59,7 @@ type
         function op_and(PL: TVList): TValue;
         function op_append(PL: TVList): TValue;
         function op_apply(PL: TVList): TValue;
+        function op_assemble(PL: TVList): TValue;
         function op_block(PL: TVList): TValue;
         function op_case(PL: TVList): TValue;
         function op_cond(PL: TVList): TValue;
@@ -1539,6 +1540,17 @@ begin
     end;
 end;
 
+function if_byte_vector_to_string(const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpByteVector, vpKeywordEncodingOrNIL]) of
+        1: result := TVString.Create(
+                lisia_charset.bytes_to_string(
+                    (PL.look[0] as TVByteVector).fBytes,
+                    ifh_keyword_to_encoding(PL.look[1])));
+    end;
+end;
+
 function if_assertion           (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -1736,7 +1748,7 @@ begin
 
             if fileExists(DirSep(PL.S[0])) or (mode <> fmOpenRead)
             then result := TVZIPFilePointer.Create(
-                NewVariable(TVZIPFile.Create(DirSep(PL.S[0]), mode)))
+                NewVariable(TVZIPFile.Create(DirSep(PL.S[0]), mode, enc)))
             else raise ELE.Create(PL.S[0], 'file not found');
         end;
     end;
@@ -2416,7 +2428,7 @@ begin
     end;
 end;
 
-const int_fun_count = 114;
+const int_fun_count = 115;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2501,6 +2513,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'BITWISE-XOR';               f:if_bitwise_xor;           s:'(a b)'),
 (n:'CRC32';                     f:if_crc32;                 s:'(b)'),
 (n:'CHARACTER';                 f:if_character;             s:'(n)'),
+(n:'BYTE-VECTOR-TO-STRING';     f:if_byte_vector_to_string; s:'(bv :optional encoding)'),
 
 (n:'ASSERTION';                 f:if_assertion;             s:'(c :rest m)'),
 (n:'DOCUMENTATION';             f:if_documentation;         s:'(a)'),
@@ -2573,7 +2586,7 @@ const predicates: array[1..16] of record n: unicodestring; f: TTypePredicate; en
 (n:'POSITIVE?';             f:vpRealPositive),
 (n:'NEGATIVE?';             f:vpRealNegative),
 (n:'END-OF-STREAM?';        f:vpStreamEnd),
-(n:'END-OF-FILE?';          f:vpStreamEnd),
+(n:'END-OF-FILE?';          f:vpStreamEnd)
 
 );
 
@@ -2593,6 +2606,7 @@ begin
             oeAND       : op('AND');
             oeAPPEND    : op('APPEND');
             oeAPPLY     : op('APPLY');
+            oeASSEMBLE  : op('ASSEMBLE');
             oeBLOCK     : op('BLOCK');
             oeBREAK     : op('BREAK');
             oeCASE      : op('CASE');
@@ -3783,6 +3797,40 @@ finally
 end;
 end;
 
+function TEvaluationFlow.op_assemble(PL: TVList): TValue;
+    function asmbl(L: TVList; from: integer = 0): TVList;
+    var i, j: integer; tmp: TValue;
+    begin
+        //WriteLn(L.AsString());
+        result := TVList.Create;
+        for i := from to L.high do begin
+            if vpListHeaded_VALUE(L.look[i])
+            then result.Add(eval(L.L[i][1]))
+
+            else if vpListHeaded_INSET(L.look[i])
+            then try
+                tmp := nil;
+                tmp := eval(L.L[i][1]);
+                if not tpList(tmp) then raise ELE.Malformed('INSET');
+                for j := 0 to (tmp as TVList).high do
+                    result.Add((tmp as TVList)[j]);
+            finally
+                tmp.Free;
+            end
+
+            else if tpList(L.look[i])
+            then result.Add(asmbl(L.L[i]))
+
+            else result.Add(L[i]);
+        end
+    end;
+begin
+    // этот оператор должен работать аналогично BACKQUOTE в Лиспе
+    // использует вторичные операторы VALUE и INSET
+
+    result := asmbl(PL, 1);
+end;
+
 function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
 var proc: TVProcedure; sl, rl: TVList;
     sign_pos, i: integer;
@@ -4063,6 +4111,7 @@ begin
         oeAND       : result := op_and(PL);
         oeAPPEND    : result := op_append(PL);
         oeAPPLY     : result := op_apply(PL);
+        oeASSEMBLE  : result := op_assemble(PL);
         oeBLOCK     : result := op_block(PL);
         oeBREAK     : result := TVBreak.Create;
         oeCASE      : result := op_case(PL);

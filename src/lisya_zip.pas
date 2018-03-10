@@ -98,7 +98,7 @@ type
         eocd: TEOCD;
         f: TFileStream;
     public
-        procedure Open(fn: unicodestring; mode: word);
+        procedure Open(fn: unicodestring; mode: word; encoding: TStreamEncoding = seUTF8);
         function FileList: TStringArray;
         procedure Close(rollback: boolean = false);
         function GetFileStream(fn: unicodestring): TStream;
@@ -113,18 +113,19 @@ const cdfh_sign = $02014B50;
 const eocd_sign = $06054B50;
 const ddr_sign  = $08074B50;
 
-function read_string(f: TFileStream; count: integer): unicodestring;
-var i: integer;
+function read_string(f: TFileStream; count: integer; encoding: TStreamEncoding): unicodestring;
+var i: integer; bb: TBytes;
 begin
-    result := '';
-    for i := 1 to count do result := result + cp1251_cp[f.ReadByte];
+    SetLength(bb, count);
+    for i := 0 to count-1 do bb[i] := f.ReadByte;
+    result := lisia_charset.bytes_to_string(bb, encoding);
 end;
 
 procedure write_string(f: TFileStream; s: unicodestring);
 var i: integer;
 begin
     for i := 1 to length(s) do begin
-        f.WriteByte(ord(s[i]));
+        lisia_charset.write_character(f, s[i], seUTF8);
     end;
 end;
 
@@ -142,19 +143,11 @@ begin
 end;
 
 function read_to_stream(f: TStream; count: integer; crc: DWORD): TBytesStream;
-var i: integer; acc: DWORD; b: byte;
+var i: integer; b: byte;
 begin
     result := TBytesStream.Create;
     result.SetSize(count);
-    acc := 0;
-    //for i := 1 to count do begin
-    //    b := f.ReadByte;
-    //    acc := crc32(acc, @b, 1);
-    //    result.WriteByte(b);
-    //end;
     for i := 1 to count do result.WriteByte(f.ReadByte);
-
-    //if acc<>crc then raise EZIP.Create('Нарушение контрольной суммы');
     if crc32(0,@(result.Bytes[0]), count)<>crc
     then raise EZIP.Create('Нарушение контрольной суммы');
 end;
@@ -201,8 +194,8 @@ begin
     raise EZIP.Create('Не найден Data Description Record');
 end;
 
-function read_LFH(f: TFileStream): TLFH;
-var inflate: TDecompressionStream; p: integer; ddr: TDDR;
+function read_LFH(f: TFileStream; encoding: TStreamEncoding): TLFH;
+var inflate: TDecompressionStream; p: integer; ddr: TDDR; enc: TStreamEncoding;
 begin
     with result do begin
         versionToExtract :=         f.ReadWord;
@@ -215,7 +208,11 @@ begin
         uncompressedSize :=         f.ReadDWord;
         filenameLength :=           f.ReadWord;
         extraFieldLength :=         f.ReadWord;
-        filename :=  read_string(f, filenameLength);
+
+        if (generalPurposeBitFlag and 2048)>0
+        then enc := seUTF8 else enc := encoding;
+
+        filename :=  read_string(f, filenameLength, enc);
         extraField := read_bytes(f, extraFieldLength);
 
         if (generalPurposeBitFlag and 8)>0
@@ -249,7 +246,7 @@ procedure write_LFH(f: TFileStream; var lfh: TLFH; var cdfh: TCDFH);
 var p_cs, p_db, p_de, p_fnl, p_fnb, p_fne: DWORD; deflate: TCompressionStream;
 begin
     if lfh.versionToExtract<20 then lfh.versionToExtract:=20;
-    lfh.generalPurposeBitFlag := 0; //2048; //имя файла в UTF-8
+    lfh.generalPurposeBitFlag := 2048; //имя файла в UTF-8
     if lfh.data.Size<200
     then lfh.compressionMethod:= 0
     else lfh.compressionMethod:= 8;
@@ -270,20 +267,18 @@ begin
     f.WriteDWord(lfh.uncompressedSize);
     p_fnl := f.Position;
     f.WriteWord(0);
-    f.WriteWord(lfh.extraFieldLength);
+    f.WriteWord(0);//f.WriteWord(lfh.extraFieldLength);
     p_fnb := f.Position;
     write_string(f, lfh.filename);
     p_fne := f.Position;
-    write_bytes(f, lfh.extraField);
+    //write_bytes(f, lfh.extraField);
     p_db := f.Position;
     case lfh.compressionMethod of
         0: begin
-            //write_bytes(f, lfh.data.Bytes, lfh.data.Size)
             lfh.data.SaveToStream(f);
         end;
         8: begin
             deflate := TCompressionStream.Create(cldefault, f, true);
-            //write_bytes(deflate, lfh.data.Bytes, lfh.data.Size);
             lfh.data.SaveToStream(f);
             deflate.Free;
         end;
@@ -326,7 +321,8 @@ begin
     write_bytes(f, aed.extraField);
 end;
 
-function read_CDFH(f: TFileStream): TCDFH;
+function read_CDFH(f: TFileStream; encoding: TStreamEncoding): TCDFH;
+var enc: TStreamEncoding;
 begin
     with result do begin
         versionMadeBy :=            f.ReadWord;
@@ -345,9 +341,13 @@ begin
         internalFileAttributes :=   f.ReadWord;
         externalFileAttributes :=   f.ReadDWord;
         localFileHeaderOffset :=    f.ReadDWord;
-        filename := read_string(f, filenameLength);
+
+        if (generalPurposeBitFlag and 2048)>0
+        then enc := seUTF8 else enc := encoding;
+
+        filename := read_string(f, filenameLength, enc);
         extraField := read_bytes(f, extraFieldLength);
-        fileComment := read_string(f, fileCommentLength);
+        fileComment := read_string(f, fileCommentLength, enc);
     end;
 end;
 
@@ -364,7 +364,7 @@ begin
     f.WriteDWord(cdfh.compressedSize);
     f.WriteDWord(cdfh.uncompressedSize);
     f.WriteWord(cdfh.filenameLength);
-    f.WriteWord(cdfh.extraFieldLength);
+    f.WriteWord(0);//f.WriteWord(cdfh.extraFieldLength);
     p_fcl := f.Position;
     f.WriteWord(0);
     f.WriteWord(cdfh.diskNumber);
@@ -372,7 +372,7 @@ begin
     f.WriteDWord(cdfh.externalFileAttributes);
     f.WriteDWord(cdfh.localFileHeaderOffset);
     write_string(f, cdfh.filename);
-    write_bytes(f, cdfh.extraField);
+    //write_bytes(f, cdfh.extraField);
     p_fcb := f.Position;
     write_string(f, cdfh.fileComment);
     p_fce := f.Position;
@@ -383,7 +383,7 @@ begin
     f.Position := p_fce;
 end;
 
-function read_EOCD(f: TFileStream): TEOCD;
+function read_EOCD(f: TFileStream; encoding: TStreamEncoding): TEOCD;
 begin
     with result do begin
         diskNumber :=               f.ReadWord;
@@ -393,7 +393,7 @@ begin
         sizeOfCentralDirectory :=   f.ReadDWord;
         centralDirectoryOffset :=   f.ReadDWord;
         commentLength := f.ReadWord;
-        comment := read_string(f, commentLength);
+        comment := read_string(f, commentLength, encoding);
     end;
 end;
 
@@ -424,7 +424,8 @@ end;
 
 { TZipFile }
 
-procedure TZipFile.Open(fn: unicodestring; mode: word);
+procedure TZipFile.Open(fn: unicodestring; mode: word; encoding: TStreamEncoding
+    );
 var sign: DWORD;
 begin
     f := TFileStream.Create(fn, mode);
@@ -438,7 +439,7 @@ begin
         case sign of
             lfh_sign: begin
                 SetLength(lfh, Length(lfh)+1);
-                lfh[high(lfh)] := read_LFH(f);
+                lfh[high(lfh)] := read_LFH(f, encoding);
             end;
             ddr_sign: begin
                 //raise EZIP.Create('Неподдерживаемый формат');
@@ -447,13 +448,13 @@ begin
             end;
             cdfh_sign: begin
                 SetLength(cdfh, Length(cdfh)+1);
-                cdfh[high(cdfh)] := read_CDFH(f);
+                cdfh[high(cdfh)] := read_CDFH(f, encoding);
             end;
             aed_sign: begin
                 aed := read_AED(f)
             end;
             eocd_sign: begin
-                eocd := read_EOCD(f);
+                eocd := read_EOCD(f, encoding);
                 Break;
             end;
             else raise EZIP('Повреждённый архив '+fn);
@@ -472,7 +473,7 @@ end;
 procedure TZipFile.Close(rollback: boolean);
 var i: integer;
 begin
-    if f=nil then raise EZIP.Create('Архив открыт только для чтения');
+    if f=nil then Exit;
     f.Position:=0;
     for i := 0 to high(lfh) do begin
         f.WriteDWord(lfh_sign);
@@ -494,9 +495,7 @@ begin
     write_EOCD(f, eocd);
 
     f.Size:=f.Position;
-    //for i := 0 to high(lfh) do FreeAndNil(lfh[i].data);
     FreeAndNil(f);
-    //if f<>nil then FreeAndNil(f);
 end;
 
 function TZipFile.GetFileStream(fn: unicodestring): TStream;

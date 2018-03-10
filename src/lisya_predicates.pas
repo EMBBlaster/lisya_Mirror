@@ -122,6 +122,8 @@ function tpZIPFilePointer                           (V: TValue): boolean;
 function vpComplexNotZero                           (V: TValue): boolean;
 
 
+function vpCallOp_VAL                               (V: TValue): boolean;
+
 function vpIntegerAbsOne                            (V: TValue): boolean;
 
 function vpIntegerByte                              (V: TValue): boolean;
@@ -238,7 +240,12 @@ function vpListHeaded_EXCEPTION                     (V: TValue): boolean;
 
 function vpListHeaded_INS                           (V: TValue): boolean;
 
+function vpListHeaded_INSET                         (V: TValue): boolean;
+
 function vpListHeaded_THEN                          (V: TValue): boolean;
+
+function vpListHeaded_VALUE                         (V: TValue): boolean;
+
 
 function vpListKeywordValue                         (V: TValue): boolean;
 
@@ -252,6 +259,9 @@ function vpListSymbolValue                          (V: TValue): boolean;
 
 
 function vpNumberNotZero                            (V: TValue): boolean;
+
+
+function vpOperator_VAL                             (V: TValue): boolean;
 
 
 function vpRangeNotNegative                         (V: TValue): boolean;
@@ -606,6 +616,11 @@ begin
         (((V as TVComplex).fC.re<>0) or ((V as TVComplex).fC.im<>0));
 end;
 
+function vpCallOp_VAL(V: TValue): boolean;
+begin
+    result := (V is TVList) and ((V as TVList).Count=2) and
+        vpOperator_VAL((V as TVList).look[0]);
+end;
 
 function vpIntegerAbsOne                            (V: TValue): boolean;
 begin
@@ -935,9 +950,19 @@ begin
     result := vphListHeaded(V, 'INS');
 end;
 
+function vpListHeaded_INSET(V: TValue): boolean;
+begin
+    result := vphListHeaded(V, 'INSET');
+end;
+
 function vpListHeaded_THEN                          (V: TValue): boolean;
 begin
     result := vphListHeaded(V, 'THEN');
+end;
+
+function vpListHeaded_VALUE(V: TValue): boolean;
+begin
+    result := vphListHeaded(V, 'VALUE');
 end;
 
 function vpListKeywordValue                         (V: TValue): boolean;
@@ -1011,6 +1036,11 @@ begin
     result := (V is TVNumber) and not ((V as TVNumber).C = _0);
 end;
 
+function vpOperator_VAL(V: TValue): boolean;
+begin
+    result := vphSymbolName(V, 'VAL') or
+        ((V is TVOperator) and ((V as TVOperator).op_enum=oeVAL));
+end;
 
 function vpRangeNotNegative                         (V: TValue): boolean;
 begin

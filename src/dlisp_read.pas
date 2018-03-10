@@ -21,8 +21,8 @@ procedure print(V:TValue; stream: TVStreamPointer; line_end: boolean = false);
 
 implementation
 
-const special_keywords: array[1..3] of unicodestring = (
-    'ELSE', 'EXCEPTION', 'THEN');
+const special_keywords: array[1..5] of unicodestring = (
+    'ELSE', 'EXCEPTION', 'INSET', 'THEN', 'VALUE');
 
 type TSS = record
         s: unicodestring;
@@ -348,6 +348,19 @@ begin
     end
     else
 
+    if (Length(acc)>=2) and (acc[1]='/')
+    then begin
+        set_ss(Copy(acc,2,length(acc)-1));
+        result := TVList.Create([TVSymbol.Create('VALUE'), read_u(nil, @ss)]);
+    end
+    else
+
+    if (Length(acc)>=2) and (acc[1]='@')
+    then begin
+        set_ss(Copy(acc,2,length(acc)-1));
+        result := TVList.Create([TVSymbol.Create('INSET'), read_u(nil, @ss)]);
+    end
+    else
 
     if str_is_datetime(acc, dt)
     then result := TVDateTime.Create(dt)

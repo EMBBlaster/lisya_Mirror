@@ -702,6 +702,7 @@ type
             oeAND,
             oeAPPEND,
             oeAPPLY,
+            oeASSEMBLE,
             oeBLOCK,
             oeBREAK,
             oeCASE,
@@ -1121,9 +1122,9 @@ constructor TVZIPFile.Create(fn: unicodestring; mode: WORD; enc: TStreamEncoding
 begin
     file_name := fn;
     case mode of
-        fmOpenRead: Z.Open(fn, fmOpenRead);
+        fmOpenRead: Z.Open(fn, fmOpenRead, enc);
         fmCreate: raise ELE.Create('Создание ZIP архивов не поддерживается');
-        fmOpenReadWrite: Z.Open(fn, fmOpenReadWrite);
+        fmOpenReadWrite: Z.Open(fn, fmOpenReadWrite, enc);
     end;
     //encoding := enc;
 end;

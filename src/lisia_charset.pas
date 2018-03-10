@@ -103,6 +103,8 @@ procedure write_character(stream: TStream; ch: unicodechar;
 function read_BOM(stream: TStream; default: TStreamEncoding = seUTF8): TStreamEncoding;
 procedure write_BOM(stream: TStream; encoding: TStreamEncoding = seUTF8);
 
+function bytes_to_string(const bytes: TBytes; encoding: TStreamEncoding = seUTF8): unicodestring;
+
 
 implementation
 
@@ -172,7 +174,7 @@ begin
         seCP866:  result := cp866_cp[read];
         seKOI8R:  result := KOI8_R_cp[read];
         else raise ECharsetError.Create('');
-    end
+    end;
 end;
 
 procedure write_character(stream: TStream; ch: unicodechar;
@@ -285,6 +287,19 @@ begin
         seUTF32BE: begin b($00); b($00); b($FE); b($FF); end;
         seUTF32LE: begin b($FF); b($FE); b($00); b($00); end;
     end;
+end;
+
+function bytes_to_string(const bytes: TBytes; encoding: TStreamEncoding
+    ): unicodestring;
+var stream: TBytesStream;
+begin try
+    stream := TBytesStream.Create(bytes);
+    result := '';
+    while stream.Position<Length(bytes) do
+        result := result + read_character(stream, encoding);
+finally
+    stream.Free;
+end;
 end;
 
 
