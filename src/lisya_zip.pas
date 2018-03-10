@@ -280,7 +280,7 @@ begin
         end;
         8: begin
             deflate := TCompressionStream.Create(cldefault, f, true);
-            lfh.data.SaveToStream(f);
+            lfh.data.SaveToStream(deflate);
             deflate.Free;
         end;
     end;
