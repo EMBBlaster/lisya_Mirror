@@ -434,6 +434,7 @@ begin
     SetLength(ddr, 0);
     aed.extraFieldLength := 0;
 
+    if (mode=fmOpenRead) or (mode=fmOpenReadWrite) then
     repeat
         sign := f.ReadDWord;
         case sign of
@@ -472,33 +473,35 @@ end;
 procedure TZipFile.Close(rollback: boolean);
 var i: integer;
 begin
-    if f=nil then Exit;
-    f.Position:=0;
-    for i := 0 to high(lfh) do begin
-        f.WriteDWord(lfh_sign);
-        write_lfh(f, lfh[i], cdfh[i]);
-        FreeAndNil(lfh[i].data);
-    end;
-    eocd.centralDirectoryOffset := f.Position;
-    eocd.totalCentralDirectoryRecord := Length(lfh);
-    if aed.extraFieldLength>0 then begin
-        f.WriteDWord(aed_sign);
-        write_AED(f, aed);
-    end;
-    for i := 0 to high(cdfh) do begin
-        f.WriteDWord(cdfh_sign);
-        write_cdfh(f, cdfh[i]);
-    end;
-    eocd.sizeOfCentralDirectory := f.Position - eocd.centralDirectoryOffset;
-    f.WriteDWord(eocd_sign);
-    write_EOCD(f, eocd);
+    if f<>nil then begin
+        f.Position:=0;
+        for i := 0 to high(lfh) do begin
+            f.WriteDWord(lfh_sign);
+            write_lfh(f, lfh[i], cdfh[i]);
+        end;
+        eocd.centralDirectoryOffset := f.Position;
+        eocd.totalCentralDirectoryRecord := Length(lfh);
+        if aed.extraFieldLength>0 then begin
+            f.WriteDWord(aed_sign);
+            write_AED(f, aed);
+        end;
+        for i := 0 to high(cdfh) do begin
+            f.WriteDWord(cdfh_sign);
+            write_cdfh(f, cdfh[i]);
+        end;
+        eocd.sizeOfCentralDirectory := f.Position - eocd.centralDirectoryOffset;
+        f.WriteDWord(eocd_sign);
+        write_EOCD(f, eocd);
 
-    f.Size:=f.Position;
-    FreeAndNil(f);
+        f.Size:=f.Position;
+        FreeAndNil(f);
+    end;
+
+    for i := 0 to high(lfh) do FreeAndNil(lfh[i].data);
 end;
 
 function TZipFile.GetFileStream(fn: unicodestring): TStream;
-var i: integer; uname: unicodestring;
+var i, n: integer; uname: unicodestring;
 begin
     result := nil;
     uname := UpperCaseU(fn);
@@ -508,10 +511,20 @@ begin
             lfh[i].data.Position := 0;
             Exit;
         end;
+
+    SetLength(lfh, Length(lfh)+1);
+    SetLength(cdfh, Length(cdfh)+1);
+    n := high(lfh);
+    lfh[n].filename:=fn;
+    lfh[n].data := TBytesStream.Create;
+
+    cdfh[n].versionMadeBy := $031E; // OS UNIX / версия 3.0;
+    cdfh[n].externalFileAttributes := $81A40000; // -rw-r--r--
+    cdfh[n].filename:=fn;
+    cdfh[n].fileComment:='';
+
+    result := lfh[n].data;
 end;
-
-
-
 
 
 
