@@ -10,12 +10,14 @@ uses
     {$ENDIF}
     Classes, SysUtils, dlisp_values
     //, strutils
-    , mar;
+    , mar
+    ,lisya_predicates;
 
 function xml_read_from_string(s: unicodestring): TValue;
 function xml_read_from_string_l(s: unicodestring): TVList;
 function xml_read_from_string_sl(s: unicodestring): TVList;
 
+function xml_write_to_string(xml: TVList): unicodestring;
 
 
 implementation
@@ -27,6 +29,7 @@ var i, p: integer;
         if s='amp'  then result := '&' else
         if s='gt'   then result := '>' else
         if s='lt'   then result := '<' else
+        if s='quot' then result := '''' else
 
         if s[1]='#' then result := unicodechar(StrToInt(s[2..Length(s)])) else
         result := s;
@@ -137,7 +140,7 @@ begin
     if (Length(S)>=7) and (S[1..5]='<?xml') and (S[length(s)-1..Length(s)]='?>')
     then begin
         result := TVList.Create([
-            TVSymbol.Create(':PROLOGUE'),
+            TVKeyword.Create(':PROLOGUE'),
             decode_attributes(s[6..Length(s)-2])]);
         closed := true;
         Exit;
@@ -147,7 +150,7 @@ begin
         word_end := PosU(' ', S) - 1;
         if word_end<0 then word_end := PosU('/', S) - 1;
         if word_end<0 then word_end := Length(S) - 1;
-        closed := PosU('/', S)>0;
+        closed := S[Length(S)-1]='/';// PosU('/', S)>0;
         if closed
         then attr_str := s[word_end+1..Length(s)-2]
         else attr_str := s[word_end+1..Length(s)-1];
@@ -292,6 +295,41 @@ begin
     if sr.ce<Length(S) then elts.add(decode_tag_l(S[sr.ce+1..Length(s)], closed));
 
     result := elts;
+end;
+
+function tag_write_to_string(tag: TVList): unicodestring;
+var i: integer;
+begin
+    //WriteLn(tag.AsString);
+    if vpKeyword_PROLOGUE(tag.look[0]) then begin
+        result := '<?xml';
+        for i := 0 to (tag.L[1].count div 2)-1 do
+            result := result+' '+tag.L[1].SYM[i*2].name+'="'+tag.L[1].S[i*2+1]+'"';
+        result := result+'?>';
+        exit;
+    end;
+
+    result := '<'+tag.S[0];
+    for i := 0 to (tag.L[1].count div 2)-1 do
+        result := result+' '+tag.L[1].SYM[i*2].name+'="'+tag.L[1].S[i*2+1]+'"';
+    result := result+'>';
+
+    for i := 2 to tag.high do
+        if tpString(tag.look[i])
+        then result := result+tag.S[i]
+        else result := result+tag_write_to_string(tag.L[i]);
+
+    result := result+'</'+tag.S[0]+'>';
+end;
+
+function xml_write_to_string(xml: TVList): unicodestring;
+var i: integer;
+begin
+    result := '';
+    for i := 0 to xml.high do
+        if tpString(xml.look[i])
+        then result := result+xml.S[i]
+        else result := result + tag_write_to_string(xml.L[i]);
 end;
 
 end.

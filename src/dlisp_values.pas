@@ -399,7 +399,7 @@ type
         function LookElementSYM(index: integer): TVSymbol;
     public
         constructor Create; overload;
-        constructor Create(VL: array of TValue); overload;
+        constructor Create(VL: array of TValue; free_objects: boolean = true); overload;
         constructor Create(body: TListBody); overload;
         //constructor CreatePhantom;
         destructor Destroy; override;
@@ -3356,12 +3356,12 @@ begin
   fL := TListBody.Create(true);
 end;
 
-constructor TVList.Create(VL: array of TValue);
+constructor TVList.Create(VL: array of TValue; free_objects: boolean);
 var i :integer;
 begin
-    fL := TListBody.Create(true);
+    fL := TListBody.Create(free_objects);
     fL.Capacity:=length(VL);
-    for i:=0 to length(VL)-1 do fL.Add(VL[i]);
+    for i:=0 to Length(VL)-1 do fL.Add(VL[i]);
 end;
 
 constructor TVList.Create(body: TListBody);

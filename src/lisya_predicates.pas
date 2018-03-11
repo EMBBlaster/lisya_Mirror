@@ -185,6 +185,8 @@ function vpKeyword_PRINT_STACK                      (V: TValue): boolean;
 
 function vpKeyword_PRINT_HASH_TABLE                 (V: TValue): boolean;
 
+function vpKeyword_PROLOGUE                         (V: TValue): boolean;
+
 function vpKeyword_READ                             (V: TValue): boolean;
 
 function vpKeyword_RESET_STACK                      (V: TValue): boolean;
@@ -785,6 +787,11 @@ end;
 function vpKeyword_PRINT_HASH_TABLE(V: TValue): boolean;
 begin
     result := vphKeywordName(V, ':PRINT-HASH-TABLE');
+end;
+
+function vpKeyword_PROLOGUE(V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':PROLOGUE');
 end;
 
 function vpKeyword_READ                             (V: TValue): boolean;

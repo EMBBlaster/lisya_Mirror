@@ -1991,15 +1991,32 @@ begin
 end;
 
 function if_read_character      (const PL: TVList; {%H-}call: TCallProc): TValue;
-var ch: unicodechar;
+var ch: unicodechar; s: unicodestring; i: integer;
 begin
     case params_is(PL, result, [
-        vpStreamPointerActive,
-        tpNIL]) of
+        vpStreamPointerActive, tpNIL,
+        vpStreamPointerActive, vpIntegerNotnegative,
+        vpStreamPointerActive, vpKeyword_ALL,
+        tpNIL, tpAny]) of
         1: if (PL.look[0] as TVStreamPointer).stream.read_char(ch)
             then result := TVString.Create(ch)
             else result := TVList.Create;
+        2: begin
+            s := '';
+            for i := 1 to PL.I[1] do begin
+                if (PL.look[0] as TVStreamPointer).stream.read_char(ch)
+                then s := s + ch
+                else break;
+            end;
+            result := TVString.Create(s);
+        end;
         3: begin
+            s := '';
+            while (PL.look[0] as TVStreamPointer).stream.read_char(ch) do
+                s := s + ch;
+            result := TVString.Create(s);
+        end;
+        4: begin
             System.Read(ch);
             result := TVString.Create(ch);
         end;
@@ -2281,6 +2298,16 @@ begin
     end;
 end;
 
+function if_xml_write_to_string (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpList, tpNIL,
+        tpList, tpTrue]) of
+        1: result := TVString.Create(xml_write_to_string(PL.L[0]));
+        2: result := TVString.Create('separate не реализован');
+    end;
+end;
+
 
 function if_sql_mysql_connection(const PL: TVList; {%H-}call: TCallProc): TValue;
 var database, username, host, password: unicodestring; port: integer;
@@ -2445,7 +2472,7 @@ begin
     end;
 end;
 
-const int_fun_count = 116;
+const int_fun_count = 117;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2558,7 +2585,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'READ-BYTE';                 f:if_read_byte;             s:'(s)'),
 (n:'READ-BYTES';                f:if_read_bytes;            s:'(s c)'),
 (n:'WRITE-BYTE';                f:if_write_byte;            s:'(s i)'),
-(n:'READ-CHARACTER';            f:if_read_character;        s:'(:optional s)'),
+(n:'READ-CHARACTER';            f:if_read_character;        s:'(:optional s count)'),
 (n:'WRITE-STRING';              f:if_write_string;          s:'(s s)'),
 (n:'READ-LINE';                 f:if_read_line;             s:'(:optional s)'),
 (n:'WRITE-LINE';                f:if_write_line;            s:'(s l)'),
@@ -2580,6 +2607,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'LOWER-CASE';                f:if_lower_case;            s:'(s)'),
 
 (n:'XML:READ-FROM-STRING';      f:if_xml_read_from_string;  s:'(s :flag separate)'),
+(n:'XML:WRITE-TO-STRING';       f:if_xml_write_to_string;   s:'(s :flag separate)'),
 
 (n:'SQL:MYSQL-CONNECTION';      f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
 (n:'SQL:QUERY';                 f:if_sql_query;             s:'(db :rest q)'),
@@ -2918,7 +2946,7 @@ begin
 end;
 
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
-var i: integer; tmp: TValue; ind: TValue;
+var i: integer; tmp: TValue; ind, ind_i: TValue; expr: TVList;
 begin
     //  Эта процедура должна вернуть указатель на компонент составного типа
     //для дальнейшего извлечения или перезаписи значения.
@@ -2926,6 +2954,8 @@ begin
     result := nil;
     tmp := nil;
     ind := nil;
+    ind_i := nil;
+    expr := nil;
 
     if PL.Count<2 then raise ELE.Create('недостаточно параметров');
 
@@ -2942,22 +2972,34 @@ try
             if tpCompoundIndexed(tmp) and vpSymbol_LAST(ind)
             then result.add_index((tmp as TVCompound).Count-1)
             else
-                if tpRecord(tmp) and tpSymbol(ind)
-                then result.add_index((tmp as TVRecord).get_n_of((ind as TVSymbol).uname))
+                if tpCompoundIndexed(tmp) and tpSubprogram(ind)
+                then begin
+                    expr := TVList.Create([ind, tmp], false);
+                    ind_i := call(expr);
+                    if not tpInteger(ind_i) then raise ELE.Create('invalid index', 'invalid parametes');
+                    result.add_index((ind_i as TVInteger).fI);
+                    FreeAndNil(ind_i);
+                    FreeAndNil(expr);
+                end
                 else
-                    if tpNIL(ind)
-                    then begin
-                        result.Free;
-                        result := TVChainPointer.Create(
-                            NewVariable(TVList.Create, true));
-                        exit;
-                    end
+                    if tpRecord(tmp) and tpSymbol(ind)
+                    then result.add_index((tmp as TVRecord).get_n_of((ind as TVSymbol).uname))
                     else
-                        raise ELE.InvalidParameters;
+                        if tpNIL(ind)
+                        then begin
+                            result.Free;
+                            result := TVChainPointer.Create(
+                                NewVariable(TVList.Create, true));
+                            exit;
+                        end
+                        else
+                            raise ELE.InvalidParameters;
         FreeAndNil(ind);
     end;
 finally
     ind.Free;
+    FreeAndNil(ind_i);
+    FreeAndNil(expr);
 end;
 end;
 
