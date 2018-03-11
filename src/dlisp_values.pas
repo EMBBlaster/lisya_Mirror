@@ -752,11 +752,6 @@ type
     end;
 
 
-    TFileMode = (fmRead, fmWrite, fmAppend);
-    //TStreamEncoding = (seBOM, seUTF8, seCP1251, seCP1252, seUTF16BE, seUTF16LE, seUTF32BE,
-    //                    seUTF32LE, seCP866, seKOI8R);
-
-
     { TVStream }
 
     TVStream = class (TValue)
@@ -787,7 +782,7 @@ type
     TVFileStream = class (TVStream)
         file_name: unicodestring;
 
-        constructor Create(fn: unicodestring; mode: TFileMode;
+        constructor Create(fn: unicodestring; mode: WORD;
             enc: TStreamEncoding = seUTF8);
 
         function AsString: unicodestring; override;
@@ -1562,19 +1557,20 @@ end;
 
 { TVFileStream }
 
-constructor TVFileStream.Create(fn: unicodestring; mode: TFileMode;
-    enc: TStreamEncoding = seUTF8);
+constructor TVFileStream.Create(fn: unicodestring; mode: WORD;
+    enc: TStreamEncoding);
 begin
     inherited Create;
     file_name := fn;
     case mode of
-        fmRead: begin
+        fmOpenRead: begin
+            if not FileExists(fn) then ELE.Create(fn, 'file not found');
             fStream := TFileStream.Create(fn, fmOpenRead);
         end;
-        fmWrite: begin
+        fmCreate: begin
             fStream := TFileStream.Create(fn, fmCreate);
         end;
-        fmAppend: begin
+        fmOpenReadWrite: begin
             if FileExists(fn)
             then fStream := TFileStream.Create(fn, fmOpenReadWrite)
             else fStream := TFileStream.Create(fn, fmCreate);

@@ -1717,24 +1717,15 @@ begin
 end;
 
 function if_open_file           (const PL: TVList; {%H-}call: TCallProc): TValue;
-var mode: TFileMode; enc: TStreamEncoding;
 begin
     case params_is(PL, result, [
         tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
-        1: begin
-            if tpNIL(PL.look[1]) then mode := fmRead else
-            if vpKeyword_READ(PL.look[1]) then mode := fmRead else
-            if vpKeyword_WRITE(PL.look[1]) then mode := fmWrite else
-            if vpKeyword_APPEND(PL.look[1]) then mode := fmAppend else
-                raise ELE.InvalidParameters;
-
-            enc := ifh_keyword_to_encoding(PL.look[2]);
-
-            if fileExists(DirSep(PL.S[0])) or (mode <> fmRead)
-            then result := TVStreamPointer.Create(
-                NewVariable(TVFileStream.Create(DirSep(PL.S[0]), mode, enc)))
-            else raise ELE.Create(PL.S[0], 'file not found');
-        end;
+        1: result := TVStreamPointer.Create(
+                NewVariable(
+                    TVFileStream.Create(
+                        DirSep(PL.S[0]),
+                        ifh_keyword_to_file_mode(PL.look[1]),
+                        ifh_keyword_to_encoding(PL.look[2]))));
     end;
 end;
 
@@ -2910,7 +2901,7 @@ begin
         res := nil;
         prog_file := TVStreamPointer.Create(
                 NewVariable(
-                    TVFileStream.Create(DirSep(fn), fmRead, seBOM)));
+                    TVFileStream.Create(DirSep(fn), fmOpenRead, seBOM)));
         while true do begin
             expr := nil;
             expr := dlisp_read.read(prog_file);
