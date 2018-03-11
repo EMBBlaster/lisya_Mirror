@@ -701,7 +701,7 @@ type
     type TOperatorEnum = (
             oeAND,
             oeAPPEND,
-            oeAPPLY,
+            //oeAPPLY,
             oeASSEMBLE,
             oeBLOCK,
             oeBREAK,
@@ -3208,15 +3208,15 @@ var
 begin
     CopyOnWrite;
     fL.Capacity := fL.Capacity + VL.fL.Capacity;
-    if false //VL.fL.ref_count=1
+
+    if fL.OwnsObjects
     then begin
-        VL.fL.OwnsObjects:=false;
-        for i := 0 to VL.fL.Count - 1 do fL.Add(VL.fL[i]);
+        for i := 0 to VL.fL.Count - 1 do fL.Add((VL.fL[i] as TValue).Copy);
+        VL.Free;
     end
     else
-        for i := 0 to VL.fL.Count - 1 do fL.Add((VL.fL[i] as TValue).Copy);
+        for i := 0 to VL.fL.Count - 1 do fL.Add(VL.fL[i] as TValue);
 
-    VL.Free;
 end;
 
 //procedure TVList.Add_phantom(V: TValue);
@@ -3311,7 +3311,7 @@ end;
 
 function TVList.AsString: unicodestring;
 var i: integer;
-begin  // try
+begin
     if count=0
     then result := 'NIL'
     else begin

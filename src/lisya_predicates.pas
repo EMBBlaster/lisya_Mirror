@@ -259,6 +259,8 @@ function vpListOfSymbolValuePairs                   (V: TValue): boolean;
 
 function vpListSymbolValue                          (V: TValue): boolean;
 
+function vpListWithLastList                         (V: TValue): boolean;
+
 
 function vpNumberNotZero                            (V: TValue): boolean;
 
@@ -1035,6 +1037,13 @@ begin
                 result := false;
                 exit;
             end;
+end;
+
+function vpListWithLastList(V: TValue): boolean;
+begin
+    result := (V is TVList)
+        and ((V as TVList).Count>0)
+        and tpList((V as TVList).look[(V as TVList).high]);
 end;
 
 

@@ -1246,6 +1246,23 @@ begin
     L.Free;
 end;
 
+function if_apply               (const PL: TVList; call: TCallProc): TValue;
+var expr: TVList; i: integer;
+begin
+    case params_is(PL, result, [
+        tpSubprogram, vpListWithLastList]) of
+        1: try
+            expr := TVList.Create([PL.look[0]], false);
+            for i := 0 to PL.L[1].high-1 do expr.Add(PL.L[1].look[i]);
+            expr.Append(PL.L[1].L[PL.L[1].high]);
+            //WriteLn(expr.AsString);
+            result := call(expr);
+        finally
+            expr.Free;
+        end;
+    end;
+end;
+
 function if_union               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [tpListOfLists]) of
@@ -2472,7 +2489,7 @@ begin
     end;
 end;
 
-const int_fun_count = 117;
+const int_fun_count = 118;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2535,6 +2552,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'FOLD';                      f:if_fold;                  s:'(p l)'),
 (n:'MAP ОТОБРАЖЕНИЕ';           f:if_map;                   s:'(p :rest l)'),
 (n:'MAP-CONCATENATE';           f:if_map_concatenate;       s:'(p :rest l)'),
+(n:'APPLY ПРИМЕНИТЬ';           f:if_apply;                 s:'(p :rest params)'),
 
 (n:'UNION';                     f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION ПЕРЕСЕЧЕНИЕ';  f:if_intersection;          s:'(:rest a)'),
@@ -2651,7 +2669,7 @@ begin
         case o of
             oeAND       : op('AND');
             oeAPPEND    : op('APPEND');
-            oeAPPLY     : op('APPLY');
+            //oeAPPLY     : op('APPLY');
             oeASSEMBLE  : op('ASSEMBLE');
             oeBLOCK     : op('BLOCK');
             oeBREAK     : op('BREAK');
@@ -4170,7 +4188,7 @@ begin
     case (PL.look[0] as TVOperator).op_enum of
         oeAND       : result := op_and(PL);
         oeAPPEND    : result := op_append(PL);
-        oeAPPLY     : result := op_apply(PL);
+        //oeAPPLY     : result := op_apply(PL);
         oeASSEMBLE  : result := op_assemble(PL);
         oeBLOCK     : result := op_block(PL);
         oeBREAK     : result := TVBreak.Create;
