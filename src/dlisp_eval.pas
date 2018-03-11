@@ -58,7 +58,6 @@ type
 
         function op_and(PL: TVList): TValue;
         function op_append(PL: TVList): TValue;
-        function op_apply(PL: TVList): TValue;
         function op_assemble(PL: TVList): TValue;
         function op_block(PL: TVList): TValue;
         function op_case(PL: TVList): TValue;
@@ -2669,7 +2668,6 @@ begin
         case o of
             oeAND       : op('AND');
             oeAPPEND    : op('APPEND');
-            //oeAPPLY     : op('APPLY');
             oeASSEMBLE  : op('ASSEMBLE');
             oeBLOCK     : op('BLOCK');
             oeBREAK     : op('BREAK');
@@ -3848,32 +3846,6 @@ finally
     FreeAndNil(CP);
 end end;
 
-function TEvaluationFlow.op_apply(PL: TVList): TValue;
-var expr: TVList; i: integer; tmp: TValue; list: TVList;
-begin
-    result := nil;
-    if PL.Count<2 then raise ELE.Malformed('APPLY');
-try
-    tmp := nil;
-    expr := TVList.Create;
-    expr.Add(eval(PL[1]));
-    for i := 2 to PL.high-1 do expr.Add(eval(PL[i]));
-    if (PL.Count>=3) then begin
-        tmp := eval(PL[PL.high]);
-        if tpList(tmp) then begin
-            list := tmp as TVList;
-            expr.Append(list);
-            //for i := 0 to list.high do expr.Add(ifh_quote(list.look[i]));
-            result := call(expr);
-        end
-        else raise ELE.InvalidParameters;
-
-    end;
-finally
-    expr.Free;
-    //tmp.Free;
-end;
-end;
 
 function TEvaluationFlow.op_assemble(PL: TVList): TValue;
     function asmbl(L: TVList; from: integer = 0): TVList;
@@ -4188,7 +4160,6 @@ begin
     case (PL.look[0] as TVOperator).op_enum of
         oeAND       : result := op_and(PL);
         oeAPPEND    : result := op_append(PL);
-        //oeAPPLY     : result := op_apply(PL);
         oeASSEMBLE  : result := op_assemble(PL);
         oeBLOCK     : result := op_block(PL);
         oeBREAK     : result := TVBreak.Create;

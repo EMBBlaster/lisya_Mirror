@@ -701,7 +701,6 @@ type
     type TOperatorEnum = (
             oeAND,
             oeAPPEND,
-            //oeAPPLY,
             oeASSEMBLE,
             oeBLOCK,
             oeBREAK,
