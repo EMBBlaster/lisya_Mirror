@@ -15,6 +15,22 @@ function UpperCaseU(s: unicodestring): unicodestring;
 function LowerCaseU(s: unicodestring): unicodestring;
 function SplitString(S: unicodestring; separator: unicodestring = ' '): TStringArray;
 
+type
+
+    { TCountingObject }
+
+    TCountingObject = class
+    private
+        ref_count: integer;
+    public
+        constructor Create;
+        function Ref: TCountingObject;
+        function Release: boolean;
+        function description: unicodestring; virtual; abstract;
+    end;
+
+
+
 implementation
 
 function PosU(const ss, s: unicodestring; offset: integer = 1): integer;
@@ -129,6 +145,29 @@ begin
     end;
     SetLength(result, Length(result)+1);
     result[high(result)] := S[p1..Length(s)];
+end;
+
+    { TCountingObject }
+
+constructor TCountingObject.Create;
+begin
+    ref_count := 1;
+end;
+
+function TCountingObject.Ref: TCountingObject;
+begin
+    Inc(ref_count);
+    result := self;
+end;
+
+function TCountingObject.Release: boolean;
+begin
+    Dec(ref_count);
+    if ref_count=0 then begin
+        result := true;
+        self.Free;
+    end
+    else result := false;
 end;
 
 end.

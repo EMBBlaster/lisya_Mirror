@@ -13,6 +13,8 @@ uses
     lisya_repl,
     dlisp_eval, lisya_zip;
 
+
+
 begin
     {$if declared(UseHeapTrace)}
     if FileExists('lisya.trc') then DeleteFile('lisya.trc');
@@ -25,6 +27,7 @@ begin
 
 
     if (ParamCount=0) or not EXEC(paramStr(1)) then REPL;
+
 
 end.
 

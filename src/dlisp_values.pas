@@ -823,7 +823,7 @@ type
         constructor Create(const bb: TBytes); overload;
         constructor Create(const s: unicodestring); overload;
 
-        function AsString: unicodestring;
+        function AsString: unicodestring; override;
     end;
 
     { TVStreamPointer }
@@ -843,27 +843,13 @@ type
         procedure close_stream;
     end;
 
-    { TVZIPFile }
 
-    TVZIPFile = class (TValue)
-        Z: TZipFile;
-        file_name: unicodestring;
-        constructor Create(fn: unicodestring; mode: WORD;
-            enc: TStreamEncoding = seUTF8);
-        destructor Destroy; override;
+    { TVZIPArchivePointer }
 
-        function Copy: TValue; override;
-        function AsString: unicodestring; override;
-        function hash: DWORD; override;
-        function equal(V: TValue): boolean; override;
-    end;
+    TVZIPArchivePointer = class (TValue)
+        Z: TZipArchive;
 
-    { TVZIPFilePointer }
-
-    TVZIPFilePointer = class (TValue)
-        body: PVariable;
-        Z: PZipFile;
-        constructor Create(_body: PVariable);
+        constructor Create(_Z: TZipArchive);
         destructor Destroy; override;
 
         function Copy: TValue; override;
@@ -877,9 +863,9 @@ type
     { TVZIPFileStream }
 
     TVZIPFileStream = class (TVFileStream)
-        body: PVariable;
+        Z: TZipArchive;
 
-        constructor Create(_Z: PVariable; fn: unicodestring; enc: TStreamEncoding);
+        constructor Create(_Z: TZipArchive; fn: unicodestring; enc: TStreamEncoding);
         destructor Destroy; override;
 
         function AsString: unicodestring; override;
@@ -1050,104 +1036,66 @@ begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
 
+
 { TVZIPFileStream }
 
-constructor TVZIPFileStream.Create(_Z: PVariable; fn: unicodestring;
+constructor TVZIPFileStream.Create(_Z: TZipArchive; fn: unicodestring;
     enc: TStreamEncoding);
 begin
-    body := _z;
+    Z := _Z;
     file_name := fn;
-    fstream := (body.V as TVZIPFile).Z.GetFileStream(fn);
+    fstream := Z.GetFileStream(fn);
     if enc=seBOM then read_BOM else encoding := enc;
 end;
 
 destructor TVZIPFileStream.Destroy;
 begin
-    ReleaseVariable(body);
+    Z.Release;
 end;
 
 function TVZIPFileStream.AsString: unicodestring;
 begin
-    result := '#<ZIPF '+file_name+' '+body.V.AsString+'>';
+    result := '#<FILE '+Z.description+': '+file_name+'>';
 end;
 
-{ TVZIPFilePointer }
+{ TVZIPArchivePointer }
 
-constructor TVZIPFilePointer.Create(_body: PVariable);
+constructor TVZIPArchivePointer.Create(_Z: TZipArchive);
 begin
-    body := _body;
-    Z := @((body.V as TVZIPFile).Z);
+    Z := _Z;
 end;
 
-destructor TVZIPFilePointer.Destroy;
+destructor TVZIPArchivePointer.Destroy;
 begin
-    ReleaseVariable(body);
+    Z.Release;
     inherited Destroy;
 end;
 
-function TVZIPFilePointer.Copy: TValue;
+function TVZIPArchivePointer.Copy: TValue;
 begin
-    result := TVZIPFilePointer.Create(RefVariable(body));
+    result := TVZIPArchivePointer.Create(Z.Ref as TZipArchive);
 end;
 
-function TVZIPFilePointer.AsString: unicodestring;
+function TVZIPArchivePointer.AsString: unicodestring;
 begin
-    result := '#<ZIPP '+body.V.AsString+'>';
+    result := '#<ZIP '+Z.description+'>';
 end;
 
-function TVZIPFilePointer.hash: DWORD;
+function TVZIPArchivePointer.hash: DWORD;
 begin
     result := 10009;
 end;
 
-function TVZIPFilePointer.equal(V: TValue): boolean;
+function TVZIPArchivePointer.equal(V: TValue): boolean;
 begin
-    result := (V is TVZIPFilePointer) and (body = (V as TVZIPFilePointer).body);
+    result := (V is TVZIPArchivePointer) and (Z = (V as TVZIPArchivePointer).Z);
 end;
 
-procedure TVZIPFilePointer.close_zip;
-begin
-    Z.Close;
-end;
-
-{ TVZIPFile }
-
-constructor TVZIPFile.Create(fn: unicodestring; mode: WORD; enc: TStreamEncoding);
-begin
-    file_name := fn;
-    case mode of
-        fmOpenRead: Z.Open(fn, fmOpenRead, enc);
-        fmCreate: Z.Open(fn, fmCreate, enc);
-        fmOpenReadWrite: Z.Open(fn, fmOpenReadWrite, enc);
-    end;
-    //encoding := enc;
-end;
-
-destructor TVZIPFile.Destroy;
+procedure TVZIPArchivePointer.close_zip;
 begin
     Z.Close;
 end;
 
-function TVZIPFile.Copy: TValue;
-begin
-    raise ELE.Create('Копирование дескриптора ZIP-файла');
-    result := nil;
-end;
-
-function TVZIPFile.AsString: unicodestring;
-begin
-    result := '#<ZIP '+file_name+'>';
-end;
-
-function TVZIPFile.hash: DWORD;
-begin
-    result := 10008;
-end;
-
-function TVZIPFile.equal(V: TValue): boolean;
-begin
-    result := false;
-end;
 
 { TVGo }
 

@@ -1745,19 +1745,13 @@ begin
 end;
 
 function if_zip_open            (const PL: TVList; {%H-}call: TCallProc): TValue;
-var mode: WORD; enc: TStreamEncoding;
 begin
     case params_is(PL, result, [
         tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
-        1: begin
-            mode := ifh_keyword_to_file_mode(PL.look[1]);
-            enc := ifh_keyword_to_encoding(PL.look[2]);
-
-            if fileExists(DirSep(PL.S[0])) or (mode <> fmOpenRead)
-            then result := TVZIPFilePointer.Create(
-                NewVariable(TVZIPFile.Create(DirSep(PL.S[0]), mode, enc)))
-            else raise ELE.Create(PL.S[0], 'file not found');
-        end;
+        1: result := TVZipArchivePointer.Create(
+                TZipArchive.Open(DirSep(PL.S[0]),
+                    ifh_keyword_to_file_mode(PL.look[1]),
+                    ifh_keyword_to_encoding(PL.look[2])));
     end;
 end;
 
@@ -1765,9 +1759,9 @@ function if_zip_filelist        (const PL: TVList; {%H-}call: TCallProc): TValue
 var i: integer; file_names: TStringArray;
 begin
     case params_is(PL, result, [
-        tpZIPFilePointer]) of
+        tpZIPArchivePointer]) of
         1: begin
-            file_names := (PL.look[0] as TVZIPFilePointer).Z.FileList;
+            file_names := (PL.look[0] as TVZIPArchivePointer).Z.FileList;
             result := TVList.Create;
             for i := 0 to high(file_names) do
                 (result as TVList).Add(TVString.Create(file_names[i]));
@@ -1780,12 +1774,13 @@ function if_zip_file            (const PL: TVList; {%H-}call: TCallProc): TValue
 var zfs: TVZIPFileStream;  mode: WORD; enc: TStreamEncoding;
 begin
     case params_is(PL, result, [
-        tpZIPFilePointer, tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
+        tpZIPArchivePointer, tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
         1: begin
             mode := ifh_keyword_to_file_mode(PL.look[2]);
             enc := ifh_keyword_to_encoding(PL.look[3]);
-            zfs := TVZIPFileStream.Create(
-                RefVariable((PL.look[0] as TVZipFilePointer).body),
+
+            zfs := TVZipFileStream.Create(
+                (PL.look[0] as TVZIPArchivePointer).Z.Ref as TZIPArchive,
                 PL.S[1], enc);
             if zfs.fstream<>nil then begin
                 result := TVStreamPointer.Create(NewVariable(zfs));
@@ -1802,9 +1797,9 @@ function if_zip_delete          (const PL: TVList; {%H-}call: TCallProc): TValue
 var zfs: TVZIPFileStream;  mode: WORD; enc: TStreamEncoding;
 begin
     case params_is(PL, result, [
-        tpZIPFilePointer, tpString]) of
+        tpZIPArchivePointer, tpString]) of
         1: begin
-            (PL.look[0] as TVZipFilePointer).Z.Delete(PL.S[1]);
+            (PL.look[0] as TVZipArchivePointer).Z.Delete(PL.S[1]);
             result := TVT.Create;
         end;
     end;

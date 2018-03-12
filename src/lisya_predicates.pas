@@ -111,9 +111,7 @@ function tpTimeInterval                             (V: TValue): boolean;
 
 function tpTrue                                     (V: TValue): boolean;
 
-function tpZIPFile                                  (V: TValue): boolean;
-
-function tpZIPFilePointer                           (V: TValue): boolean;
+function tpZIPArchivePointer                        (V: TValue): boolean;
 
 /////////////////////////////////////
 /// Value Predicates ////////////////
@@ -555,14 +553,9 @@ begin
     result := not tpNIL(V);
 end;
 
-function tpZIPFile(V: TValue): boolean;
+function tpZIPArchivePointer(V: TValue): boolean;
 begin
-    result := V is TVZipFile;
-end;
-
-function tpZIPFilePointer(V: TValue): boolean;
-begin
-    result := V is TVZipFilePointer;
+    result := V is TVZipArchivePointer;
 end;
 
 

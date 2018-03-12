@@ -87,9 +87,9 @@ type
     end;
 
 
-    { TZipFile }
+    { TZIPArchive }
 
-    TZipFile = record
+    TZIPArchive = class (TCountingObject)
     private
         lfh: array of TLFH;
         ddr: array of TDDR;
@@ -97,14 +97,16 @@ type
         cdfh: array of TCDFH;
         eocd: TEOCD;
         f: TFileStream;
+        file_name: unicodestring;
     public
-        procedure Open(fn: unicodestring; mode: word; encoding: TStreamEncoding = seUTF8);
+        constructor Open(fn: unicodestring; mode: word; _encoding: TStreamEncoding = seUTF8);
+        destructor Destroy; override;
+        procedure Close;
         function FileList: TStringArray;
-        procedure Close(rollback: boolean = false);
         function GetFileStream(fn: unicodestring): TStream;
         procedure Delete(fn: unicodestring);
+        function description: unicodestring; override;
     end;
-    PZipFile = ^TZipFile;
 
 implementation
 
@@ -423,12 +425,14 @@ begin
     f.Position := p_ce;
 end;
 
-{ TZipFile }
+{ TZIPArchive }
 
-procedure TZipFile.Open(fn: unicodestring; mode: word; encoding: TStreamEncoding
-    );
+constructor TZIPArchive.Open(fn: unicodestring; mode: word;
+    _encoding: TStreamEncoding);
 var sign: DWORD;
 begin
+    inherited Create;
+    file_name := fn;
     f := TFileStream.Create(fn, mode);
     SetLength(lfh, 0);
     SetLength(cdfh, 0);
@@ -441,7 +445,7 @@ begin
         case sign of
             lfh_sign: begin
                 SetLength(lfh, Length(lfh)+1);
-                lfh[high(lfh)] := read_LFH(f, encoding);
+                lfh[high(lfh)] := read_LFH(f, _encoding);
             end;
             ddr_sign: begin
                 SetLength(ddr, Length(ddr)+1);
@@ -449,13 +453,13 @@ begin
             end;
             cdfh_sign: begin
                 SetLength(cdfh, Length(cdfh)+1);
-                cdfh[high(cdfh)] := read_CDFH(f, encoding);
+                cdfh[high(cdfh)] := read_CDFH(f, _encoding);
             end;
             aed_sign: begin
                 aed := read_AED(f)
             end;
             eocd_sign: begin
-                eocd := read_EOCD(f, encoding);
+                eocd := read_EOCD(f, _encoding);
                 Break;
             end;
             else raise EZIP('Повреждённый архив '+fn);
@@ -464,14 +468,13 @@ begin
     if mode = fmOpenRead then FreeAndNil(f);
 end;
 
-function TZipFile.FileList: TStringArray;
-var i: integer;
+destructor TZIPArchive.Destroy;
 begin
-    SetLength(result, Length(lfh));
-    for i := 0 to high(lfh) do result[i] := lfh[i].filename;
+    Close;
+    inherited Destroy;
 end;
 
-procedure TZipFile.Close(rollback: boolean);
+procedure TZIPArchive.Close;
 var i: integer;
 begin
     if f<>nil then begin
@@ -499,9 +502,20 @@ begin
     end;
 
     for i := 0 to high(lfh) do FreeAndNil(lfh[i].data);
+    SetLength(lfh, 0);
+    SetLength(cdfh, 0);
+    SetLength(ddr, 0);
+    aed.extraFieldLength := 0;
 end;
 
-function TZipFile.GetFileStream(fn: unicodestring): TStream;
+function TZIPArchive.FileList: TStringArray;
+var i: integer;
+begin
+    SetLength(result, Length(lfh));
+    for i := 0 to high(lfh) do result[i] := lfh[i].filename;
+end;
+
+function TZIPArchive.GetFileStream(fn: unicodestring): TStream;
 var i, n: integer;
 begin
     result := nil;
@@ -512,20 +526,20 @@ begin
             Exit;
         end;
 
+    //если искомый файл отсутствует в архиве, то создать
     SetLength(lfh, Length(lfh)+1);
     SetLength(cdfh, Length(cdfh)+1);
     n := high(lfh);
     lfh[n].filename:=fn;
     lfh[n].data := TBytesStream.Create;
 
-    {$IFDEF UNIX}
+    //{$IFDEF UNIX}
     cdfh[n].versionMadeBy := $0314; // OS UNIX / версия 2.0;
     cdfh[n].externalFileAttributes := $81A40000; // -rw-r--r--
-    {$ELSE}
-    cdfh[n].versionMadeBy := $0014; // OS DOS / версия 2.0;
-    cdfh[n].externalFileAttributes := $00000000;
-    {$ENDIF}
-
+    //{$ELSE}
+    //cdfh[n].versionMadeBy := $0014; // OS DOS / версия 2.0;
+    //cdfh[n].externalFileAttributes := $00000000;
+    //{$ENDIF}
 
     cdfh[n].filename:=fn;
     cdfh[n].fileComment:='';
@@ -533,7 +547,7 @@ begin
     result := lfh[n].data;
 end;
 
-procedure TZipFile.Delete(fn: unicodestring);
+procedure TZIPArchive.Delete(fn: unicodestring);
 var i, j: integer;
 begin
     for i := 0 to high(lfh) do
@@ -549,6 +563,10 @@ begin
     SetLength(cdfh, Length(cdfh)-1);
 end;
 
+function TZIPArchive.description: unicodestring;
+begin
+    result := file_name;
+end;
 
 
 end.
