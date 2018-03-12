@@ -3837,7 +3837,6 @@ function TEvaluationFlow.op_assemble(PL: TVList): TValue;
     function asmbl(L: TVList; from: integer = 0): TVList;
     var i, j: integer; tmp: TValue;
     begin
-        //WriteLn(L.AsString());
         result := TVList.Create;
         for i := from to L.high do begin
             if vpListHeaded_VALUE(L.look[i])
@@ -4040,10 +4039,9 @@ begin
     end;
 
     try
-        //здесь if_union используется для удаления дубликатов
-        tmp := TVList.Create([TVList.Create([result])]);
-        //TODO: переделать if_union в ifh_union, поскольку функция используется для собственных нужд
-        result := if_union(tmp, call) as TVList;
+        //здесь ifh_union используется для удаления дубликатов
+        tmp := TVList.Create([result]);
+        result := ifh_union1(tmp);
     finally
         FreeAndNil(tmp);
     end;
@@ -4194,151 +4192,6 @@ begin
     then result := TVT.Create
     else result := TVList.Create;
 end;
-
-//function TEvaluationFlow.bind_procedure_parameters_to_stack(PL: TVList;
-//    sign: TSubprogramSignature; ts: TVSymbolStack): boolean;
-//var i, j, key_start:integer;
-//    rest: TVList;
-//    key_found: boolean;
-//    procedure bind(n: unicodestring; FP: TValue);
-//    var CP: TVChainPointer;
-//    begin
-//        CP := eval_link(FP);
-//        ts.new_var(n, CP, false);
-//    end;
-//
-//begin
-//    assert((PL.look[0] as TVProcedure).evaluated,
-//                'выполнение недовычисленной процедуры ' + PL.look[0].AsString);
-//
-//    //Write('bind >>'); print_stdout_ln(PL);
-//    key_start := -1;
-//    for i:=0 to Length(sign)-1 do begin
-//        case sign[i].m of
-//            spmNec:
-//                if PL.Count> i+1
-//                then begin
-//                    bind(sign[i].n, PL.look[i+1]);
-//                end
-//                else raise ELE.InvalidParameters;
-//            spmOpt:
-//                if PL.Count> i+1
-//                then ts.new_var(sign[i].n, eval(PL[i+1]), true)
-//                else ts.new_var(sign[i].n, TVList.Create, true);
-//            spmRest: begin
-//                //TODO: излишнее копирование
-//                rest := (PL as TVList).subseq(i+1, PL.Count) as TVList;
-//                for j := 0 to Rest.Count-1 do rest[j] := eval(rest[j]);
-//                ts.new_var(sign[i].n, rest, true);
-//            end;
-//            spmKey: begin
-//                if key_start<0 then key_start := i+1;
-//                key_found := false;
-//                for j := 0 to ((PL.Count-key_start) div 2) -1 do
-//                    if (PL.look[key_start+j*2] is TVSymbol)
-//                        and (UpperCaseU(PL.name[key_start+j*2])=
-//                            ':'+UpperCaseU(sign[i].n))
-//                    then begin
-//                    //TODO: ключевае параметры процедур не вычисляются !
-//                        ts.new_var(sign[i].n, eval(PL[key_start+j*2+1]), true);
-//                        key_found := true;
-//                    end;
-//                if not key_found then ts.new_var(sign[i].n, TVList.Create, true);
-//            end;
-//        end;
-//    end;
-//   // stack.Print(78);
-//    result := true;
-//
-//end;
-
-//function TEvaluationFlow.bind_macro_parameters_to_stack(PL: TVList;
-//    sign: TSubprogramSignature; ts: TVSymbolStack): boolean;
-//var i, j, key_start:integer;
-//    rest: TVList;
-//    key_found: boolean;
-//    procedure bind(n: unicodestring; FP: TValue);
-//    begin
-//        ts.new_var(n, FP.Copy(), true)
-//    end;
-//
-//begin
-//    assert((PL.look[0] as TVProcedure).evaluated, 'выполнение недовычисленного макроса '+
-//        PL.look[0].AsString);
-//
-//
-//    key_start := -1;
-//    for i:=0 to Length(sign)-1 do begin
-//        case sign[i].m of
-//            spmNec:
-//                if PL.Count>= i+1
-//                then begin
-//                    bind(sign[i].n, PL.look[i+1]);
-//                end
-//                else raise ELE.InvalidParameters;
-//            spmOpt:
-//                if PL.Count>= i+1+1
-//                then ts.new_var(sign[i].n, PL[i+1], true)
-//                else ts.new_var(sign[i].n, TVList.Create, true);
-//            spmRest: begin
-//                //TODO: излишнее копирование
-//                rest := (PL as TVList).subseq(i+1, PL.Count) as TVList;
-//                ts.new_var(sign[i].n, rest, true);
-//            end;
-//            spmKey: begin
-//                if key_start<0 then key_start := i+1;
-//                key_found := false;
-//                for j := 0 to ((PL.Count-key_start) div 2) -1 do
-//                    if (PL.look[key_start+j*2] is TVSymbol)
-//                        and (UpperCaseU(PL.name[key_start+j*2])=
-//                            ':'+UpperCaseU(sign[i].n))
-//                    then begin
-//                    //TODO: ключевае параметры процедур не вычисляются !
-//                        ts.new_var(sign[i].n, PL[key_start+j*2+1], true);
-//                        key_found := true;
-//                    end;
-//                if not key_found then ts.new_var(sign[i].n, TVList.Create, true);
-//            end;
-//        end;
-//    end;
-//    result := true;
-//
-//end;
-
-//procedure TEvaluationFlow.procedure_complement(V: TValue);
-//var
-//    proc: TVProcedure;
-//    i: integer;
-//begin
-//    //эта процедура вызывается из мест:
-//    // 1. bind_procedure_parameters_to_stack - на случай передачи выражения
-//    //  (PROCEDURE ...) как параметра процедуры
-//    // 2. internal_function_call
-//    // 3. при вычислении символа в процедуру - на всякий случай
-//    // 4. при вычислении результата блока с фреймом
-//    // --5. при экспорте процедуры из модуля
-//    // --6. из функции оператора MAP (только первый аргумент, нужно доделать остальные)
-//    //TODO: очень сложный механизм определения момента довычисления процедуры
-//    //для определения провалов в этом механизме в stack.index_of добавлен
-//    //assert падающий при наличии нулевых указателей в стеке.
-//    //альтернативный варинант - вообще избавиться от довычислений. А требовать
-//    //предварительного описания переменных для рекурсивных функций
-//    proc := V as TVProcedure;
-//    if not proc.evaluated
-//    then try
-//        for i := 0 to proc.stack.Count-1 do
-//            if proc.stack.stack[i].V=nil
-//            then proc.stack.stack[i].V :=
-//                    //stack.find_ref_in_frame_or_nil(proc.stack.stack[i].name,
-//                    //                                proc.stack_pointer);
-//                    stack.find_ref_in_frame_or_nil(proc.stack.stack[i].name,
-//                                                    proc.stack_pointer);
-//
-//        proc.stack.remove_unbound;
-//        proc.evaluated:=true;
-//    finally
-//    end;
-//end;
 
 
 function TEvaluationFlow.procedure_call(PL: TVList): TValue;
@@ -4574,4 +4427,4 @@ finalization
     base_stack.Free;
     free_int_fun_signs;
 end.
-
+//4576 4431
