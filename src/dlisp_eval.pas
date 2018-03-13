@@ -1066,73 +1066,131 @@ begin
     end;
 end;
 
-function if_sort                (const PL: TVList; call: TCallProc): TValue; //HIGH
-type Tvalues = array of TValue;
-var list: TValues; expr: TVlist; i: integer;
-    function compare(a, b: TValue): integer;
+
+function if_sort1                (const PL: TVList; call: TCallProc): TValue; //HIGH
+var list: array of TValue; expr: TVList; if_compare: TInternalFunctionBody;
+
+    procedure to_list;
+    var i: integer;
+    begin
+        SetLength(list, PL.L[0].Count);
+        for i := 0 to PL.L[0].high do list[i] := PL.L[0].look[i];
+    end;
+
+    procedure to_result;
+    var i: integer;
+    begin
+        result := TVList.Create;
+        (result as TVList).SetCapacity(Length(list));
+        for i := 0 to high(list) do (result as TVList).Add(list[i].Copy);
+    end;
+
+    procedure swap(a, b: integer); inline;
     var tmp: TValue;
     begin
-        expr[1] := a.copy;
-        expr[2] := b.copy;
+        tmp := list[a];
+        list[a] := list[b];
+        list[b] := tmp;
+    end;
 
+    function compare(e: integer): boolean;
+    var tmp: TValue;
+    begin
+        expr[1] := list[e];
         try
             tmp := nil;
             tmp := call(expr);
-            //Write(a.AsString(),'  -  ',b.AsString(),' = ', tmp.AsString());
-
-            if tpNIL(tmp) or vpRealNegative(tmp) or vpKeyword_LESS(tmp)
-            then result := -1
-            else
-                if vpRealZero(tmp) or vpKeyword_EQUAL(tmp)
-                then result := 0
-                else result := 1;
-
-            //WriteLn('    ',result)
+            result := tpTrue(tmp);
         finally
             tmp.Free;
         end;
     end;
 
-    procedure sort(var V: TValues);
-    var p: TValue; i : integer;
-    less, equal, more: TValues;
+
+    procedure sort(lo,hi: integer);
+    var a, b: integer; tmp: TValue;
     begin
-        p := V[random(Length(V))];
-       // WriteLn('p>> ',p.AsString);
-        for i := 0 to high(V) do case compare(p, v[i]) of
-            1: begin SetLength(more, Length({%H-}more)+1); more[high(more)] := v[i]; end;
-            0: begin SetLength(equal, Length({%H-}equal)+1); equal[high(equal)] := v[i]; end;
-            -1: begin SetLength(less, Length({%H-}less)+1); less[high(less)] := v[i]; end;
+        if lo>=hi then exit;
+
+        expr[2] := list[hi];
+
+        a := lo;
+        b := hi;
+        for b := lo to hi-1 do
+            if compare(b) then begin
+                swap(a,b);
+                Inc(a);
+            end;
+        swap(a,hi);
+
+        sort(lo,a-1);
+        sort(a+1,hi);
+    end;
+
+    function compare_by_internal(e: integer): boolean;
+    var tmp: TValue;
+    begin
+        expr[0] := list[e];
+        try
+            tmp := nil;
+            tmp := if_compare(expr, nil);
+            result := tpTrue(tmp);
+        finally
+            tmp.Free;
         end;
-        if Length(less)>1 then sort(less);
-        if Length(more)>1 then sort(more);
-        for i := 0 to high(more) do V[i] := more[i];
-        for i := 0 to high(equal) do V[Length(more)+i] := equal[i];
-        for i := 0 to high(less) do V[Length(more)+Length(equal)+i] := less[i];
+    end;
+
+    procedure sort_by_internal(lo,hi: integer);
+    var a, b: integer; tmp: TValue;
+    begin
+        if lo>=hi then exit;
+
+        expr[1] := list[hi];
+
+        a := lo;
+        b := hi;
+        for b := lo to hi-1 do
+            if compare_by_internal(b) then begin
+                swap(a,b);
+                Inc(a);
+            end;
+        swap(a,hi);
+
+        sort_by_internal(lo,a-1);
+        sort_by_internal(a+1,hi);
     end;
 
 begin try
     expr := nil;
     case params_is(PL, result, [
+        tpList, tpInternalFunction,
         tpList, tpSubprogram,
         tpList, tpNIL]) of
-        1: expr := TVList.Create([PL[1], TVT.Create, TVT.Create]);
-        2: expr := TVList.Create([TVSymbol.Create('>'), TVT.Create, TVT.Create]);
+        1: begin
+            to_list;
+            if_compare := (PL.look[1] as TVInternalFunction).body;
+            expr := TVList.Create([nil, nil], false);
+            sort_by_internal(0, high(list));
+            to_result;
+        end;
+        2: begin
+            to_list;
+            expr := TVList.Create([PL[1], nil, nil], false);
+            sort(0, high(list));
+            to_result;
+        end;
+        3: begin
+            to_list;
+            if_compare := if_less;
+            expr := TVList.Create([nil, nil], false);
+            sort_by_internal(0, high(list));
+            to_result;
+        end;
     end;
-    //WriteLn('sort>> ', expr.AsString);
-    SetLength(list, PL.L[0].Count);
-    for i := 0 to PL.L[0].high do list[i] := PL.L[0].look[i];
-
-    sort(list);
-
-    result := TVList.Create;
-    for i := 0 to high(list) do (result as TVList).Add(list[i].Copy);
-
 
 finally
     expr.Free;
 end;
-
 end;
 
 function if_slots               (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -2530,7 +2588,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'CAR ГОЛОВА';                f:if_car;                   s:'(l)'),
 //(n:'LAST';                      f:if_last;                  s:'(l)'),
 (n:'SUBSEQ';                    f:if_subseq;                s:'(s b :optional e)'),
-(n:'SORT';                      f:if_sort;                  s:'(s :optional p)'),
+(n:'SORT';                      f:if_sort1;                 s:'(s :optional p)'),
 (n:'SLOTS';                     f:if_slots;                 s:'(r)'),
 (n:'CURRY ШФ';                  f:if_curry;                 s:'(f :rest p)'),
 (n:'FILTER';                    f:if_filter;                s:'(p l)'),
