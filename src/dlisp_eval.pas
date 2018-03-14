@@ -3013,8 +3013,8 @@ var pack: TPackage; prefix: unicodestring; path: TStringList; i: integer;
 
     function load_and_bind(fn: unicodestring): boolean;
     begin
-        if FileExists(fn) then begin
-            oph_execute_file(fn);
+        if FileExists(DirSep(fn)) then begin
+            oph_execute_file(DirSep(fn));
             bind_pack;
             result := true;
         end
@@ -3035,11 +3035,9 @@ begin
     if load_and_bind(name+'.лися') then Exit;
 
     path := TStringList.Create;
-    {$IFDEF WINDOWS}
-    path.Delimiter := ';';
-    {$ELSE}
-    path.Delimiter := ':';
-    {$ENDIF}
+
+    path.Delimiter := {$IFDEF WINDOWS}';'{$ELSE}':'{$ENDIF};
+
     path.DelimitedText := GetEnvironmentVariable('LISYA_PATH');
 
     for i := 0 to path.Count-1 do begin

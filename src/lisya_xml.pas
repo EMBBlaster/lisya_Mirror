@@ -34,7 +34,7 @@ var i, p: integer;
         if s='amp'  then result := '&' else
         if s='gt'   then result := '>' else
         if s='lt'   then result := '<' else
-        if s='quot' then result := '''' else
+        if s='quot' then result := '"' else
 
         if s[1]='#' then result := unicodechar(StrToInt(s[2..Length(s)])) else
         result := s;
@@ -388,8 +388,18 @@ begin
     result := (Length(s)=0) or (s[1]<>'<');
 end;
 
+function tag_quote(s: unicodestring): boolean;
+var last: integer;
+begin
+    last := Length(s);
+    result := (Length(s)>=7)
+        and (s[1..4]='<!--')
+        and (s[last-2..last]='-->');
+end;
+
 function read_tags(s: TStream; encoding: TStreamEncoding): TStringList;
 var depth, i: integer; ch: unicodechar; acc: unicodestring;
+    quoted: boolean;
     procedure add(s: unicodestring);
     begin
         if acc='' then Exit;
@@ -398,8 +408,15 @@ var depth, i: integer; ch: unicodechar; acc: unicodestring;
         else
             if tag_close(s) then Dec(depth);
     end;
+    function tail(s: unicodestring; n: integer):unicodestring;
+    begin
+        if n<Length(s)
+        then result := s[length(s)-n+1..Length(s)]
+        else result := s;
+    end;
 
 begin
+    quoted := false;
     depth := 0;
     acc := '';
     result := TStringList.Create;
@@ -407,16 +424,23 @@ begin
     while s.Position<s.Size do begin
         ch := read_character(s, encoding);
         case ch of
-            '<': begin
+            '<': if not quoted then begin
                 add(acc);
                 acc := '<';
-            end;
+            end else acc := acc+'<';
             '>': begin
                 acc := acc + '>';
-                add(acc);
-                acc := '';
+                if tail(acc, 3)='-->' then quoted := false;
+                if not quoted then begin
+                    add(acc);
+                    acc := '';
+                end;
                 if depth=0 then Break;
             end;
+            '-': begin
+                acc := acc+'-';
+                if acc='<!--' then quoted := true;
+            end
             else acc := acc + ch;
         end;
     end;
@@ -430,6 +454,10 @@ begin
     if tag_open(tags[i]) then
         while i<tags.Count do begin
             Inc(i);
+            if tag_quote(tags[i])
+            then begin end
+            else
+
             if tag_text(tags[i])
             then result.Add(TVString.Create(decode(tags[i])))
             else
@@ -450,9 +478,12 @@ end;
 function xml_read(s: TStream): TVList;
 var tags: TStringList; i: integer; ch: unicodechar;
     encoding: TStreamEncoding;
-    prologue: unicodestring;
+    prologue, s_encoding: unicodestring;
+    attr: TStringList;
+
 begin try
     tags := nil;
+    attr := nil;
     case s.ReadDWord of
         $6D783F3C: begin prologue := '<?xm';    encoding := seUTF8;     end;
         $3CBFBBEF: begin prologue := '<';       encoding := seUTF8;     end;
@@ -469,15 +500,23 @@ begin try
         if ch in [#13, #10, '<'] then raise ELE.Create('Повреждён пролог '+prologue,'xml');
     until (ch='>');
 
-    //WriteLn(prologue);
+    attr := TStringList.Create;
+    attr.Delimiter := ' ';
+    attr.DelimitedText := prologue[7..Length(prologue)-2];
+    s_encoding := UpperCase(attr.Values['encoding']);
+    if s_encoding='"UTF-8"' then encoding := seUTF8;
+    if s_encoding='"WINDOWS-1251"' then encoding := seCP1251;
+    if s_encoding='"WINDOWS-1252"' then encoding := seCP1252;
+    if s_encoding='"KOI-8"' then encoding := seKOI8R;
 
     tags := read_tags(s, encoding);
     //for i := 0 to tags.Count-1 do WriteLn(tags[i]);
     i := 0;
-    while tag_text(tags[i]) do Inc(i); //костыль для пропуска переводов строки после пролога
+    while not tag_open(tags[i]) do Inc(i); //пропуск пролога
     result := tags_tree(tags,i);
 finally
     tags.Free;
+    attr.Free;
 end;
 end;
 
