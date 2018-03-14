@@ -100,6 +100,7 @@ const KOI8_R_cp: TCodePage = (
 function read_character(stream: TStream; encoding: TStreamEncoding): unicodechar;
 procedure write_character(stream: TStream; ch: unicodechar;
                             encoding: TStreamEncoding = seUTF8);
+procedure write_string(stream: TStream; s: unicodestring; encoding: TStreamEncoding = seUTF8);
 function read_BOM(stream: TStream; default: TStreamEncoding = seUTF8): TStreamEncoding;
 procedure write_BOM(stream: TStream; encoding: TStreamEncoding = seUTF8);
 
@@ -241,6 +242,13 @@ begin
         seKOI8R:  write8bit(KOI8_R_cp);
         else raise ECharsetError.Create('неизвестная кодировка');
     end
+end;
+
+procedure write_string(stream: TStream; s: unicodestring;
+    encoding: TStreamEncoding);
+var i: integer;
+begin
+    for i := 1 to Length(s) do write_character(stream, s[i], encoding);
 end;
 
 function read_BOM(stream: TStream; default: TStreamEncoding): TStreamEncoding;

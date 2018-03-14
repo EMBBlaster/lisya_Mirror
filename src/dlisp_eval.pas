@@ -1106,7 +1106,6 @@ var list: array of TValue; expr: TVList; if_compare: TInternalFunctionBody;
         end;
     end;
 
-
     procedure sort(lo,hi: integer);
     var a, b: integer; tmp: TValue;
     begin
@@ -1162,6 +1161,7 @@ var list: array of TValue; expr: TVList; if_compare: TInternalFunctionBody;
 
 begin try
     expr := nil;
+    if_compare := nil;
     case params_is(PL, result, [
         tpList, tpInternalFunction,
         tpList, tpSubprogram,
@@ -2368,6 +2368,27 @@ begin
     end;
 end;
 
+function if_xml_read            (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpStreamPointerActive]) of
+        1: begin
+            result := xml_read((PL.look[0] as TVStreamPointer).stream.fstream);
+        end;
+    end;
+end;
+
+function if_xml_write           (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpStreamPointerActive, tpList]) of
+        1: begin
+            xml_write((PL.look[0] as TVStreamPointer).stream.fstream, PL.L[1]);
+            result := TVT.Create;
+        end;
+    end;
+end;
+
 
 function if_sql_mysql_connection(const PL: TVList; {%H-}call: TCallProc): TValue;
 var database, username, host, password: unicodestring; port: integer;
@@ -2532,7 +2553,7 @@ begin
     end;
 end;
 
-const int_fun_count = 118;
+const int_fun_count = 120;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2669,6 +2690,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'XML:READ-FROM-STRING';      f:if_xml_read_from_string;  s:'(s :flag separate)'),
 (n:'XML:WRITE-TO-STRING';       f:if_xml_write_to_string;   s:'(s :flag separate)'),
+(n:'XML:READ';                  f:if_xml_read;              s:'(stream)'),
+(n:'XML:WRITE';                 f:if_xml_write;             s:'(stream xml)'),
 
 (n:'SQL:MYSQL-CONNECTION';      f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
 (n:'SQL:QUERY';                 f:if_sql_query;             s:'(db :rest q)'),
@@ -4485,4 +4508,4 @@ finalization
     base_stack.Free;
     free_int_fun_signs;
 end.
-//4576 4431
+//4576 4431 4488

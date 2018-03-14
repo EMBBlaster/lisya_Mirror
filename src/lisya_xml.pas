@@ -11,11 +11,16 @@ uses
     Classes, SysUtils, dlisp_values
     //, strutils
     , mar
-    ,lisya_predicates;
+    ,lisya_predicates
+    ,lisia_charset
+    ;
 
 function xml_read_from_string(s: unicodestring): TValue;
 function xml_read_from_string_l(s: unicodestring): TVList;
 function xml_read_from_string_sl(s: unicodestring): TVList;
+
+function xml_read(s: TStream): TVList;
+procedure xml_write(s: TStream; xml: TVList);
 
 function xml_write_to_string(xml: TVList): unicodestring;
 
@@ -49,6 +54,19 @@ begin
         else result := result + s[i];
 
     end;
+end;
+
+function encode(s: unicodestring): unicodestring;
+var i: integer;
+begin
+    result := '';
+    for i := 1 to length(s) do
+        case s[i] of
+            '&': result := result + '&amp;';
+            '>': result := result + '&gt;';
+            '<': result := result + '&lt;';
+            else result := result + s[i];
+        end;
 end;
 
 function word_start(const s: unicodestring; start: integer): integer;
@@ -89,7 +107,6 @@ begin
         result.add(TVString.Create(decode(s[ep+2..we-1])));
         ep := PosU('=', s, ep+1);
     end;
-
 end;
 
 
@@ -134,6 +151,7 @@ end;
 function decode_tag_l(S: unicodestring; out closed: boolean): TValue;
 var word_end: integer; attr_str: unicodestring;
 begin
+    //WriteLn(s);
     // Разбирает переданную строку вида <tag key="val"> и создаёт на её основе
     //структуру, представляющую элемент XML включая теги, но без дочерних
     //элементов.
@@ -311,12 +329,12 @@ begin
 
     result := '<'+tag.S[0];
     for i := 0 to (tag.L[1].count div 2)-1 do
-        result := result+' '+tag.L[1].SYM[i*2].name+'="'+tag.L[1].S[i*2+1]+'"';
+        result := result+' '+tag.L[1].SYM[i*2].name+'="'+encode(tag.L[1].S[i*2+1])+'"';
     result := result+'>';
 
     for i := 2 to tag.high do
         if tpString(tag.look[i])
-        then result := result+tag.S[i]
+        then result := result+encode(tag.S[i])
         else result := result+tag_write_to_string(tag.L[i]);
 
     result := result+'</'+tag.S[0]+'>';
@@ -328,8 +346,163 @@ begin
     result := '';
     for i := 0 to xml.high do
         if tpString(xml.look[i])
-        then result := result+xml.S[i]
+        then result := result + encode(xml.S[i])
         else result := result + tag_write_to_string(xml.L[i]);
+end;
+
+function tag_open(s: unicodestring): boolean;
+var last: integer;
+begin
+    last := Length(s);
+    result := (Length(s)>2)
+        and (s[1]='<')
+        and (s[last]='>')
+        and (s[2]<>'/')
+        and (s[last-1]<>'/');
+end;
+
+function tag_close(s: unicodestring): boolean;
+var last: integer;
+begin
+    last := Length(s);
+    result := (Length(s)>2)
+        and (s[1]='<')
+        and (s[last]='>')
+        and (s[2]='/')
+        and (s[last-1]<>'/');
+end;
+
+function tag_empty(s: unicodestring): boolean;
+var last: integer;
+begin
+    last := Length(s);
+    result := (Length(s)>2)
+        and (s[1]='<')
+        and (s[last]='>')
+        and (s[2]<>'/')
+        and (s[last-1]='/');
+end;
+
+function tag_text(s: unicodestring): boolean;
+begin
+    result := (Length(s)=0) or (s[1]<>'<');
+end;
+
+function read_tags(s: TStream; encoding: TStreamEncoding): TStringList;
+var depth, i: integer; ch: unicodechar; acc: unicodestring;
+    procedure add(s: unicodestring);
+    begin
+        if acc='' then Exit;
+        result.Add(s);
+        if tag_open(s) then Inc(depth)
+        else
+            if tag_close(s) then Dec(depth);
+    end;
+
+begin
+    depth := 0;
+    acc := '';
+    result := TStringList.Create;
+
+    while s.Position<s.Size do begin
+        ch := read_character(s, encoding);
+        case ch of
+            '<': begin
+                add(acc);
+                acc := '<';
+            end;
+            '>': begin
+                acc := acc + '>';
+                add(acc);
+                acc := '';
+                if depth=0 then Break;
+            end;
+            else acc := acc + ch;
+        end;
+    end;
+end;
+
+function tags_tree(tags: TStringList; var i: integer): TVList;
+var  closed: boolean;
+begin
+    result := decode_tag_l(tags[i], closed) as TVList;
+
+    if tag_open(tags[i]) then
+        while i<tags.Count do begin
+            Inc(i);
+            if tag_text(tags[i])
+            then result.Add(TVString.Create(decode(tags[i])))
+            else
+
+            if tag_close(tags[i])
+            then begin
+                if tags[i]<>('</'+result.S[0]+'>')
+                then raise ELE.Create('Непарный тэг '+result.S[0]+' -- '+tags[i], 'xml');
+                Break;
+            end
+            else
+
+            result.Add(tags_tree(tags, i));
+        end;
+end;
+
+
+function xml_read(s: TStream): TVList;
+var tags: TStringList; i: integer; ch: unicodechar;
+    encoding: TStreamEncoding;
+    prologue: unicodestring;
+begin try
+    tags := nil;
+    case s.ReadDWord of
+        $6D783F3C: begin prologue := '<?xm';    encoding := seUTF8;     end;
+        $3CBFBBEF: begin prologue := '<';       encoding := seUTF8;     end;
+        $003CFEFF: begin prologue := '<';       encoding := seUTF16LE;  end;
+        $3C00FFFE: begin prologue := '<';       encoding := seUTF16BE;  end;
+        $0000FEFF: begin prologue := '';        encoding := seUTF32LE;  end;
+        $FFFE0000: begin prologue := '';        encoding := seUTF32BE;  end;
+        else raise ELE.Create('Damaged byte order mask','xml');
+    end;
+
+    repeat
+        ch := read_character(s, encoding);
+        prologue := prologue + ch;
+        if ch in [#13, #10, '<'] then raise ELE.Create('Повреждён пролог '+prologue,'xml');
+    until (ch='>');
+
+    //WriteLn(prologue);
+
+    tags := read_tags(s, encoding);
+    //for i := 0 to tags.Count-1 do WriteLn(tags[i]);
+    i := 0;
+    while tag_text(tags[i]) do Inc(i); //костыль для пропуска переводов строки после пролога
+    result := tags_tree(tags,i);
+finally
+    tags.Free;
+end;
+end;
+
+procedure tag_write(s: TStream; tag: TVList);
+var i: integer;
+begin
+    write_string(s, '<'+tag.S[0]);
+    for i := 0 to (tag.L[1].count div 2)-1 do
+        write_string(s,' '+tag.L[1].SYM[i*2].name+'="'+encode(tag.L[1].S[i*2+1])+'"');
+    write_string(s, '>');
+
+    for i := 2 to tag.high do
+        if tpString(tag.look[i])
+        then write_string(s, encode(tag.S[i]))
+        else tag_write(s, tag.L[i]);
+
+    write_string(s, '</'+tag.S[0]+'>');
+end;
+
+procedure xml_write(s: TStream; xml: TVList);
+var  i: integer;
+begin
+    write_BOM(s, seUTF8);
+    write_string(s, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
+    tag_write(s, xml);
 end;
 
 end.
