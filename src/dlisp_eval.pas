@@ -2553,7 +2553,7 @@ begin
     end;
 end;
 
-const int_fun_count = 120;
+const int_fun_count = 121;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2651,6 +2651,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 
 (n:'OPEN-FILE FILE ФАЙЛ';       f:if_open_file;             s:'(n :key mode encoding)'),
+(n:'FILE ФАЙЛ';                 f:if_open_file;             s:'(n :optional mode encoding)'),
 (n:'CLOSE-FILE';                f:if_close_stream;          s:'(s)'),
 (n:'DEFLATE';                   f:if_deflate;               s:'(s :key encoding header)'),
 (n:'INFLATE';                   f:if_inflate;               s:'(s :key encoding header)'),
