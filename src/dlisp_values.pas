@@ -717,6 +717,7 @@ type
             oeGOTO,
             oeIF,
             oeIF_NIL,
+            //oeKEY,
             oeLAST,
             oeLET,
             oeMACRO,

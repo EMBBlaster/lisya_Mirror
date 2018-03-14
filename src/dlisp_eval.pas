@@ -923,6 +923,14 @@ begin
         (result as TVList).Add(TVString.Create(paramStr(i)));
 end;
 
+function if_environment_variable(const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is (PL, result, [
+        tpString]) of
+        1: result := TVString.Create(GetEnvironmentVariable(PL.S[0]));
+    end;
+end;
+
 function if_change_directory    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is (PL, result, [
@@ -2541,7 +2549,7 @@ begin
     end;
 end;
 
-const int_fun_count = 120;
+const int_fun_count = 121;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2585,6 +2593,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'FILE-EXISTS';               f:if_file_exists;           s:'(n)'),
 (n:'DIRECTORY-EXISTS';          f:if_directory_exists;      s:'(d)'),
 (n:'COMMAND-LINE';              f:if_command_line;          s:'()'),
+(n:'ENVIRONMENT-VARIABLE';      f:if_environment_variable;  s:'(name)'),
 (n:'CHANGE-DIRECTORY';          f:if_change_directory;      s:'(d)'),
 (n:'DELETE-FILE УДАЛИТЬ-ФАЙЛ';  f:if_delete_file;           s:'(f)'),
 (n:'RENAME-FILE ПЕРЕИМЕНОВАТЬ-ФАЙЛ';f:if_rename_file;           s:'(o n)'),
@@ -2990,7 +2999,7 @@ end;
 
 
 procedure TEvaluationFlow.oph_bind_package(name: unicodestring; import: boolean);
-var pack: TPackage; prefix: unicodestring;
+var pack: TPackage; prefix: unicodestring; path: TStringList; i: integer;
     procedure bind_pack;
     var i: integer;
     begin
@@ -3001,19 +3010,46 @@ var pack: TPackage; prefix: unicodestring;
                 prefix+pack.export_list.uname[i],
                 pack.stack.find_ref(pack.export_list.SYM[i]));
     end;
+
+    function load_and_bind(fn: unicodestring): boolean;
+    begin
+        if FileExists(fn) then begin
+            oph_execute_file(fn);
+            bind_pack;
+            result := true;
+        end
+        else result := false;
+    end;
+
 begin
     if import then prefix := '' else prefix := UpperCaseU(name)+':';
     pack := FindPackage(name);
     if pack<>nil
-    then bind_pack
-    else
-        if FileExists(name+'.lisya')
-        then begin oph_execute_file(name+'.lisya'); bind_pack; end
-        else
-            if FileExists(name+'.лися')
-            then begin oph_execute_file(name+'.лися'); bind_pack; end
-            else
-                raise ELE.Create('package '+name+' not found');
+    then begin
+        bind_pack;
+        Exit;
+    end;
+
+    if load_and_bind(name+'.lisya') then Exit;
+
+    if load_and_bind(name+'.лися') then Exit;
+
+    path := TStringList.Create;
+    {$IFDEF WINDOWS}
+    path.Delimiter := ';';
+    {$ELSE}
+    path.Delimiter := ':';
+    {$ENDIF}
+    path.DelimitedText := GetEnvironmentVariable('LISYA_PATH');
+
+    for i := 0 to path.Count-1 do begin
+        if load_and_bind(path[i]+'/'+name+'.lisya') then Exit;
+        if load_and_bind(path[i]+'/'+name+'.лися') then Exit;
+    end;
+
+    path.Free;
+
+    raise ELE.Create('package '+name+' not found');
 end;
 
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
