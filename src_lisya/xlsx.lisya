@@ -1,19 +1,9 @@
 ﻿(package xlsx (
-    extract-tags
-
     tag
 
     tag-val
     tag-set)
 
-
-
-(procedure extract-tags (xml name)
-    ;(print nil (subseq xml 2) )
-    (var res)
-    (for tag (subseq xml 2)
-        (when (= tag/0 name) (push res tag)))
-    res)
 
 (procedure find-tag-index (root name index)
     "Функция возвращает индекс искомого дочернего тега для использования
@@ -29,6 +19,7 @@
     (default index 0)
     (curry find-tag-index _ name index))
 
+
 (procedure tag-chain (names)
     (var chain)
     (for n names
@@ -40,8 +31,10 @@
                 (t (error "неверное имя" n)))))
     chain)
 
+
 (macro tag-val (root :rest names)
     (assemble elt /root @(tag-chain names)))
+
 
 (macro tag-set ((root :rest names) V)
     (assemble set (elt /root @(tag-chain names)) /V))

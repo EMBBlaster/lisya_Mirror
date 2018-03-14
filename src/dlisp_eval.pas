@@ -2002,33 +2002,21 @@ function if_read_byte           (const PL: TVList; {%H-}call: TCallProc): TValue
 var b: byte;
 begin
     case params_is(PL, result, [
-        vpStreamPointerActive]) of
+        vpStreamPointerActive, tpNIL,
+        vpStreamPointerActive, vpIntegerNotNegative,
+        vpStreamPointerActive, vpKeyword_ALL]) of
         1: if (PL.look[0] as TVStreamPointer).stream.read_byte(b)
             then result := TVInteger.Create(b)
             else result := TVList.Create;
-    end;
-end;
-
-function if_read_bytes          (const PL: TVList; {%H-}call: TCallProc): TValue;
-var res: TVByteVector;
-begin
-    case params_is(PL, result, [
-        vpStreamPointerActive, vpIntegerNotNegative,
-        vpStreamPointerActive, vpKeyword_ALL]) of
-        1: try
-            res := TVByteVector.Create;
+        2: begin
+            result := TVByteVector.Create;
             (PL.look[0] as TVStreamPointer).stream.read_bytes(
-                (res as TVByteVector).fBytes, PL.I[1]);
-
-        finally
-            result := res;
+                (result as TVByteVector).fBytes, PL.I[1]);
         end;
-        2: try
-            res := TVByteVector.Create;
+        3: begin
+            result := TVByteVector.Create;
             (PL.look[0] as TVStreamPointer).stream.read_bytes(
-                (res as TVByteVector).fBytes, -1);
-        finally
-            result := res;
+                (result as TVByteVector).fBytes, -1);
         end;
     end;
 end;
@@ -2553,7 +2541,7 @@ begin
     end;
 end;
 
-const int_fun_count = 121;
+const int_fun_count = 120;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2650,7 +2638,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'NOW';                       f:if_now;                   s:'()'),
 
 
-(n:'OPEN-FILE FILE ФАЙЛ';       f:if_open_file;             s:'(n :key mode encoding)'),
+(n:'OPEN-FILE';                 f:if_open_file;             s:'(n :key mode encoding)'),
 (n:'FILE ФАЙЛ';                 f:if_open_file;             s:'(n :optional mode encoding)'),
 (n:'CLOSE-FILE';                f:if_close_stream;          s:'(s)'),
 (n:'DEFLATE';                   f:if_deflate;               s:'(s :key encoding header)'),
@@ -2665,8 +2653,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'STREAM-POSITION';           f:if_stream_position;       s:'(s :optional p)'),
 (n:'STREAM-LENGTH';             f:if_stream_length;         s:'(s :optional l)'),
-(n:'READ-BYTE';                 f:if_read_byte;             s:'(s)'),
-(n:'READ-BYTES';                f:if_read_bytes;            s:'(s c)'),
+(n:'READ-BYTE';                 f:if_read_byte;             s:'(s :optional count)'),
 (n:'WRITE-BYTE';                f:if_write_byte;            s:'(s i)'),
 (n:'READ-CHARACTER';            f:if_read_character;        s:'(:optional s count)'),
 (n:'WRITE-STRING';              f:if_write_string;          s:'(s s)'),
