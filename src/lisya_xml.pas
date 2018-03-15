@@ -450,10 +450,49 @@ begin
     end;
 end;
 
+function decode_tag_open(s: unicodestring): TVList;
+var state : (sTag, sName, sValue, sQuoted, sDQuoted);
+var i: integer; acc: unicodestring; attr: TVList;
+    procedure add_attr; begin attr.Add(TVString.Create(acc)); acc := ''; end;
+begin
+    result := TVList.Create;
+    attr := TVList.Create;
+    state := sTag;
+    acc := '';
+    for i := 1 to Length(s) do
+        case state of
+            sTag: case s[i] of
+                ' ','/','>': begin
+                        result.Add(TVString.Create(acc));
+                        acc := '';
+                        state := sName;
+                    end;
+                '<': begin end;
+                else acc := acc + s[i];
+                end;
+            sName: case s[i] of
+                ' ': begin end;
+                '=': begin add_attr; state := sValue; end;
+                else acc := acc + s[i];
+                end;
+            sValue: case s[i] of
+                '''': state := sQuoted;
+                '"': state := sDQuoted;
+                end;
+            sQuoted: if s[i]=''''
+                then begin add_attr; state := sName; end
+                else acc := acc + s[i];
+            sDQuoted: if s[i]='"'
+                then begin add_attr; state := sName; end
+                else acc := acc + s[i];
+        end;
+    result.Add(attr);
+end;
+
 function tags_tree(tags: TStringList; var i: integer): TVList;
 var  closed: boolean;
 begin
-    result := decode_tag_l(tags[i], closed) as TVList;
+    result := decode_tag_open(tags[i]);
 
     if tag_open(tags[i]) then
         while i<tags.Count do begin
@@ -525,7 +564,7 @@ var i: integer;
 begin
     write_string(s, '<'+tag.S[0]);
     for i := 0 to (tag.L[1].count div 2)-1 do
-        write_string(s,' '+tag.L[1].SYM[i*2].name+'="'+encode(tag.L[1].S[i*2+1])+'"');
+        write_string(s,' '+tag.L[1].S[i*2]+'="'+encode(tag.L[1].S[i*2+1])+'"');
     write_string(s, '>');
 
     for i := 2 to tag.high do
