@@ -1,0 +1,19 @@
+﻿(fmt nil "оператор KEY ...")
+
+(block "KEY key-value"
+    (var kv \(head key1 "val1" "key2" "val2" 3 "val3"))
+    (const key2 "key2")
+    (assertion (= "val1" (key kv \key1)) "key 1")
+    (assertion (= "val2" (key kv key2)) "key 2")
+    (assertion (= "val3" (key kv 3)) "key 3")
+    (set (key kv \key1) "new value")
+    (assertion (= "new value" kv/2) "key set"))
+
+(block "KEY hash table"
+    (var ht (hash-table))
+    (assertion (= nil (key ht "key1")) "key ht 1")
+    (set (key ht "key1") "value")
+    (assertion (= "value" (key ht "key1")) "set key ht"))
+
+
+(log "успешно")
