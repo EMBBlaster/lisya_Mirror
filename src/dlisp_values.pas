@@ -379,7 +379,6 @@ type
     TListBody = class (TObjectList)
         ref_count: integer;
         constructor Create(free_objects: boolean);
-        destructor Destroy;
     end;
 
     TVList = class (TVCompoundIndexed)
@@ -401,10 +400,8 @@ type
         constructor Create; overload;
         constructor Create(VL: array of TValue; free_objects: boolean = true); overload;
         constructor Create(body: TListBody); overload;
-        //constructor CreatePhantom;
         destructor Destroy; override;
         function Copy(): TValue; override;
-        //function Phantom_Copy: TVList;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
         function equal(V: TValue): boolean; override;
@@ -418,7 +415,6 @@ type
         procedure Add(V: TValue);
         procedure Append(VL: TVList);
 
-        //procedure Add_phantom(V: TValue);
 
         property name[index: integer]: unicodestring read GetElementName;
         property uname[index: integer]: unicodestring read GetElementUName;
@@ -529,14 +525,23 @@ type
 
 
     { TVHashTable }
+    THashTableIndex = array of array of record h: DWORD; k: integer; v: integer end;
 
-    TVHashTable = class (TValue)
+    TVHashTable = class (TVCompound)
     private
         data: TVList;
+        index: THashTableIndex;
+        keys: TVList;
         fCount: integer;
+
+        function GetItem(index: integer): TValue; override;
+        procedure SetItem(index: integer; _V: TValue); override;
+        function LookItem(index: integer): TValue; override;
+
         procedure Expand;
     public
         constructor Create;
+        constructor CreateEmpty;
         destructor Destroy; override;
         function AsString: unicodestring; override;
         function Copy: TValue; override;
@@ -544,9 +549,13 @@ type
         function equal(V: TValue): boolean; override;
         procedure print;
 
-        procedure Add(key: TValue; V: TValue);
+        procedure CopyOnWrite;
+        procedure AddPair(key, value: TValue);
         function Get(key: TValue): TValue;
+        function GetIndex(key: TValue): integer;
         procedure Clear;
+
+        function Count: integer; override;
     end;
 
     { TVSymbolStack }
@@ -717,7 +726,7 @@ type
             oeGOTO,
             oeIF,
             oeIF_NIL,
-            //oeKEY,
+            oeKEY,
             oeLAST,
             oeLET,
             oeMACRO,
@@ -1137,48 +1146,93 @@ end;
 
 { TVHashTable }
 
-procedure TVHashTable.Expand;
-var old_data: TVList; i, j, capacity: integer;
+function TVHashTable.GetItem(index: integer): TValue;
 begin
-    if fCount<(data.Count div 4) then Exit;
+    result := data[index];
+end;
 
-    old_data := data;
-    data := TVList.Create;
-    capacity := old_data.Count*2;
-    data.SetCapacity(capacity);
-    for i := 1 to capacity do data.Add(TVList.Create);
+procedure TVHashTable.SetItem(index: integer; _V: TValue);
+var i, j: integer;
+begin
+    data[index] := _v;
+end;
 
-    for i := 0 to old_data.high do
-        for j := 0 to old_data.L[i].high do begin
-            data.L[old_data.L[i].L[j].I[0] mod capacity].Add(old_data.L[i][j]);
+function TVHashTable.LookItem(index: integer): TValue;
+begin
+    result := data.look[index];
+end;
+
+
+function TVHashTable.GetIndex(key: TValue): integer;
+var h, nest: DWORD; i: integer;
+begin
+    h := key.hash;
+    //WriteLn(h, '  ', Length(index));
+    nest := h mod Length(index);
+    for i := 0 to Length(index[nest])-1 do
+        if (index[nest][i].h=h) and ifh_equal(keys.look[index[nest][i].k], key)
+        then begin
+            result := index[nest][i].v;
+            Exit;
         end;
-    old_data.Free;
+
+    AddPair(key.Copy, TVList.Create);
+    result := data.high;
+end;
+
+procedure TVHashTable.Expand;
+var old_index: THashTableIndex; i, j,  nest: integer;
+begin
+    if count<(Length(index) div 4) then Exit;
+
+    old_index := index;
+
+    SetLength(index, Length(old_index)*2);
+
+    for i := 0 to Length(old_index)-1 do
+        for j := 0 to Length(old_index[i])-1 do begin
+            nest := old_index[i][j].h mod Length(index);
+            SetLength(index[nest], Length(index[nest])+1);
+            index[nest][Length(index[nest])-1] := old_index[i][j];
+        end;
 end;
 
 
 constructor TVHashTable.Create;
 begin
-    data := TVList.Create([TVList.Create]);
-    fCount := 0;
+    data := TVList.Create;
+    keys := TVList.Create;
+    SetLength(index, 2);
+    SetLength(index[0], 0);
+    SetLength(index[1], 0);
+end;
+
+constructor TVHashTable.CreateEmpty;
+begin
+    data := nil;
+    keys := nil;
+    SetLength(index, 0);
 end;
 
 destructor TVHashTable.Destroy;
 begin
+    keys.Free;
     data.Free;
+    SetLength(index, 0);
     inherited Destroy;
 end;
 
 function TVHashTable.AsString: unicodestring;
 begin
-    result := '#<HASH-TABLE '+IntToStr(fCount)+'/'+IntToStr(data.Count)+'>';
+    result := '#<HASH-TABLE '+IntToStr(count)+'/'+IntToStr(Length(index))+'>';
 end;
 
 function TVHashTable.Copy: TValue;
 begin
-    result := TVHashTable.Create;
-    (result as TVHashTable).data.Free;
+    result := TVHashTable.CreateEmpty;
     (result as TVHashTable).data := data.Copy as TVList;
-    (result as TVHashTable).fCount := fCount;
+    (result as TVHashTable).keys := keys.Copy as TVList;
+    (result as TVHashTable).index := index;
 end;
 
 function TVHashTable.hash: DWORD;
@@ -1192,55 +1246,60 @@ begin
 end;
 
 procedure TVHashTable.print;
-var i: integer;
+var i, j: integer;
 begin
     WriteLn('--------',AsString,'--------');
-    for i := 0 to data.high do
-        if data.L[i].Count>0 then WriteLn(i,'| ',data.L[i].AsString);
+    for i := 0 to Length(index)-1 do
+        for j := 0 to Length(index[i])-1 do
+            with index[i][j] do
+                WriteLn(h, '   ', k, ' = ', v);
+    WriteLn('keys');
+    for i := 0 to keys.high do WriteLn('    ', i, '  ', keys.look[i].AsString);
+    WriteLn('values');
+    for i := 0 to data.high do WriteLn('    ', i, '  ', data.look[i].AsString);
     WriteLn('--------',AsString,'--------');
 end;
 
-procedure TVHashTable.Add(key: TValue; V: TValue);
-var h: DWORD; index, i: integer; nest: TVList;
+procedure TVHashTable.CopyOnWrite;
+begin
+    data.CopyOnWrite;
+    //ключи не копируются при модификации значения ХЭШ таблицы,
+    //поскольку они изменяются только при добавлении новых значений
+end;
+
+procedure TVHashTable.AddPair(key, value: TValue);
+var h: DWORD; nest: DWORD;
 begin
     Expand;
+
     h := key.hash;
-
-    data.CopyOnWrite;
-    nest := data.L[h mod data.Count];
-    nest.CopyOnWrite;
-
-    for i := 0 to nest.high do begin
-        if (nest.L[i].I[0]=h) and ifh_equal(nest.L[i].look[1], key) then begin
-            nest.L[i][2] := V;
-            exit;
-        end;
-    end;
-
-    nest.Add(TVList.Create([TVInteger.Create(h), key.Copy, V]));
-    Inc(fCount);
+    keys.Add(key);
+    data.Add(value);
+    nest := h mod Length(index);
+    SetLength(index[nest], Length(index[nest])+1);
+    index[nest][high(index[nest])].h := h;
+    index[nest][high(index[nest])].k := keys.high;
+    index[nest][high(index[nest])].v := data.high;
 end;
 
+
 function TVHashTable.Get(key: TValue): TValue;
-var h: DWORD; i: integer; nest: TVList;
+var i: integer;
 begin
-    h := key.hash;
-
-    nest := data.L[h mod data.Count];
-
-    //WriteLn(nest.AsString);
-    for i := 0 to nest.high do begin
-        if (nest.L[i].I[0]=h) and ifh_equal(nest.L[i].look[1], key) then begin
-            result := nest.L[i][2];
-            exit;
-        end;
-    end;
-    result := TVList.Create;
+    i := GetIndex(key);
+    if i>=0
+    then result := data[i]
+    else result := TVList.Create;
 end;
 
 procedure TVHashTable.Clear;
 begin
 
+end;
+
+function TVHashTable.Count: integer;
+begin
+    result := data.Count;
 end;
 
 
@@ -1252,10 +1311,6 @@ begin
     ref_count := 1;
 end;
 
-destructor TListBody.Destroy;
-begin
-
-end;
 
 
 { TVDeflateStream }
@@ -1798,10 +1853,12 @@ procedure TVChainPointer.CopyOnWrite;
 var obj: TValue; i: integer;
 begin
     obj := self.V.V;
-    if (obj is TVList) then (obj as TVList).CopyOnWrite;
+    if obj is TVList then (obj as TVList).CopyOnWrite;
+    if obj is TVHashTable then (obj as TVHashTable).CopyOnWrite;
     for i := 0 to high(index)-1 do begin
         obj := (obj as TVCompound).look[index[i]];
         if (obj is TVList) then (obj as TVList).CopyOnWrite;
+        if obj is TVHashTable then (obj as TVHashTable).CopyOnWrite;
     end;
 end;
 

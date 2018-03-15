@@ -16,9 +16,9 @@
 
     (block
         (var in (open-file "test.bin" :mode :read))
-        (assertion (= (byte-vector 1 2) (read-bytes in 2)) "file read bytes")
+        (assertion (= (byte-vector 1 2) (read-byte in 2)) "file read bytes")
         (assertion (= 2 (stream-position in)) "stream-position")
-        (assertion (= (byte-vector 3 4 5) (read-bytes in :ALL)) "file read all"))
+        (assertion (= (byte-vector 3 4 5) (read-byte in :ALL)) "file read all"))
 
     (delete-file "test.bin")
 

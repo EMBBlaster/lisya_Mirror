@@ -65,6 +65,7 @@ begin
             '&': result := result + '&amp;';
             '>': result := result + '&gt;';
             '<': result := result + '&lt;';
+            '"': result := result + '&quot;';
             else result := result + s[i];
         end;
 end;
@@ -453,7 +454,8 @@ end;
 function decode_tag_open(s: unicodestring): TVList;
 var state : (sTag, sName, sValue, sQuoted, sDQuoted);
 var i: integer; acc: unicodestring; attr: TVList;
-    procedure add_attr; begin attr.Add(TVString.Create(acc)); acc := ''; end;
+    procedure add_attr;
+    begin attr.Add(TVString.Create(decode(acc))); acc := ''; end;
 begin
     result := TVList.Create;
     attr := TVList.Create;

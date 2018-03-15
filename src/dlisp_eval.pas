@@ -54,6 +54,7 @@ type
         procedure oph_bind_package(name: unicodestring; import: boolean = false);
 
         function opl_elt(PL: TVList): TVChainPointer;
+        function opl_key(PL: TVList): TVChainPointer;
         function opl_last(PL: TVList): TVChainPointer;
 
         function op_and(PL: TVList): TValue;
@@ -73,6 +74,7 @@ type
         function op_goto(PL: TVList): TValue;
         function op_if(PL: TVList): TValue;
         function op_if_nil(PL: TVList): TValue;
+        function op_key(PL: TVList): TValue;
         function op_last(PL: TVList): TValue;
         function op_let(PL: TVList): TValue;
         function op_macro_symbol(PL: TVList): TValue;
@@ -1183,7 +1185,7 @@ begin try
         end;
         2: begin
             to_list;
-            expr := TVList.Create([PL[1], nil, nil], false);
+            expr := TVList.Create([PL.look[1], nil, nil], false);
             sort(0, high(list));
             to_result;
         end;
@@ -1437,16 +1439,6 @@ begin
                         (PL.L[0].look[i] as TVByteVector).bytes[j]);
             end;
         end;
-    end;
-end;
-
-function if_key                 (const PL: TVList; {%H-}call: TCallProc): TValue;
-begin
-    case params_is(PL, result, [
-        tpList,      tpSymbol,
-        tpHashTable, tpAny]) of
-        1: result := value_by_key(PL.L[0], PL.uname[1]);
-        2: result := (PL.look[0] as TVHashTable).Get(PL.look[1]);
     end;
 end;
 
@@ -2549,7 +2541,7 @@ begin
     end;
 end;
 
-const int_fun_count = 121;
+const int_fun_count = 120;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2625,7 +2617,6 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'LIST СПИСОК';               f:if_list;                  s:'(:rest e)'),
 (n:'HASH-TABLE';                f:if_hash_table;            s:'()'),
 (n:'CONCATENATE';               f:if_concatenate;           s:'(:rest a)'),
-(n:'KEY';                       f:if_key;                   s:'(l k)'),
 (n:'GROUP ГРУППИРОВКА';         f:if_group;                 s:'(s :rest p)'),
 (n:'MISMATCH';                  f:if_mismatch;              s:'(a :rest b)'),
 
@@ -2748,6 +2739,7 @@ begin
             oeGOTO      : op('GOTO');
             oeIF        : op('IF');
             oeIF_NIL    : op('IF-NIL');
+            oeKEY       : op('KEY');
             oeLAST      : op('LAST');
             oeLET       : op('LET');
             oeMACRO     : op('MACRO');
@@ -3074,37 +3066,90 @@ try
         if tpCompoundIndexed(tmp) and vpIntegerNotNegative(ind)
         then result.add_index((ind as TVInteger).fI)
         else
-            if tpCompoundIndexed(tmp) and vpSymbol_LAST(ind)
-            then result.add_index((tmp as TVCompound).Count-1)
-            else
-                if tpCompoundIndexed(tmp) and tpSubprogram(ind)
-                then begin
-                    expr := TVList.Create([ind, tmp], false);
-                    ind_i := call(expr);
-                    if not tpInteger(ind_i) then raise ELE.Create('invalid index', 'invalid parametes');
-                    result.add_index((ind_i as TVInteger).fI);
-                    FreeAndNil(ind_i);
-                    FreeAndNil(expr);
-                end
-                else
-                    if tpRecord(tmp) and tpSymbol(ind)
-                    then result.add_index((tmp as TVRecord).get_n_of((ind as TVSymbol).uname))
-                    else
-                        if tpNIL(ind)
-                        then begin
-                            result.Free;
-                            result := TVChainPointer.Create(
-                                NewVariable(TVList.Create, true));
-                            exit;
-                        end
-                        else
-                            raise ELE.InvalidParameters;
+
+        if tpCompoundIndexed(tmp) and (vpSymbol_LAST(ind) or vpKeyword_LAST(ind))
+        then result.add_index((tmp as TVCompound).Count-1)
+        else
+
+        if tpCompoundIndexed(tmp) and tpSubprogram(ind)
+        then begin
+            expr := TVList.Create([ind, tmp], false);
+            ind_i := call(expr);
+            if not tpInteger(ind_i) then raise ELE.Create('invalid index', 'invalid parametes');
+            result.add_index((ind_i as TVInteger).fI);
+            FreeAndNil(ind_i);
+            FreeAndNil(expr);
+        end
+        else
+
+        if tpHashTable(tmp)
+        then result.add_index((tmp as TVHashTable).GetIndex(ind))
+        else
+
+        if tpRecord(tmp) and tpSymbol(ind)
+        then result.add_index((tmp as TVRecord).get_n_of((ind as TVSymbol).uname))
+        else
+
+        if tpNIL(ind)
+        then begin
+            result.Free;
+            result := TVChainPointer.Create(NewVariable(TVList.Create, true));
+            exit;
+        end
+        else
+
+        raise ELE.InvalidParameters;
+
         FreeAndNil(ind);
     end;
 finally
     ind.Free;
     FreeAndNil(ind_i);
     FreeAndNil(expr);
+end;
+end;
+
+function TEvaluationFlow.opl_key(PL: TVList): TVChainPointer;
+var i: integer; L: TVList; HT: TVHashTable; key: TValue;
+begin try
+    result := nil;
+    result := eval_link(PL.look[1]);
+    key := nil;
+    key := eval(PL[2]);
+
+    if tpList(result.look)
+    then begin
+        L := result.look as TVList;
+        i := L.high-1;
+        while i>=0 do
+            if ifh_equal(key, L.look[i])
+            then begin
+                result.add_index(i+1);
+                Exit;
+            end
+            else Dec(i,2);
+        //если ничего не найдено
+        result.Free;
+        result := TVChainPointer.Create(NewVariable(TVList.Create, true));
+    end
+    else
+
+    if tpHashTable(result.look)
+    then begin
+        HT := result.look as TVHashTable;
+        i := HT.GetIndex(key);
+        if i>=0
+        then result.add_index(i)
+        else begin
+            result.Free;
+            result := TVChainPointer.Create(NewVariable(TVList.Create, true));
+        end;
+    end
+    else
+
+    raise ELE.Create(result.look.AsString + '  is not key-value list or hash table');
+finally
+    key.Free;
 end;
 end;
 
@@ -3152,6 +3197,7 @@ begin try
                 case (head as TVOperator).op_enum of
                     oeELT: result := opl_elt(P as TVList);
                     oeLAST: result := opl_last(P as TVList);
+                    oeKEY: result := opl_KEY(P as TVList);
                     else result := TVChainPointer.Create(NewVariable(eval(P.Copy), true));
                 end;
                 exit;
@@ -3225,18 +3271,13 @@ begin
 try
     if CP.constant then raise ELE.Create('target is not variable');
     target := CP.look;
-    if not (tpList(target) or tpHashTable(target))
-    then raise ELE.Create('target is not list or hash table');
+    if not tpList(target)
+    then raise ELE.Create('target is not list');
 
     CP.CopyOnWrite;
 
-
     if tpList(target)
     then for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
-    if tpHashTable(target) then begin
-        if PL.Count<>4 then raise ELE.Malformed('PUSH hash-table key value');
-        (target as TVHashTable).Add(PL.look[2], eval(PL[3]));
-    end;
 
     result := TVT.Create;
 finally
@@ -3533,6 +3574,8 @@ begin try
 
     CP.set_target(eval(PL[2]));
 
+//    CP.look.AsString;
+
     result := TVT.Create;
 finally
     FreeAndNil(CP);
@@ -3760,6 +3803,16 @@ begin
         FreeAndNil(result);
         result := eval(PL[2])
     end;
+end;
+
+function TEvaluationFlow.op_key(PL: TVList): TValue;
+var CP: TVChainPointer;
+begin
+    if PL.Count<>3 then raise ELE.Malformed('KEY');
+
+    CP := opl_key(PL);
+    result := CP.value;
+    CP.Free;
 end;
 
 function TEvaluationFlow.op_last                    (PL: TVList): TValue;
@@ -4263,6 +4316,7 @@ begin
         oeGOTO      : result := op_goto(PL);
         oeIF        : result := op_if(PL);
         oeIF_NIL    : result := op_if_nil(PL);
+        oeKEY       : result := op_key(PL);
         oeLAST      : result := op_last(PL);
         oeLET       : result := op_let(PL);
         oeMACRO     : result := op_procedure(PL);

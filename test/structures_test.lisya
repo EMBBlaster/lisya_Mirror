@@ -8,22 +8,48 @@
         (hex (random 100000) 16)
         (hex (random 100000) 16)))
 
-    (push h "v1" v1)
-    (push h "v2" v2)
-    (push h "v3" v3)
+    (set (key h "v1") v1)
+    (set (key h "v2") v2)
+    (set (elt h "v3") v3)
 
     (assertion (and
         (= (key h "v1") v1)
         (= (key h "v2") v2)
         (= (key h "v3") v3)) "hash table"))
 
+(block "модфикация элементов ХЭШ таблицы"
+    (var ht (hash-table))
+
+    (push (elt ht :k4) "v1")
+    (append (elt ht :k4) \("v2" "v3"))
+    (assertion (= "v3" (pop (elt ht :k4))) "pop hash elt")
+    (assertion (= \("v1" "v2") (key ht :k4)) "mod hash elt")
+
+    (for e (elt ht :k4) (append e "L"))
+    (assertion (= \("v1L" "v2L") (elt ht :k4)) "loop mod hash elt"))
+
+
 (block "побочные эффекты при модификации хэш-таблицы"
     (var h1 (hash-table))
-    (push h1 1 "a")
+    (set (elt h1 1) "a")
+    (set (elt h1 2) \(nil nil nil))
     (var h2 h1)
-    (push h1 1 "b")
+    (set (elt h1 1) "b")
+    (set (elt h1 3) "c")
+
     (assertion (and
         (= (key h1 1) "b")
-        (= (key h2 1) "a")) "hash side"))
+        (= (key h2 1) "a")) "hash side")
+
+    (set (elt h1 2 1) "new")
+    (push (elt h2 2 :LAST) "new")
+
+    (assertion (and
+        (= (key h1 2) \(nil "new" nil))
+        (= (key h2 2) \(nil nil ("new")))) "hash side 2")
+
+    (assertion (= nil (key h2 3)) "hash side 3"))
+
+
 
 (log "успешно")
