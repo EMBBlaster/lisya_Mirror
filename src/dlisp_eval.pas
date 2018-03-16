@@ -863,6 +863,17 @@ begin
     result := TVT.Create;
 end;
 
+function if_test                  (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpStreamPointerActive,
+        tpString]) of
+        1: result := read((PL.look[0] as TVStreamPointer).stream.fstream,
+            (PL.look[0] as TVStreamPointer).stream.encoding);
+        2: result := read_from_string(PL.S[0]);
+    end;
+
+end;
 
 function if_extract_file_ext    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2149,7 +2160,7 @@ begin
         tpString]) of
         1: begin
             result := dlisp_read.read(PL.look[0] as TVStreamPointer);
-            //WriteLn('read>>',result.Asstring);
+
             if result is TVEndOfStream then begin
                 FreeAndNil(result);
                 result := TVList.Create;
@@ -2541,7 +2552,7 @@ begin
     end;
 end;
 
-const int_fun_count = 120;
+const int_fun_count = 121;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2576,7 +2587,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'LENGTH-LESS';               f:if_length_less;           s:'(a b)'),
 
 (n:'TEST-DYN';                  f:if_test_dyn;              s:'(:rest msgs)'),
-//(n:'ERROR';                 f:if_error;                 s:'(c :rest m)'),
+(n:'TEST';                      f:if_test;                  s:'(s)'),
 
 
 (n:'EXTRACT-FILE-EXT';          f:if_extract_file_ext;      s:'(s)'),

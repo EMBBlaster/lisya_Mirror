@@ -175,7 +175,7 @@
     (a n)
     (assertion (= n 0) "взаимная рекурсия"))
 
-
+(log \ELT)
 (block
     (log \ELT)
     (var test (record

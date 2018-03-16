@@ -8,11 +8,12 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    Classes, SysUtils, dlisp_values, mar;
+    Classes, SysUtils, dlisp_values, mar, lisia_charset;
 
 
 
-function read(str: TVStreamPointer): TValue; overload;
+function read(s: TStream; encoding: TStreamEncoding): TValue; overload;
+function read(sp: TVStreamPointer): TValue; overload;
 function read_from_string(s: unicodestring): TValue;
 
 procedure print(V:TValue; stream: TVStreamPointer; line_end: boolean = false);
@@ -21,14 +22,20 @@ procedure print(V:TValue; stream: TVStreamPointer; line_end: boolean = false);
 
 implementation
 
+
 const special_keywords: array[1..5] of unicodestring = (
     'ELSE', 'EXCEPTION', 'INSET', 'THEN', 'VALUE');
 
-type TSS = record
-        s: unicodestring;
-        i: integer;
-    end;
-    PSS = ^TSS;
+procedure raise_malformed(t: TStringList; i: integer; msg: unicodestring='');
+var j, first, last: integer; s: unicodestring;
+begin
+    first := i-7;
+    if first<0 then first := 0;
+    if i<t.Count then last:=i else last:=t.Count-1;
+    s:='';
+    for j:=first to last do s := s + ' ' + t[j];
+    raise ELE.Create(msg+s, 'syntax');
+end;
 
 function str_is_range(s: unicodestring; out l, h: Int64): boolean;
 var p: integer;
@@ -44,6 +51,20 @@ try
 except
     on EConvertError do result := false;
 end;
+end;
+
+function str_is_str(s: unicodestring; out ss: unicodestring): boolean;
+var i: integer; escaped: boolean;
+begin
+    ss := '';
+    escaped := false;
+    result := (Length(s)>=2) and (s[1]='"') and (s[Length(s)]='"');
+    if result then
+        for i := 2 to length(s)-1 do
+            case escaped of
+                false: if s[i]='\' then escaped:=true else ss:=ss+s[i];
+                true: begin escaped:=false; ss := ss+s[i]; end;
+            end;
 end;
 
 function str_is_datetime(s: unicodestring; out dt: TDateTime): boolean;
@@ -87,75 +108,44 @@ except
 end;
 end;
 
-function str_is_elt_call(s: unicodestring; out elt: unicodestring): boolean;
-var p2, p1: integer; sep: unicodestring;
-    function PosS(offset: integer): integer;
-    var f,b: integer;
-    begin
-//        writeLn('PosS ',s,' ',offset);
-        f := PosU('/',s, offset);
-        b := PosU('\',s, offset);
-        if (f=0) and (b=0) then result := 0
-        else
-            if (f=0) and (b>0) then begin
-                sep := '\';
-                result := b;
-            end
-            else
-                if (f>0) and (b=0) then begin
-                    sep :='';
-                    result := f;
-                end
-                else
-                    if b<f then begin
-                        sep := '\';
-                        result := b;
-                    end
-                    else
-                        if f<b then begin
-                            sep := '';
-                            result := f;
-                        end;
-        if (offset>1) and (s[offset-1]='\') then sep :='\' else sep := '';
-        //writeLn('PosS ',s,' ',offset,' ',f,' ',b,' r:',result,' ',sep);
-    end;
-
+function str_is_elt_call(s: unicodestring; out elt: TStringList): boolean;
+var last_p, i: integer; sep: unicodestring; acc: unicodestring;
+    state: (sNormal, sString, sEscaped);
+    procedure add;
+    begin if acc<>'' then begin elt.Add(acc); acc:=''; last_p:=i; end; end;
 begin
-    //result := false;
-    //p2 := PosU(field_separator, s);
-    //if (p2<=1) or
-    //    (S[Length(s)-Length(field_separator)+1..Length(s)]=field_separator)
-    //then exit;
-    //
-    //elt := '(ELT '+S[1..p2-1];
-    //p1 := p2 + Length(field_separator);
-    //while p2>0 do begin
-    //    p2 := PosU(field_separator,s, p1);
-    //    if p2>0 then begin
-    //        elt := elt +' '+ s[p1..p2-1];
-    //        p1 := p2 + Length(field_separator);
-    //    end;
-    //end;
-    //elt := elt +' '+s[p1..Length(s)]+')';
-    //result := true;
+    result := (PosU('\', s)>1) or (PosU('/', s)>1);
+    if not result then Exit;
+try
+    elt := TStringList.Create;
+    elt.Add('(');
+    elt.Add('ELT');
+    acc := '';
+    state := sNormal;
 
-    result := false;
-    p2 := PosS(1);
-    if (p2<=1) or (S[Length(s)] in ['/','\']) then exit;
-
-
-    elt := '(ELT '+S[1..p2-1];
-
-    p1 := p2 + 1;
-    while p2>0 do begin
-        p2 := PosS(p1);
-        if p2>0 then begin
-            elt := elt +' '+sep+ s[p1..p2-1];
-            p1 := p2 + 1;
+    for i := 1 to Length(s) do
+        case state of
+            sNormal: case s[i] of
+                '"': begin acc:=acc+s[i]; state:=sString; end;
+                '/': add;
+                '\': begin add; acc:=' \'; add; end;
+                else acc:=acc+s[i];
+            end;
+            sString: case s[i] of
+                '\': begin acc:=acc+s[i]; state:=sEscaped; end;
+                '"': begin acc:=acc+s[i]; state:=sNormal; end;
+                else acc:=acc+s[i];
+            end;
+            sEscaped: begin acc:=acc+s[i]; state:=sString; end;
         end;
-    end;
-    elt := elt +' '+sep+s[p1..Length(s)]+')';
-    result := true;
+
+    if last_p=Length(s) then raise ELE.Malformed('ELT '+s);
+    elt.Add(s[last_p+1..Length(s)]);
+    elt.Add(')');
+except
+    FreeAndNil(elt);
+    raise;
+end;
 end;
 
 function str_is_float(s: unicodestring; out f: double): boolean;
@@ -210,217 +200,6 @@ begin
 
     result := false;
 end;
-
-function is_nil(V: TValue): boolean;
-begin
-    result := (V is TVList) and ((V as TVList).Count=0);
-end;
-
-
-function read_u(sp: TVStreamPointer; ss_in: PSS = nil): TValue;
-var
-    q, r, sq: boolean;
-    p: integer;
-    f, re, im: double;
-    l, h: Int64;
-    ch: unicodechar;
-    acc, trans: unicodestring;
-    ss: TSS;
-    vi, vi2: TValue;
-    dt: TDateTime;
-
-    function read_char: boolean;
-    begin
-        if sp<>nil then begin result := sp.stream.read_char(ch); exit; end;
-        if ss_in<>nil then begin
-            if ss_in.i <=Length(ss_in.s) then begin
-                ch := ss_in.S[ss_in.i];
-                inc(ss_in.i);
-                result := true;
-            end
-            else result := false;
-            Exit;
-        end;
-    end;
-
-    procedure accum; begin if (not r) then acc := acc + ch; end;
-    function trim(s: unicodestring): unicodestring; begin trim:=Copy(s,2,length(s)-2); end;
-    procedure set_ss(s: unicodestring); begin ss.s := s; ss.i := 1; end;
-
-begin
-    q := false;
-    sq := false;
-    p := 0;
-    r := false;
-    acc := '';
-    while read_char do begin
-        case ch of
-            ' ', #13, #10, #$FEFF, #9: begin
-                    if (not q) and (not sq) and (p<=0) and (acc<>'') then break;
-                    if q or sq or (p>0) then accum;
-                    if ((ch=#13) or (ch=#10)) then r := false;
-                end;
-            '"': begin
-                    if (not r) then q := not q;
-                    accum;
-                end;
-            '''': begin
-                    if (not q) and (not r) then sq := not sq;
-                    accum;
-                end;
-            '(': begin
-                    if (not q) and (not r) then Inc(p);
-                    accum;
-                end;
-            ')': begin
-                    accum;
-                    if (not q) and (not r) then
-                    begin Dec(p); if p<=0 then break end;
-                end;
-            '\': begin
-                    if q and (not r)
-                    //and (p<=0)
-                    then begin
-                        if p>0 then accum;
-                        read_char;
-                    end;
-                    accum;
-                end;
-            ';': if not q then r := true else accum;
-            else accum;
-        end;
-    end;
-
-    result := nil;
-    //writeln('>>', acc);
-    if acc=''
-    then result := TVEndOfStream.Create
-    else
-
-    if (Length(acc)>=2) and (acc[1]='"') and (acc[Length(acc)]='"')
-    then result := TVString.Create(trim(acc))
-    else
-
-    if (acc[1]='(') and (acc[Length(acc)]=')')
-    then begin
-        result := TVList.Create;
-        set_ss(trim(acc));
-        vi := read_u(nil, @ss);
-        //vi.Print;
-        while not (vi is TVEndOfStream) do begin
-            (result as TVList).Add(vi);
-            vi := read_u(nil, @ss);
-        end;
-        vi.Free;
-    end
-    else
-
-
-    if (length(acc)>=4) and (UpperCaseU(acc[1..3])='#R(') and (acc[Length(acc)]=')')
-    then begin
-        result := TVRecord.Create;
-        set_ss(acc[4..Length(acc)-1]);
-        vi := read_u(nil, @ss);
-        vi2 := read_u(nil, @ss);
-        //WriteLn('read #S  ', vi.AsString, '  ', vi2.AsString);
-        //TODO: при считывании структур игнорируется нечётный аргумент
-        while not ((vi is TVEndOfStream) or (vi2 is TVEndOfStream))
-        do begin
-
-            if vi is TVSymbol
-            then (result as TVRecord).AddSlot(vi as TVSymbol, vi2)
-            else raise ELE.Create(vi.AsString+' is not symbol', 'syntax');
-            FreeAndNil(vi);
-            //vi2 здесь не освобождается потому что сохранено в слоте результата
-            vi := read_u(nil, @ss);
-            vi2 := read_u(nil, @ss);
-            //WriteLn('read #S  ', vi.AsString, '  ', vi2.AsString);
-        end;
-        vi.Free;
-        vi2.Free;
-    end
-    else
-
-    if (Length(acc)>=2) and (acc[1]='\')
-    then begin
-        set_ss(Copy(acc,2,length(acc)-1));
-        result := TVList.Create([TVSymbol.Create('QUOTE'), read_u(nil, @ss)]);
-    end
-    else
-
-    if (Length(acc)>=2) and (acc[1]='/')
-    then begin
-        set_ss(Copy(acc,2,length(acc)-1));
-        result := TVList.Create([TVSymbol.Create('VALUE'), read_u(nil, @ss)]);
-    end
-    else
-
-    if (Length(acc)>=2) and (acc[1]='@')
-    then begin
-        set_ss(Copy(acc,2,length(acc)-1));
-        result := TVList.Create([TVSymbol.Create('INSET'), read_u(nil, @ss)]);
-    end
-    else
-
-    if str_is_datetime(acc, dt)
-    then result := TVDateTime.Create(dt)
-    else
-
-    if (acc[Length(acc)]=')') or (Pos(' ',acc)>0)
-    then raise ELE.Create(acc, 'syntax')
-    else
-
-    if UpperCaseU(acc)='NIL'
-    then result := TVList.Create
-    else
-
-    if UpperCaseU(acc)='T'
-    then result := TVT.Create
-    else
-
-    if StrToInt64Def(acc,0)=StrToInt64Def(acc,1)
-    then result := TVInteger.Create(StrToInt64(acc))
-    else
-
-    if str_is_float(acc, f)
-    then result := TVFloat.Create(f)
-    else
-
-    if str_is_complex(acc, re, im)
-    then result := TVComplex.Create(re, im)
-    else
-
-    if str_is_range(acc, l, h)
-    then result := TVRange.Create(l,h)
-    else
-
-    if str_is_elt_call(acc, trans)
-    then result := read_from_string(trans)
-    else
-
-    if str_is_keyword(acc)
-    then result := TVKeyword.Create(acc)
-    else
-
-    result := TVSymbol.Create(acc);
-end;
-
-
-function read(str: TVStreamPointer): TValue;
-begin
-    assert(str <> nil, 'чтение из потока');
-    result := read_u(str);
-end;
-
-function read_from_string(s: unicodestring): TValue;
-var
-    ss: TSS;
-begin
-    ss.s := s;
-    ss.i := 1;
-    result := read_u(nil, @ss);
-end;
-
 
 
 const screen_width = 50;
@@ -518,6 +297,216 @@ finally
     if line_end then wr(new_line);
 end;
 
+end;
+
+
+function read_tokens(s: TStream; encoding: TStreamEncoding): TStringList;
+var ch: unicodechar; depth: integer; state: (sToken, sString, sQuoted, sComment);
+    acc: unicodestring;
+    procedure add;
+    begin
+        if acc='' then Exit;
+        while (Length(acc)>1) and (acc[1] in ['/','\','@']) do begin
+            result.Add(' '+acc[1]);
+            acc := acc[2..Length(acc)];
+        end;
+        result.Add(acc);
+        acc := '';
+    end;
+begin try
+    result := TStringList.Create;
+    acc := '';
+    depth := 0;
+    state := sToken;
+    while s.Position<s.Size do begin
+        ch := read_character(s, encoding);
+        case state of
+            sToken: case ch of
+                ' ',#13,#10,#$FEFF,#9: begin add; end;
+                '(': begin acc:=acc+ch; add; inc(depth); end;
+                ')': begin add; acc:=acc+ch; add; dec(depth);end;
+                '"': begin {add;} acc:=acc+ch; state:= sString; end;
+                '''': begin add; acc:=acc+ch; state:=sQuoted; end;
+                ';': begin add; state:=sComment; end;
+                else acc:=acc+ch;
+            end;
+            sString: case ch of
+                '"': begin acc:=acc+ch; {add;} state:=sToken; end;
+                '\': begin acc:=acc+'\'+read_character(s, encoding); end;
+                else acc:=acc+ch;
+            end;
+            sQuoted: case ch of
+                '''': begin acc:=acc+ch; add; state:=sToken; end;
+                '\': begin acc:=acc+read_character(s, encoding); end;
+                else acc:=acc+ch;
+            end;
+            sComment: case ch of
+                #13,#10: state:=sToken;
+            end;
+        end;
+        if (state=sToken) and (depth=0) and (result.Count>0) then break;
+    end;
+    add;
+    if state=sString then raise_malformed(result, result.Count, 'unmatched quotes');
+    if state=sQuoted then raise_malformed(result, result.Count, 'unmatched quotes');
+    if depth<>0 then raise_malformed(result, result.Count, 'unmatched parenthesis');
+except
+    FreeAndNil(result);
+    raise;
+end;
+end;
+
+
+function closing_parenthesis(t: TStringList; i: integer): boolean;
+begin
+    if i>=t.Count
+    then raise_malformed(t,i, 'unmatched parenthesis')
+    else result := t[i]=')';
+end;
+
+function s_expr(t: TStringList; var i: integer): TValue;
+var slot: TValue; dt: TDateTime; re, im: double; l,h: Int64; str: unicodestring;
+    elt: TStringList; j: integer;
+begin
+    if i>=t.Count then raise_malformed(t,i,'malformed expression');
+
+    if str_is_str(t[i], str)
+    then result := TVString.Create(str)
+    else
+
+    if t[i]='('
+    then begin
+        result := TVList.Create;
+        Inc(i);
+        while not closing_parenthesis(t,i) do (result as TVList).Add(s_expr(t, i));
+    end
+    else
+
+    if UpperCaseU(t[i])='#R('
+    then begin
+        result := TVRecord.Create;
+        Inc(i);
+        slot := nil;
+        while not closing_parenthesis(t,i) do try
+            slot := s_expr(t, i);
+            if not (slot is TVSymbol)
+            then raise ELE.Create('invalid slot name '+slot.AsString,'syntax');
+            if closing_parenthesis(t,i) then raise_malformed(t,i, 'malformed record');
+            (result as TVRecord).AddSlot(slot as TVSymbol, s_expr(t,i));
+        finally
+            slot.Free;
+        end;
+    end
+    else
+
+    if t[i]=' \'
+    then begin
+        Inc(i);
+        result := TVList.Create([TVSymbol.Create('QUOTE'), s_expr(t,i)]);
+        Dec(i);
+    end
+    else
+
+    if t[i]=' /'
+    then begin
+        Inc(i);
+        result := TVList.Create([TVSymbol.Create('VALUE'), s_expr(t,i)]);
+        Dec(i);
+    end
+    else
+
+    if t[i]=' @'
+    then begin
+        Inc(i);
+        result := TVList.Create([TVSymbol.Create('INSET'), s_expr(t,i)]);
+        Dec(i);
+    end
+    else
+
+    if str_is_datetime(t[i], dt)
+    then result := TVDateTime.Create(dt)
+    else
+
+
+    if UpperCaseU(t[i])='NIL'
+    then result := TVList.Create
+    else
+
+    if UpperCaseU(t[i])='T'
+    then result := TVT.Create
+    else
+
+    if StrToInt64Def(t[i],0)=StrToInt64Def(t[i],1)
+    then result := TVInteger.Create(StrToInt64(t[i]))
+    else
+
+    if str_is_float(t[i], re)
+    then result := TVFloat.Create(re)
+    else
+
+    if str_is_complex(t[i], re, im)
+    then result := TVComplex.Create(re, im)
+    else
+
+    if str_is_range(t[i], l, h)
+    then result := TVRange.Create(l,h)
+    else
+
+    if str_is_elt_call(t[i], elt)
+    then try
+        //for j:=0 to elt.Count-1 do WriteLn(elt[j]);
+        j := 0;
+        result := s_expr(elt, j);
+    finally
+        elt.Free;
+    end
+    else
+
+    if str_is_keyword(t[i])
+    then result := TVKeyword.Create(t[i])
+    else
+
+    if t[i]=')'
+    then raise_malformed(t,i, 'unmatched parenthesis')
+    else
+
+    result := TVSymbol.Create(t[i]);
+
+    Inc(i);
+end;
+
+function read(s: TStream; encoding: TStreamEncoding): TValue;
+var tokens: TStringList; i: integer;
+begin try
+    tokens := nil;
+    tokens := read_tokens(s, encoding);
+    //for i:=0 to tokens.count-1 do WriteLn(tokens[i]);
+    i := 0;
+    if tokens.Count>0
+    then result := s_expr(tokens, i)
+    else result := TVEndOfStream.Create;
+
+finally
+    tokens.Free;
+end;
+end;
+
+function read(sp: TVStreamPointer): TValue;
+begin
+    result := read(sp.stream.fstream, sp.stream.encoding);
+end;
+
+function read_from_string(s: unicodestring): TValue;
+var stream: TMemoryStream;
+begin try
+    result := nil;
+    stream := TMemoryStream.Create;
+    write_string(stream, s, seUTF8);
+    stream.Position:=0;
+    result := read(stream, seUTF8);
+finally
+    stream.Free;
+end;
 end;
 
 end.

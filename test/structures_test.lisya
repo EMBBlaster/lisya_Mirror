@@ -50,6 +50,11 @@
 
     (assertion (= nil (key h2 3)) "hash side 3"))
 
+(block "сокращённый синтаксис ELT для строковых ключей"
+    (var ht (HASH-TABLE))
+    (push ht/"key" "value")
+    (assertion (= "value" ht/"key"/0) "elt str key"))
+
 
 
 (log "успешно")
