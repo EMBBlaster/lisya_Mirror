@@ -23,13 +23,14 @@ procedure print(V:TValue; stream: TVStreamPointer; line_end: boolean = false);
 implementation
 
 
-const special_keywords: array[1..5] of unicodestring = (
-    'ELSE', 'EXCEPTION', 'INSET', 'THEN', 'VALUE');
+const special_keywords: array[1..6] of unicodestring = (
+    'ELSE', 'EXCEPTION', 'INSET', 'OTHERWISE', 'THEN', 'VALUE');
 
 procedure raise_malformed(t: TStringList; i: integer; msg: unicodestring='');
 var j, first, last: integer; s: unicodestring;
 begin
-    first := i-7;
+    //добавляет в сообщение об ошибке конец списка токенов
+    first := i-10;
     if first<0 then first := 0;
     if i<t.Count then last:=i else last:=t.Count-1;
     s:='';
@@ -485,7 +486,6 @@ begin try
     if tokens.Count>0
     then result := s_expr(tokens, i)
     else result := TVEndOfStream.Create;
-
 finally
     tokens.Free;
 end;
