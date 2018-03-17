@@ -2348,27 +2348,6 @@ begin
 end;
 
 
-
-function if_xml_read_from_string(const PL: TVList; {%H-}call: TCallProc): TValue;
-begin
-    case params_is(PL, result, [
-        tpString, tpNIL,
-        tpString, tpTrue]) of
-        1: result := xml_read_from_string_l(PL.S[0]);
-        2: result := xml_read_from_string_sl(PL.S[0]);
-    end;
-end;
-
-function if_xml_write_to_string (const PL: TVList; {%H-}call: TCallProc): TValue;
-begin
-    case params_is(PL, result, [
-        tpList, tpNIL,
-        tpList, tpTrue]) of
-        1: result := TVString.Create(xml_write_to_string(PL.L[0]));
-        2: result := TVString.Create('separate не реализован');
-    end;
-end;
-
 function if_xml_read            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2557,7 +2536,7 @@ begin
     end;
 end;
 
-const int_fun_count = 121;
+const int_fun_count = 119;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2692,8 +2671,6 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'UPPER-CASE';                f:if_upper_case;            s:'(s)'),
 (n:'LOWER-CASE';                f:if_lower_case;            s:'(s)'),
 
-(n:'XML:READ-FROM-STRING';      f:if_xml_read_from_string;  s:'(s :flag separate)'),
-(n:'XML:WRITE-TO-STRING';       f:if_xml_write_to_string;   s:'(s :flag separate)'),
 (n:'XML:READ';                  f:if_xml_read;              s:'(stream)'),
 (n:'XML:WRITE';                 f:if_xml_write;             s:'(stream xml)'),
 
