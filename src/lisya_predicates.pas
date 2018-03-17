@@ -55,6 +55,8 @@ function tpListNotEmpty                             (V: TValue): boolean;
 
 function tpListOfByteVectors                        (V: TValue): boolean;
 
+function tpListOfIndices                            (V: TValue): boolean;
+
 function tpListOfIntegers                           (V: TValue): boolean;
 
 function tpListOfLists                              (V: TValue): boolean;
@@ -411,6 +413,19 @@ end;
 function tpListOfByteVectors(V: TValue): boolean;
 begin
     result := tphListOf(V, tpByteVector);
+end;
+
+function tpListOfIndices(V: TValue): boolean;
+var i: integer; L: TVList;
+begin
+    result := false;
+    if V is TVList then begin
+        L := V as TVList;
+        for i:=0 to L.high do
+            if not (tpInteger(L.look[i]) or tpRange(L.look[i]))
+            then Exit;
+        result := true;
+    end;
 end;
 
 function tpListOfIntegers(V: TValue): boolean;

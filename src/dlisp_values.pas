@@ -429,6 +429,7 @@ type
 
         function extract(n: integer): TValue;
         procedure delete(n: integer);
+        procedure insert(n: integer; V: TValue);
         function POP: TValue;
         procedure Clear;
         function ValueList: TValueList;
@@ -709,7 +710,7 @@ type
 
     type TOperatorEnum = (
             oeAND,
-            oeAPPEND,
+            oeAPPEND,      //mod
             oeASSEMBLE,
             oeBLOCK,
             oeBREAK,
@@ -718,14 +719,16 @@ type
             oeCONST,
             oeCONTINUE,
             oeDEBUG,
-            oeDEFAULT,
+            oeDEFAULT,     //mod
+            oeDELETE,      //mod
             oeELT,
             oeERROR,
             oeEXECUTE_FILE,
-            oeFOR,
+            oeFOR,         //mod
             oeGOTO,
             oeIF,
             oeIF_NIL,
+            oeINSERT,      //mod
             oeKEY,
             oeLAST,
             oeLET,
@@ -733,14 +736,14 @@ type
             oeMACRO_SYMBOL,
             oeOR,
             oePACKAGE,
-            oePOP,
+            oePOP,          //mod
             oePROCEDURE,
-            oePUSH,
+            oePUSH,         //mod
             oeQUOTE,
             oeRECORD,
             oeRECORD_AS,
             oeRETURN,
-            oeSET,
+            oeSET,          //mod
             oeUSE,
             oeVAL,
             oeVAR,
@@ -3300,6 +3303,12 @@ procedure TVList.delete(n: integer);
 begin
     CopyOnWrite;
     fL.Delete(n);
+end;
+
+procedure TVList.insert(n: integer; V: TValue);
+begin
+    CopyOnWrite;
+    fl.Insert(n, V);
 end;
 
 function TVList.Copy: TValue;

@@ -66,6 +66,7 @@ type
         function op_const(PL: TVList): TValue;
         function op_debug(PL: TVList): TValue;
         function op_default(PL: TVList): TValue;
+        function op_delete(PL: TVList): TValue;
         function op_elt(PL: TVList): TValue;
         function op_error(PL: TVList): TValue;
         function op_execute_file(PL: TVList): TValue;
@@ -74,6 +75,7 @@ type
         function op_goto(PL: TVList): TValue;
         function op_if(PL: TVList): TValue;
         function op_if_nil(PL: TVList): TValue;
+        function op_insert(PL: TVList): TValue;
         function op_key(PL: TVList): TValue;
         function op_last(PL: TVList): TValue;
         function op_let(PL: TVList): TValue;
@@ -2743,6 +2745,7 @@ begin
             oeCONTINUE  : op('CONTINUE');
             oeDEBUG     : op('DEBUG');
             oeDEFAULT   : op('DEFAULT');
+            oeDELETE    : op('DELETE');
             oeELT       : op('ELT');
             oeERROR     : op('ERROR');
             oeEXECUTE_FILE: op('EXECUTE-FILE');
@@ -2750,6 +2753,7 @@ begin
             oeGOTO      : op('GOTO');
             oeIF        : op('IF');
             oeIF_NIL    : op('IF-NIL');
+            oeINSERT    : op('INSERT');
             oeKEY       : op('KEY');
             oeLAST      : op('LAST');
             oeLET       : op('LET');
@@ -3465,6 +3469,70 @@ finally
 end;
 end;
 
+function TEvaluationFlow.op_delete(PL: TVList): TValue;
+var CP: TVChainPointer; marks: array of boolean;
+    indices, expr, target, ind: TVList; arg, tmp: TValue;
+    i, j: integer;
+begin
+    if PL.Count<>3 then raise ELE.Malformed('DELETE');
+    CP := nil;
+    arg := nil;
+    ind := nil;
+    tmp := nil;
+    indices := nil;
+    CP := eval_link(PL.look[1]);
+try
+    if CP.constant then raise ELE.Create('target is not variable');
+    if not tpList(CP.look) then raise ELE.Create('target is not list');
+    CP.CopyOnWrite;
+    target := CP.look as TVList;
+
+    arg := eval(PL[2]);
+    if tpProcedure(arg)
+    then try
+        expr := TVList.Create([arg, target], false);
+        tmp := nil;
+        tmp := call(expr);
+        arg.Free;
+        arg := tmp;
+    finally
+        expr.Free;
+    end;
+
+    if tpListOfIndices(arg)
+    then indices:=arg as TVList
+    else
+        if tpInteger(arg) or tpRange(arg)
+        then begin
+            ind := TVList.Create([arg], false);
+            indices := ind;
+        end
+        else
+            raise ELE.InvalidParameters;
+
+    SetLength(marks, target.Count);
+    for i := 0 to high(marks) do marks[i] := false;
+    for i := 0 to indices.high do
+        if tpInteger(indices.look[i]) and (indices.I[i]>=0) and (indices.I[i]<=target.high)
+        then marks[indices.I[i]]:=true
+        else
+            if tpRange(indices.look[i]) and ((indices.look[i] as TVRange).low>=0)
+                and ((indices.look[i] as TVRange).high<=target.count)
+            then for j := (indices.look[i] as TVRange).low to (indices.look[i] as TVRange).high-1
+                    do marks[j] := true
+            else
+                raise ELE.InvalidParameters;
+    for i := target.high downto 0 do
+        if marks[i] then target.delete(i);
+
+    result := TVT.Create;
+finally
+    CP.Free;
+    arg.Free;
+    ind.Free;
+end;
+end;
+
 function TEvaluationFlow.op_elt                     (PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
@@ -3814,6 +3882,44 @@ begin
         FreeAndNil(result);
         result := eval(PL[2])
     end;
+end;
+
+function TEvaluationFlow.op_insert(PL: TVList): TValue;
+var CP: TVChainPointer; marks: array of boolean;
+    expr, target: TVList; arg, tmp: TValue;
+begin
+    if PL.Count<>4 then raise ELE.Malformed('INSERT');
+    CP := nil;
+    arg := nil;
+    CP := eval_link(PL.look[1]);
+try
+    if CP.constant then raise ELE.Create('target is not variable');
+    if not tpList(CP.look) then raise ELE.Create('target is not list');
+    CP.CopyOnWrite;
+    target := CP.look as TVList;
+
+    arg := eval(PL[2]);
+    if tpProcedure(arg)
+    then try
+        expr := TVList.Create([arg, target], false);
+        tmp := nil;
+        tmp := call(expr);
+        arg.Free;
+        arg := tmp;
+    finally
+        expr.Free;
+    end;
+
+    if not (tpInteger(arg) and ((arg as TVInteger).fI in [0..target.Count]))
+    then raise ELE.InvalidParameters;
+
+    target.insert((arg as TVInteger).fI, eval(PL[3]));
+
+    result := TVT.Create;
+finally
+    CP.Free;
+    arg.Free;
+end;
 end;
 
 function TEvaluationFlow.op_key(PL: TVList): TValue;
@@ -4320,6 +4426,7 @@ begin
         oeCONTINUE  : result := TVContinue.Create;
         oeDEBUG     : result := op_debug(PL);
         oeDEFAULT   : result := op_default(PL);
+        oeDELETE    : result := op_delete(PL);
         oeELT       : result := op_elt(PL);
         oeERROR     : result := op_error(PL);
         oeEXECUTE_FILE: result := op_execute_file(PL);
@@ -4327,6 +4434,7 @@ begin
         oeGOTO      : result := op_goto(PL);
         oeIF        : result := op_if(PL);
         oeIF_NIL    : result := op_if_nil(PL);
+        oeINSERT    : result := op_insert(PL);
         oeKEY       : result := op_key(PL);
         oeLAST      : result := op_last(PL);
         oeLET       : result := op_let(PL);
