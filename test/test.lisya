@@ -281,11 +281,13 @@
 (log \XML)
 (block
 ;    (var xml (xml:read-from-string "<out>текст</out>"))
-    (var xml (xml:read-from-string "<out><in>text</in><in>text</in>1</out>"))
-    (print nil xml)
-    (log))
+    (var s "<out><in a=\"v\">text</in><in>text</in>1</out>")
+    (var xml \("out" NIL ("in" ("a" "v") "text") ("in" NIL "text") "1"))
+    (assertion (= xml (xml:read s)) "xml read")
+    (assertion (= s (xml:write t xml)) "xml write"))
     
 
+(log)
 (var tests (directory "../test/*_test.lisya"))
 (assertion (= 13 (length tests)) "tests count")
 (for test tests (execute-file test))

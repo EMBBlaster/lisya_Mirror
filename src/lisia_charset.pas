@@ -109,6 +109,7 @@ function bytes_to_string(const bytes: TBytes; encoding: TStreamEncoding = seUTF8
 
 implementation
 
+
 function read_character(stream: TStream; encoding: TStreamEncoding): unicodechar;
     function read: byte; inline; begin result := stream.ReadByte; end;
 var b1, b2, b3, b4: byte;
@@ -284,6 +285,8 @@ begin
 
     result := default;
 end;
+
+
 
 procedure write_BOM(stream: TStream; encoding: TStreamEncoding);
     procedure b(b: byte); inline; begin stream.WriteByte(b); end;

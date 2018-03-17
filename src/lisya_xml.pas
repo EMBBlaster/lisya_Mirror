@@ -18,11 +18,14 @@ uses
 function xml_read_from_string(s: unicodestring): TValue;
 function xml_read_from_string_l(s: unicodestring): TVList;
 function xml_read_from_string_sl(s: unicodestring): TVList;
+function xml_from_string(s: unicodestring): TVList;
 
-function xml_read(s: TStream): TVList;
-procedure xml_write(s: TStream; xml: TVList);
+function xml_read(s: TStream; encoding: TStreamEncoding): TVList;
+procedure xml_write(s: TStream; xml: TVList; declaration: boolean = true);
 
 function xml_write_to_string(xml: TVList): unicodestring;
+
+function xml_to_string(xml: TVList): unicodestring;
 
 
 implementation
@@ -351,6 +354,15 @@ begin
         else result := result + tag_write_to_string(xml.L[i]);
 end;
 
+function tag_declaration(s: unicodestring): boolean;
+var last: integer;
+begin
+    last := Length(s);
+    result := (Length(s)>7)
+        and (s[1..5]='<?xml')
+        and (s[last-1..last]='?>')
+end;
+
 function tag_open(s: unicodestring): boolean;
 var last: integer;
 begin
@@ -400,55 +412,23 @@ begin
         and (s[last-2..last]='-->');
 end;
 
-procedure read_tags(s: TStream; var tags: TStringList; encoding: TStreamEncoding);
-var depth, i: integer; ch: unicodechar; acc: unicodestring;
-    quoted: boolean;
-    procedure add(s: unicodestring);
-    begin
-        if acc='' then Exit;
-        //костыль для пропуска переводов строки до начала разметки
-        //не добавлять текст первым элементом
-        if not ((tags.count=0) and tag_text(s)) then tags.Add(s);
-        if tag_open(s) then Inc(depth)
-        else
-            if tag_close(s) then Dec(depth);
-    end;
-    function tail(s: unicodestring; n: integer):unicodestring;
-    begin
-        if n<Length(s)
-        then result := s[length(s)-n+1..Length(s)]
-        else result := s;
-    end;
 
+procedure decode_declaration(s: unicodestring; var encoding: TStreamEncoding);
+var attr: TStringList; s_encoding: unicodestring;
 begin
-    quoted := false;
-    depth := 0;
-    acc := '';
-    tags.Clear;
-
-    while s.Position<s.Size do begin
-        ch := read_character(s, encoding);
-        case ch of
-            '<': if not quoted then begin
-                add(acc);
-                acc := '<';
-            end else acc := acc+'<';
-            '>': begin
-                acc := acc + '>';
-                if tail(acc, 3)='-->' then quoted := false;
-                if not quoted then begin
-                    add(acc);
-                    acc := '';
-                end;
-                if depth=0 then Break;
-            end;
-            '-': begin
-                acc := acc+'-';
-                if acc='<!--' then quoted := true;
-            end
-            else acc := acc + ch;
-        end;
-    end;
+    //игнорировать кодировку в декларации если ранее многобайтная
+    //кодировка была определена через BOM
+    if encoding in [seUTF16LE, seUTF16BE, seUTF32LE, seUTF32BE] then exit;
+    attr := TStringList.Create;
+    attr.CaseSensitive:=false;
+    attr.Delimiter := ' ';
+    attr.DelimitedText := s[7..Length(s)-2];
+    s_encoding := UpperCase(attr.Values['encoding']);
+    if s_encoding='"UTF-8"' then encoding := seUTF8;
+    if s_encoding='"WINDOWS-1251"' then encoding := seCP1251;
+    if s_encoding='"WINDOWS-1252"' then encoding := seCP1252;
+    if s_encoding='"KOI-8"' then encoding := seKOI8R;
+    attr.Free;
 end;
 
 function decode_tag_open(s: unicodestring): TVList;
@@ -469,11 +449,11 @@ begin
                         acc := '';
                         state := sName;
                     end;
-                '<': begin end;
+                '<':
                 else acc := acc + s[i];
                 end;
             sName: case s[i] of
-                ' ': begin end;
+                ' ': ;
                 '=': begin add_attr; state := sValue; end;
                 else acc := acc + s[i];
                 end;
@@ -489,6 +469,71 @@ begin
                 else acc := acc + s[i];
         end;
     result.Add(attr);
+end;
+
+procedure read_tags(s: TStream; var tags: TStringList; enc: TStreamEncoding);
+var depth, i: integer; ch: unicodechar; acc: unicodestring;
+    encoding: TStreamEncoding; BOM: DWORD; b: TBytes;
+    quoted: boolean;
+    procedure add;
+    begin
+        if acc='' then Exit;
+        tags.Add(acc);
+        if tag_open(acc) then if depth<0 then depth:=1 else Inc(depth)
+        else
+            if tag_close(acc) then Dec(depth)
+            else
+                if tag_declaration(acc) then decode_declaration(acc, encoding);
+    end;
+begin
+    depth := -1;
+    acc := '';
+    tags.Clear;
+
+    BOM := s.ReadDWord;
+    case BOM of
+        $6D783F3C: begin acc := '<?xm';    encoding := enc;     end;
+        $3CBFBBEF: begin acc := '<';       encoding := seUTF8;     end;
+        $003CFEFF: begin acc := '<';       encoding := seUTF16LE;  end;
+        $3C00FFFE: begin acc := '<';       encoding := seUTF16BE;  end;
+        $0000FEFF: begin acc := '';        encoding := seUTF32LE;  end;
+        $FFFE0000: begin acc := '';        encoding := seUTF32BE;  end;
+        else
+            if (BOM and $FF)=$3C then begin
+                SetLength(b, 4);
+                b[0]:=$3C;
+                b[1]:=(BOM shr 8) and $FF;
+                b[2]:=(BOM shr 16) and $FF;
+                b[3]:=(BOM shr 24) and $FF;
+                acc:=bytes_to_string(b, enc);
+                encoding := enc;
+            end else raise ELE.Create('Damaged byte order mask','xml');
+    end;
+
+    while s.Position<s.Size do begin
+        ch := read_character(s, encoding);
+        case ch of
+            '<': if not quoted then begin
+                add;
+                acc := '<';
+            end else acc := acc+'<';
+            '>': begin
+                acc := acc + '>';
+                if acc[length(acc)-2..Length(acc)]='-->' then quoted := false;
+                if not quoted then begin
+                    add;
+                    acc := '';
+                end;
+                if depth=0 then Break;
+            end;
+            '-': begin
+                acc := acc+'-';
+                if acc='<!--' then quoted := true;
+            end
+            else acc := acc + ch;
+        end;
+    end;
+    if depth<>0 then raise ELE.Create('malformed', 'xml');
 end;
 
 function tags_tree(tags: TStringList; var i: integer): TVList;
@@ -517,47 +562,19 @@ begin
 end;
 
 
-function xml_read(s: TStream): TVList;
-var tags: TStringList; i: integer; ch: unicodechar;
-    encoding: TStreamEncoding;
-    prologue, s_encoding: unicodestring;
-    attr: TStringList;
-
+function xml_read(s: TStream; encoding: TStreamEncoding): TVList;
+var tags: TStringList; i: integer;
 begin try
+    result := nil;
     tags := TStringList.Create;
-    attr := TStringList.Create;
-    case s.ReadDWord of
-        $6D783F3C: begin prologue := '<?xm';    encoding := seUTF8;     end;
-        $3CBFBBEF: begin prologue := '<';       encoding := seUTF8;     end;
-        $003CFEFF: begin prologue := '<';       encoding := seUTF16LE;  end;
-        $3C00FFFE: begin prologue := '<';       encoding := seUTF16BE;  end;
-        $0000FEFF: begin prologue := '';        encoding := seUTF32LE;  end;
-        $FFFE0000: begin prologue := '';        encoding := seUTF32BE;  end;
-        else raise ELE.Create('Damaged byte order mask','xml');
-    end;
 
-    repeat
-        ch := read_character(s, encoding);
-        prologue := prologue + ch;
-        if ch in [#13, #10, '<'] then raise ELE.Create('Повреждён пролог '+prologue,'xml');
-    until (ch='>');
-
-    attr.Delimiter := ' ';
-    attr.DelimitedText := prologue[7..Length(prologue)-2];
-    s_encoding := UpperCase(attr.Values['encoding']);
-    if s_encoding='"UTF-8"' then encoding := seUTF8;
-    if s_encoding='"WINDOWS-1251"' then encoding := seCP1251;
-    if s_encoding='"WINDOWS-1252"' then encoding := seCP1252;
-    if s_encoding='"KOI-8"' then encoding := seKOI8R;
-
-    repeat
-        read_tags(s, tags, encoding);
-    until tag_open(tags[0]) or (s.Position=s.Size);
+    read_tags(s, tags, encoding);
+    //for i:=0 to tags.Count-1 do WriteLn(tags[i]);
     i := 0;
+    while not tag_open(tags[i]) do Inc(i);
     result := tags_tree(tags,i);
 finally
     tags.Free;
-    attr.Free;
 end;
 end;
 
@@ -577,13 +594,43 @@ begin
     write_string(s, '</'+tag.S[0]+'>');
 end;
 
-procedure xml_write(s: TStream; xml: TVList);
+procedure xml_write(s: TStream; xml: TVList; declaration: boolean = true);
 var  i: integer;
 begin
-    write_BOM(s, seUTF8);
-    write_string(s, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
+    if declaration then begin
+        write_BOM(s, seUTF8);
+        write_string(s, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
+    end;
     tag_write(s, xml);
 end;
 
-end.
+function xml_from_string(s: unicodestring): TVList;
+var stream: TMemoryStream; i: integer;
+begin try
+    result := nil;
+    stream := TMemorystream.Create;
+    write_string(stream, s, seUTF8);
+    stream.Position:=0;
+    result := xml_read(stream, seUTF8);
+finally
+    stream.Free;
+end;
+end;
+
+function xml_to_string(xml: TVList): unicodestring;
+var stream: TMemoryStream;
+begin try
+    result := '';
+    stream := TMemoryStream.Create;
+    tag_write(stream, xml);
+    stream.Position:=0;
+    while stream.Position<stream.Size do
+        result := result+read_character(stream, seUTF8);
+finally
+    stream.Free;
+end;
+
+end;
+
+end. //635
 

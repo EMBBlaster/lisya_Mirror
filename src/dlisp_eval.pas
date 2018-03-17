@@ -866,15 +866,15 @@ begin
 end;
 
 function if_test                  (const PL: TVList; {%H-}call: TCallProc): TValue;
-begin
-    case params_is(PL, result, [
-        vpStreamPointerActive,
-        tpString]) of
-        1: result := read((PL.look[0] as TVStreamPointer).stream.fstream,
-            (PL.look[0] as TVStreamPointer).stream.encoding);
-        2: result := read_from_string(PL.S[0]);
-    end;
 
+begin
+    //case params_is(PL, result, [
+    //    vpStreamPointerActive]) of
+    //    1: read_tags((PL.look[0] as TVStreamPointer).stream.fstream, sl,
+    //        (PL.look[0] as TVStreamPointer).stream.encoding);
+    //
+    //end;
+    //result := TVT.Create;
 end;
 
 function if_extract_file_ext    (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -2372,21 +2372,24 @@ end;
 function if_xml_read            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        vpStreamPointerActive]) of
-        1: begin
-            result := xml_read((PL.look[0] as TVStreamPointer).stream.fstream);
-        end;
+        vpStreamPointerActive,
+        tpString]) of
+        1: result := xml_read((PL.look[0] as TVStreamPointer).stream.fstream,
+                (PL.look[0] as TVStreamPointer).stream.encoding);
+        2: result := xml_from_string(PL.S[0]);
     end;
 end;
 
 function if_xml_write           (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        vpStreamPointerActive, tpList]) of
+        vpStreamPointerActive,  tpList,
+        tpT,                    tpList]) of
         1: begin
             xml_write((PL.look[0] as TVStreamPointer).stream.fstream, PL.L[1]);
             result := TVT.Create;
         end;
+        2: result := TVString.Create(xml_to_string(PL.L[1]));
     end;
 end;
 
