@@ -635,12 +635,14 @@ end;
 function if_range               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpInteger,  tpInteger,
-        tpCompoundIndexed, tpNIL,
-        vpIntegerNotNegative, tpNIL]) of
+        tpInteger,            tpInteger,
+        tpCompoundIndexed,    tpNIL,
+        vpIntegerNotNegative, tpNIL,
+        vpIntegerNotNegative, tpCompoundIndexed]) of
         1: result := TVRange.Create(PL.I[0], PL.I[1]);
         2: result := TVRange.Create(0, (PL.Look[0] as TVCompound).Count);
         3: result := TVRange.Create(0, PL.I[0]);
+        4: result := TVRange.Create(PL.I[0], (PL.Look[1] as TVCompound).Count);
     end;
 end;
 

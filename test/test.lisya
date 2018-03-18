@@ -222,6 +222,18 @@
     (assertion (= (elt s1 :name) "s1") "elt name")
     (assertion (= (elt s1 :value) (elt s2 :value)) "= elt s1 s2"))
 
+(log \RANGE)
+(block "range"
+    (var rii (range 2 5))
+    (assertion (= 2..5 rii) "range i i")
+    (var ri (range 6))
+    (assertion (= 0..6 ri) "range i")
+    (var L \(0 1 2))
+    (var rl (range L))
+    (assertion (= 0..3 rl) "range L")
+    (var ril (range 1 L))
+    (assertion (= 1..3 ril) "range i L"))
+
 (log \DEFAULT)
 (block "DEFAULT"
     (var a 5)
