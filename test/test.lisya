@@ -177,12 +177,11 @@
 
 (log \ELT)
 (block
-    (log \ELT)
     (var test (record
-        slot1 (list
-            (record slot11 "a")
-            (record slot11 "b"))
-        slot2 (list
+        \slot1 (list
+            (record \slot11 "a")
+            (record \slot11 "b"))
+        \slot2 (list
             (list "x" "y" "z")
             (list "w" "u" "v"))))
 
@@ -195,7 +194,7 @@
 
     (log "SET ELT")
     (set test\slot1\0\slot11 "set A")
-    (assertion (= test\slot1\0 (record slot11 "set A")) "set elt")
+    (assertion (= test\slot1\0 (record \slot11 "set A")) "set elt")
 
     (log "PUSH ELT")
     (push test\slot2\0 "pushed")

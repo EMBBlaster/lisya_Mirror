@@ -87,8 +87,6 @@ type
         function op_procedure(PL: TVList): TValue;
     {m} function op_push(PL: TVList): TValue;
     {m} function op_set(PL: TVList): TValue;
-        function op_record(PL: TVList): TValue;
-        function op_record_as(PL: TVList): TValue;
         function op_return(PL: TVList): TValue;
         function op_val(PL: TVList): TValue;
         function op_var(PL: TVList): TValue;
@@ -1421,6 +1419,38 @@ begin
     end;
 end;
 
+function if_record              (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer;
+begin
+    case params_is(PL, result, [
+        vpListSymbolValue]) of
+        1: begin
+            result := TVRecord.Create;
+            i := 0;
+            while i<(PL.L[0].Count div 2) do begin
+                (result as TVRecord).AddSlot(PL.L[0].SYM[i*2], PL.L[0][i*2+1]);
+                Inc(i);
+            end;
+        end;
+    end;
+end;
+
+function if_record_as           (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer;
+begin
+    case params_is(PL, result, [
+        tpRecord, vpListSymbolValue]) of
+        1: begin
+            result := PL[0];
+            i := 0;
+            while i<(PL.L[1].Count div 2) do begin
+                (result as TVRecord).slot[PL.L[1].SYM[i*2].N] := PL.L[1][i*2+1];
+                Inc(i);
+            end;
+        end;
+    end;
+end;
+
 function if_hash_table          (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     result := TVHashTable.Create;
@@ -2537,7 +2567,7 @@ begin
     end;
 end;
 
-const int_fun_count = 119;
+const int_fun_count = 121;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2611,12 +2641,14 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'POSITION';                  f:if_position;              s:'(l e)'),
 (n:'LENGTH ДЛИНА';              f:if_length;                s:'(l)'),
 (n:'LIST СПИСОК';               f:if_list;                  s:'(:rest e)'),
+(n:'RECORD ЗАПИСЬ';             f:if_record;                s:'(:rest slots)'),
+(n:'RECORD-AS ЗАПИСЬ-КАК';      f:if_record_as;             s:'(template :rest slots)'),
 (n:'HASH-TABLE';                f:if_hash_table;            s:'()'),
 (n:'CONCATENATE';               f:if_concatenate;           s:'(:rest a)'),
 (n:'GROUP ГРУППИРОВКА';         f:if_group;                 s:'(s :rest p)'),
 (n:'MISMATCH';                  f:if_mismatch;              s:'(a :rest b)'),
 
-(n:'BYTE-VECTOR';               f:if_byte_vector;           s:'(:rest b)'),
+(n:'BYTE-VECTOR BYTES';         f:if_byte_vector;           s:'(:rest b)'),
 (n:'BITWISE-AND';               f:if_bitwise_and;           s:'(a b)'),
 (n:'BITWISE-NOT';               f:if_bitwise_not;           s:'(a)'),
 (n:'BITWISE-OR';                f:if_bitwise_or;            s:'(a b)'),
@@ -2746,8 +2778,6 @@ begin
             oePROCEDURE : op('PROCEDURE');
             oePUSH      : op('PUSH');
             oeQUOTE     : op('QUOTE');
-            oeRECORD    : op('RECORD');
-            oeRECORD_AS : op('RECORD-AS');
             oeRETURN    : op('RETURN');
             oeSET       : op('SET');
             oeUSE       : op('USE');
@@ -3629,52 +3659,6 @@ finally
 end end;
 
 
-function TEvaluationFlow.op_record               (PL: TVList): TValue;
-var i: integer; tmp: TVRecord;
-begin
-    if (PL.Count mod 2)<>1 then raise ELE.Malformed('RECORD');
-try
-    tmp := TVRecord.Create;
-    for i := 0 to (PL.Count div 2)-1 do begin
-        if tpSymbol(PL.look[2*i+1])
-        then tmp.AddSlot(PL.SYM[2*i+1], eval(PL[2*i+2]))
-        else raise ELE.Malformed('record: '+PL.look[2*i+1].AsString+' is not symbol');
-    end;
-    result := tmp;
-except
-    tmp.Free;
-    raise;
-end;
-end;
-
-function TEvaluationFlow.op_record_as            (PL: TVList): TValue;
-var i: integer; rec: TVRecord; tmp: TValue;
-begin
-    //TODO: очень запутанный алгоритм проверки параметров
-    if PL.Count<2 then raise ELE.malformed('RECORD-AS');
-    tmp := nil;
-    rec := nil;
-    result := nil;
-try
-    tmp := eval(PL[1]);
-
-    if not tpRecord(tmp)
-    then raise ELE.Create(tmp.AsString+' не структура', 'invalid parameters');
-    if (PL.Count mod 2)<>0
-    then raise ELE.Malformed('RECORD-AS: не чётное число параметров');
-
-    rec := tmp as TVRecord;
-    for i := 1 to (PL.Count div 2)-1 do begin
-        if tpSymbol(PL.look[2*i])
-        then rec.slot[PL.SYM[2*i].N] := eval(PL[2*i+1])
-        else raise ELE.Create(PL.look[2*i].AsString+' is not symbol');
-    end;
-    result := rec;
-except
-    tmp.Free;
-    raise;
-end;
-end;
 
 function TEvaluationFlow.op_return(PL: TVList): TValue;
 begin
@@ -4402,8 +4386,6 @@ begin
         oePUSH      : result := op_push(PL);
         oeQUOTE     : result := PL[1];
         //TODO: QUOTE не проверяет количество аргументов
-        oeRECORD    : result := op_record(PL);
-        oeRECORD_AS : result := op_record_as(PL);
         oeRETURN    : result := op_return(PL);
         oeSET       : result := op_set(PL);
         oeUSE       : result := op_with(PL, true);

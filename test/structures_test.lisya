@@ -55,6 +55,12 @@
     (push ht/"key" "value")
     (assertion (= "value" ht/"key"/0) "elt str key"))
 
+(block "RECORD"
+    (var r (record \a 1 \b 2))
+    (assertion (= r #R(b 2 a 1)) "record =")
+    (var r1 (record-as r \b 3))
+    (assertion (= r1 #R(b 3 a 1)) "record-as"))
+
 
 
 (log "успешно")

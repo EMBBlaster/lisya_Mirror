@@ -2,7 +2,7 @@
 (fmt nil "модифицирующие операторы... ")
 (block
     (var l (list 1 2 3))
-    (var su (record slot1 1 slot2 2))
+    (var su (record \slot1 1 \slot2 2))
     (var si "abcd")
     (var b (byte-vector 1 2 3))
 
@@ -13,7 +13,7 @@
     (assertion (not (elt l NIL)) "elt nil")
 
     (assertion (= 2 (elt (list 1 2 3) 1)) "elt list val")
-    (assertion (= 1 (elt (record slot1 1) \slot1)) "elt struct val")
+    (assertion (= 1 (elt (record \slot1 1) \slot1)) "elt struct val")
     (assertion (= "b" (elt "abcd" 1)) "elt string val")
     (assertion (= 2 (elt (byte-vector 1 2 3) 1)) "elt byte-vector val")
 
@@ -50,9 +50,9 @@
 
     (set su\slot2 "ab")
     (append su\slot2 "cd")
-    (assertion (= (record slot1 9 slot2 "abcd") su) "append elt")
+    (assertion (= (record \slot1 9 \slot2 "abcd") su) "append elt")
 
-    (var LL (list 0 (record slot "text")))
+    (var LL (list 0 (record \slot "text")))
     (assertion (= "x" (elt (last LL) \slot 2)) "elt/last nested"))
 
 
@@ -130,13 +130,13 @@
 
 (block "проверка на побочные эффекты"
     (block "SET"
-        (var a (list 1 (record s0 2 s1 (list 3 4))))
+        (var a (list 1 (record \s0 2 \s1 (list 3 4))))
         (var b a)
         (set b\1\s1\1 9)
         (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "set side"))
 
     (block "APPEND"
-        (var a (list 1 (record s0 2 s1 (list 3 4))))
+        (var a (list 1 (record \s0 2 \s1 (list 3 4))))
         (var b a)
         (append b\1\s1 \(6 7))
         (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "append side")
@@ -154,14 +154,14 @@
         (assertion (= (list "a") L4) "append side str 2"))
 
     (block "DEFAULT"
-        (var a (list 1 (record s0 2 s1 (list 3 nil))))
+        (var a (list 1 (record \s0 2 \s1 (list 3 nil))))
         (var b a)
         (procedure p (x) (default x 7))
         (p b\1\s1\1)
         (assertion (= a \(1 #R(S0 2 S1 (3 nil)))) "default side"))
 
     (block "FOR"
-        (var a (list 1 (record s0 2 s1 (list 3 4))))
+        (var a (list 1 (record \s0 2 \s1 (list 3 4))))
         (var b a)
         (for e b\1\s1 (set e 7))
         (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "for side")
@@ -173,13 +173,13 @@
         (assertion (= \((0 0)) L1) "for side 3"))
 
     (block "POP"
-        (var a (list 1 (record s0 2 s1 (list 3 4))))
+        (var a (list 1 (record \s0 2 \s1 (list 3 4))))
         (var b a)
         (pop b\1\s1)
         (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "pop side"))
 
     (block "PUSH"
-        (var a (list 1 (record s0 2 s1 (list 3 4))))
+        (var a (list 1 (record \s0 2 \s1 (list 3 4))))
         (var b a)
         (push b\1\s1 7)
         (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "push side")))

@@ -740,8 +740,6 @@ type
             oePROCEDURE,
             oePUSH,         //mod
             oeQUOTE,
-            oeRECORD,
-            oeRECORD_AS,
             oeRETURN,
             oeSET,          //mod
             oeUSE,
