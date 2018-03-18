@@ -575,9 +575,9 @@ end;
 /////////////////////////////////////
 
 //бесполезная оптимизация?
-type Tkw =                                   (kwFlag, kwKey, kwOptional, kwRest, kw_);
-const kwNames: array[Tkw] of unicodestring = (':FLAG',':KEY',':OPTIONAL',':REST','_');
-var kwN: array[Tkw] of integer;
+//type Tkw =                                   (kwFlag, kwKey, kwOptional, kwRest, kw_);
+//const kwNames: array[Tkw] of unicodestring = (':FLAG',':KEY',':OPTIONAL',':REST','_');
+//var kwN: array[Tkw] of integer;
 
 function vphKeywordName(V: TValue; const n: unicodestring): boolean;
 begin
@@ -738,15 +738,12 @@ end;
 
 function vpKeyword_FLAG                             (V: TValue): boolean;
 begin
-//    result := (V is TVKeyword) and (
-//           ((V as TVSymbol).uname = ':FLAG'));
-    result := vphKeywordName(V, ':FLAG');
+    result := V.equal(kwFLAG);
 end;
 
 function vpKeyword_KEY                              (V: TValue): boolean;
 begin
-    //result := (V is TVKeyword) and ((V as TVSymbol).uname = ':KEY');
-    result := vphKeywordName(V, ':KEY');
+    result := V.equal(kwKEY);
 end;
 
 function vpKeyword_KOI8R                            (V: TValue): boolean;
@@ -776,8 +773,7 @@ end;
 
 function vpKeyword_OPTIONAL                         (V: TValue): boolean;
 begin
-//    result := (V is TVKeyword) and ((V as TVSymbol).uname = ':OPTIONAL');
-    result := vphKeywordName(V, ':OPTIONAL');
+    result := V.equal(kwOPTIONAL);
 end;
 
 function vpKeyword_PRINT_STACK                      (V: TValue): boolean;
@@ -812,9 +808,7 @@ end;
 
 function vpKeyword_REST                             (V: TValue): boolean;
 begin
-    //result := (V is TVKeyword) and ((V as TVSymbol).uname = ':REST');
-    //result := (V is TVKeyword) and ((V as TVSymbol).N = kwN[kwRest]);
-    result := vphKeywordName(V, ':REST');
+    result := V.equal(kwREST);
 end;
 
 function vpKeyword_RESULT                           (V: TValue): boolean;
@@ -1117,8 +1111,7 @@ end;
 
 function vpSymbol__                                 (V: TValue): boolean;
 begin
-    //result := vphSymbolName(V, '_');
-    result := (V.ClassType=TVSymbol) and ((V as TVSymbol).N=kwN[kw_]);
+    result := V.equal(_);
 end;
 
 function vpSymbol_IN                                (V: TValue): boolean;
@@ -1147,15 +1140,6 @@ begin
 end;
 
 
-procedure init_keywords;
-var kw: Tkw;
-begin
-    for kw := low(kwN) to high(kwN) do
-        kwN[kw] := TVSymbol.symbol_n(kwNames[kw]);
-end;
 
-initialization
-   // init_keywords;
-
-end.  //955
+end.  //955 1157
 

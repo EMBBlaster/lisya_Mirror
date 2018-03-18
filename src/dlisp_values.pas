@@ -60,7 +60,6 @@ type
         function AsString(): unicodestring; override;
     end;
 
-    /////  Stack /////////////////////
 
     { TVariable }
 
@@ -409,7 +408,6 @@ type
         function Count: integer; override;
 
         function subseq(istart: integer; iend: integer = -1): TValue; override;
-        //function phantom_subseq(istart: integer; iend: integer = -1): TVList;
 
         function CopyOnWrite: boolean;
         procedure Add(V: TValue);
@@ -436,7 +434,6 @@ type
         function CdrValueList: TValueList;
         function CAR: TValue;
         function CDR: TVList;
-        //function Phantom_CDR: TVList;
     end;
 
 
@@ -478,7 +475,6 @@ type
 
     TVRecord = class (TVCompound)
     private
-        //unames: TStringList;
         unames: array of integer;
         slots: TObjectList;
         function fGetSlot(index: unicodestring): TValue;
@@ -492,7 +488,7 @@ type
         function index_of(nN: integer): integer;
     public
         constructor Create(names: array of unicodestring); overload;
-        //constructor Create(names: TStringList); overload;
+
         constructor Create; overload;
         destructor Destroy; override;
         function Copy: TValue; override;
@@ -504,14 +500,12 @@ type
         procedure SetSlot(nN: integer; V: TValue);
         function LookSlot(nN: integer): TValue;
 
-        //property slot[index: unicodestring]:TValue read fGetSlot write fSetSlot;
         property slot[nN: integer]:TValue read GetSlot write SetSlot;
         property Items[index: integer]: TValue read GetItem write SetItem; default;
         property look[index: integer]: TValue read LookItem;
         property look_name[n: unicodestring]: TValue read flook;
         function is_class(cl: TVRecord): boolean;
         procedure AddSlot(name: unicodestring; V: TValue); overload;
-        //procedure AddSlot(nN: integer; V: TValue); overload;
         procedure AddSlot(name: TVSymbol; V: TValue); overload;
 
 
@@ -575,32 +569,26 @@ type
         function AsString: unicodestring; override;
         function equal(V: TValue): boolean; override;
 
-        function Count: integer; //override;
-        function set_n(n: integer; V: TValue): boolean; //override;
-        //function get_n(n: integer): TValue; //override;
+        function Count: integer;
+        function set_n(n: integer; V: TValue): boolean;
 
         procedure Print(n: integer = -1); overload;
 
         procedure new_var(name: unicodestring; V: TValue; c: boolean = false); overload;
         procedure new_var(symbol: TVSymbol; V: TValue; c: boolean = false); overload;
         procedure new_var(N: integer; V: TValue; c: boolean = false); overload;
-        //function find_var(name: unicodestring): TValue; overload;
         function find_var(symbol: TVSymbol): TValue; overload;
         function find_var(N: integer): TValue; overload;
-        //procedure set_var(name: unicodestring; V: TValue); overload;
-        procedure set_var(symbol: TVSymbol; V: TValue); overload;
+        procedure set_var(symbol: TVSymbol; V: TValue);
         procedure clear_frame(n: integer = -1);
-        //procedure bind_var(name, target: unicodestring); overload;
-        procedure bind_var(symbol, target: TVSymbol); overload;
-        //function find_ref(name: unicodestring): PVariable; overload;
+        procedure bind_var(symbol, target: TVSymbol);
         function find_ref(symbol: TVSymbol): PVariable; overload;
         function find_ref(N: integer): PVariable; overload;
         function look_var(N: integer): PVariable;
         procedure new_ref(name: unicodestring; P: PVariable); overload;
         procedure new_ref(symbol: TVSymbol; P: PVariable); overload;
 
-        //function find_ref_or_nil(name: unicodestring): PVariable; overload;
-        function find_ref_or_nil(symbol: TVSymbol): PVariable; overload;
+        function find_ref_or_nil(symbol: TVSymbol): PVariable;
         function find_ref_in_frame_or_nil(name: unicodestring; n: integer): PVariable; overload;
         function find_ref_in_frame_or_nil(symbol: TVSymbol; n: integer): PVariable; overload;
         function find_ref_in_frame_or_nil(nN: integer; n: integer): PVariable; overload;
@@ -632,10 +620,7 @@ type
     { TVProcedure }
 
     TVProcedure = class (TVSubprogram)
-        //is_macro: boolean;
-        //is_macro_symbol: boolean;
         evaluated: boolean;
-        //fsignature: TSubprogramSignature;
         sign: TVList;
         stack_pointer: integer;
         stack: TVSymbolStack;
@@ -822,7 +807,6 @@ type
             head: boolean = false);
         destructor Destroy; override;
 
-//        procedure read_BOM; override;
         function AsString: unicodestring; override;
     end;
 
@@ -892,6 +876,7 @@ procedure ReleaseVariable(var P: PVariable);
 
 var symbols: array of unicodestring;
     _ : TVSymbol;
+    kwFLAG, kwKEY, kwOPTIONAL, kwREST: TVKeyword;
 
 
 implementation
@@ -908,7 +893,7 @@ var gensym_n: Int64 = -1;
 
 function ReleaseRecursiveProcedure(var P: PVariable): boolean;
 var vars, links: array of PVariable;
-    indent, i, j, c: integer;
+    i, j, c: integer;
     clear: boolean;
     function registered_node(P: PVariable): boolean;
     var i: integer;
@@ -932,9 +917,6 @@ var vars, links: array of PVariable;
             vars[high(vars)]:=P;
 
             proc := P.V as TVProcedure;
-            //for j := 1 to indent do Write('   ');
-            //WriteLn(IntToHex(qword(links[i]), 8), '  ', P.references,' ', proc.AsString);
-            //Inc(indent);
             for i:=0 to high(proc.stack.stack) do begin
                 if (proc.stack.stack[i].V<>nil) and tpProcedure(proc.stack.stack[i].V.V)
                 then begin
@@ -942,24 +924,16 @@ var vars, links: array of PVariable;
                     add_link(proc.stack.stack[i].V);
                 end;
             end;
-            //dec(indent);
         end;
     end;
 
 begin
-
-    indent := 0;
     result := false;
 
     if not tpProcedure(P.V) then Exit;
 
     add_link(P);
     add_node(P);
-
-    //WriteLn();
-
-    //for i := 0 to high(links) do
-    //    WriteLn(IntToHex(qword(links[i]),8), '  ', (links[i].V as TVProcedure).AsString);
 
     clear := true;
     for i := 0 to high(vars) do begin
@@ -972,7 +946,6 @@ begin
         if c>vars[i].ref_count then WriteLn('WARNING: нарушение ссылочной целостности');
     end;
 
-    //WriteLn(clear);
 
     if clear then begin
         for i := 0 to high(vars) do vars[i].ref_count:=-1;
@@ -981,7 +954,6 @@ begin
     end;
 
     result := clear;
-
 end;
 
 function NewVariable(_V: TValue = nil; _constant: boolean = false): PVariable;
@@ -1167,7 +1139,6 @@ function TVHashTable.GetIndex(key: TValue): integer;
 var h, nest: DWORD; i: integer;
 begin
     h := key.hash;
-    //WriteLn(h, '  ', Length(index));
     nest := h mod Length(index);
     for i := 0 to Length(index[nest])-1 do
         if (index[nest][i].h=h) and ifh_equal(keys.look[index[nest][i].k], key)
@@ -1320,7 +1291,6 @@ constructor TVDeflateStream.Create(_target: PVariable; enc: TStreamEncoding;
 begin
     encoding := enc;
     target := _target;
-    //WriteLn('inflate>> ',target.V.AsString());
     fStream := TCompressionStream.create(clDefault,
         (target.V as TVStream).fstream, not head);
     inherited Create();
@@ -1537,7 +1507,6 @@ constructor TVInflateStream.Create(_target: PVariable; enc: TStreamEncoding = se
 begin
     if enc = seBOM then read_BOM else encoding := enc;
     target := _target;
-    //WriteLn('inflate>> ',target.V.AsString());
     fStream := TDecompressionStream.create((target.V as TVStream).fstream, not head);
     inherited Create();
 end;
@@ -2063,10 +2032,6 @@ begin
     BV.Free;
 end;
 
-//function TVByteVector.High: integer;
-//begin
-//    result := length(fBytes)-1;
-//end;
 
 function TVByteVector.equal_to(BV: TVByteVector): boolean;
 var i: integer;
@@ -2108,7 +2073,6 @@ end;
 constructor ELisyaError.InvalidParameters;
 begin
     inherited Create('invalid parameters');
-//    fmessage := 'invalid parameters';
 end;
 
 constructor ELisyaError.Create(msg: unicodestring; ec: unicodestring; es: unicodestring='');
@@ -2168,13 +2132,10 @@ constructor TVSymbolStack.Create(parent: TVSymbolStack);
 begin
     self.parent := parent;
     SetLength(stack,0);
-    //WriteLn('--------------------> stack +1');
 end;
 
 destructor TVSymbolStack.Destroy;
-var i: integer;
 begin
-    //WriteLn('--------------------> stack -1');
     clear_frame(0);
     inherited Destroy;
 end;
@@ -2229,13 +2190,6 @@ begin
     result := true;
 end;
 
-//function TVSymbolStack.get_n(n: integer): TValue;
-//begin
-//    if (n<0) or (n>high(stack))
-//    then raise EOutOfBounds.Create('stack '+IntToStr(n));
-//
-//    result := stack[n].V.V.Copy;
-//end;
 
 procedure TVSymbolStack.Print(n: integer);
 var i, low_i: integer;
@@ -2286,11 +2240,6 @@ begin
     result := stack[index_of(N)].V.V.Copy;
 end;
 
-//procedure TVSymbolStack.set_var(name: unicodestring; V: TValue);
-//begin
-//    set_n(index_of(name), V);
-//end;
-
 procedure TVSymbolStack.set_var(symbol: TVSymbol; V: TValue);
 begin
     set_n(index_of(symbol.N), V);
@@ -2310,7 +2259,6 @@ begin
     end
     else _n := n;
 
-    //print(_n);
     for i := high(stack) downto _n do
         if (stack[i].V<>nil) and (stack[i].V.ref_count>1) and (stack[i].V.V is TVProcedure)
         then (stack[i].V.V as TVProcedure).Complement;
@@ -2321,12 +2269,6 @@ begin
     SetLength(stack, _n);
 end;
 
-//procedure TVSymbolStack.bind_var(name, target: unicodestring);
-//begin
-//    SetLength(stack, Length(stack)+1);
-//    stack[high(stack)].V := RefVariable(stack[index_of(target)].V);
-//    stack[high(stack)].name := UpperCaseU(name);
-//end;
 
 procedure TVSymbolStack.bind_var(symbol, target: TVSymbol);
 begin
@@ -2336,10 +2278,6 @@ begin
     stack[high(stack)].N := symbol.N;
 end;
 
-//function TVSymbolStack.find_ref(name: unicodestring): PVariable;
-//begin
-//    result := RefVariable(stack[index_of(name)].V);
-//end;
 
 function TVSymbolStack.find_ref(symbol: TVSymbol): PVariable;
 begin
@@ -2457,20 +2395,17 @@ end;
 
 function TVRecord.fGetSlot(index: unicodestring): TValue;
 begin
-    //result := (slots[unames.IndexOf(index)] as TValue).copy;
     result := (slots[index_of(TVSymbol.symbol_n(index))] as TValue).copy;
 end;
 
 procedure TVRecord.fSetSlot(index: unicodestring; V: TValue);
 begin
-    //slots[unames.IndexOf(index)] := V;
     slots[index_of(TVSymbol.symbol_n(index))] := V;
 end;
 
 function TVRecord.flook(index: unicodestring): TValue;
 begin
     //TODO: обращение к несуществующему слоту структуры вызывает необрабатываемую ошибку
-    //result := slots[unames.IndexOf(index)] as TValue;
     result := slots[index_of(TVSymbol.symbol_n(index))] as TValue;
 end;
 
@@ -2503,42 +2438,23 @@ end;
 constructor TVRecord.Create(names: array of unicodestring);
 var i: integer;
 begin
-//    unames := TStringList.Create;
     SetLength(unames, Length(names));
-    //unames.Capacity := Length(names);
     slots := TObjectList.create(true);
     slots.Capacity := Length(names);
     for i := low(names) to high(names) do begin
-        //unames.Add(UpperCaseU(names[i]));
         unames[i] := TVSymbol.symbol_n(names[i]);
         slots.Add(TVList.Create);
     end;
-    //unames.Sort;
 end;
-
-//constructor TVRecord.Create(names: TStringList);
-//var i: integer;
-//begin
-//    unames := names;
-//    slots := TObjectList.create(true);
-//    slots.Capacity := names.Count;
-//    for i := 0 to unames.Count-1 do begin
-//        unames[i] := UpperCaseU(unames[i]);
-//        slots.Add(TVList.Create);
-//    end;
-//    //unames.Sort;
-//end;
 
 constructor TVRecord.Create;
 begin
-    //unames := TStringList.Create;
     SetLength(unames, 0);
     slots := TObjectList.Create(true);
 end;
 
 destructor TVRecord.Destroy;
 begin
-//    unames.Free;
     SetLength(unames, 0);
     slots.Free;
     inherited Destroy;
@@ -2547,13 +2463,11 @@ end;
 function TVRecord.Copy: TValue;
 var i: integer;
 begin
-    //WriteLn('>>', self.AsString);
     result := TVRecord.Create;
-    //(result as TVRecord).unames.capacity := unames.count;
+
     SetLength((result as TVRecord).unames, Length(unames));
     (result as TVRecord).slots.capacity := slots.count;
     for i := low(unames) to high(unames) do begin
-        //(result as TVRecord).unames.Add(unames[i]);
         (result as TVRecord).unames[i] := unames[i];
         (result as TVRecord).slots.Add((slots[i] as TValue).copy);
     end;
@@ -2621,13 +2535,6 @@ begin
     slots.Add(V);
 end;
 
-//procedure TVRecord.AddSlot(nN: integer; V: TValue);
-//begin
-//    SetLength(unames, Length(unames)+1);
-//    unames[high(unames)] := nN;
-//    slots.Add(V);
-//end;
-
 procedure TVRecord.AddSlot(name: TVSymbol; V: TValue);
 begin
     SetLength(unames, Length(unames)+1);
@@ -2652,19 +2559,16 @@ end;
 
 function TVRecord.count: integer;
 begin
-    //result := unames.Count;
     result := Length(unames);
 end;
 
 function TVRecord.name_n(n: integer): unicodestring;
 begin
-    //result := unames[n];
     result := TVSymbol.symbol_uname(unames[n]);
 end;
 
 function TVRecord.get_n_of(index: unicodestring): integer;
 begin
-    //result := unames.IndexOf(index);
     result := index_of(TVSymbol.symbol_n(index));
 end;
 
@@ -2673,7 +2577,6 @@ end;
 
 constructor TVOperator.Create(name: unicodestring; en: TOperatorEnum);
 begin
-    //self.name := UpperCaseU(name);
     self.nN := TVSymbol.symbol_n(name);
     self.op_enum := en;
 end;
@@ -2691,8 +2594,6 @@ end;
 
 function TVOperator.Copy: TValue;
 begin
-    //сигнатура копируется по ссылке, поскольку операторы не могут быть
-    //изменены или полностью уничтожены
     result := TVOperator.Create(nN, op_enum);
 end;
 
@@ -2811,18 +2712,10 @@ begin
     rests := nil;
     evaluated := false;
     stack_pointer := -1;
-
-    //WriteLn('proc +');
 end;
 
 destructor TVProcedure.Destroy;
-var i: integer;
 begin
-//    for i := 0 to high(fsignature) do fsignature[i].n := '';
-//    SetLength(fsignature,0);
-
-    //WriteLn('proc -', TVSymbol.symbol_uname(self.nN));
-
     stack.Free;
     body.Free;
     sign.Free;
@@ -3220,14 +3113,6 @@ begin
 
 end;
 
-//procedure TVList.Add_phantom(V: TValue);
-//begin
-//    CopyOnWrite;
-//    if V is TVList
-//    then fl.Add((V as TVList).Phantom_Copy)
-//    else fL.Add(V.Copy)
-//end;
-
 function TVList.GetElementName(index: integer): unicodestring;
 begin
     Assert(fL[index] is TVSymbol, 'Элемент '+IntToStr(index)+' не символ');
@@ -3471,7 +3356,16 @@ end;
 
 initialization
     _ := TVSymbol.Create('_');
+    kwFLAG := TVKeyword.Create(':FLAG');
+    kwKEY := TVKeyword.Create(':KEY');
+    kwOPTIONAL := TVKeyword.Create(':OPTIONAL');
+    kwREST := TVKeyword.Create(':REST');
+
 
 finalization
+    kwREST.Free;
+    kwOPTIONAL.Free;
+    kwKEY.Free;
+    kwFLAG.Free;
     _.Free;
-end.
+end.  //3477 3361

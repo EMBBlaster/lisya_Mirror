@@ -190,7 +190,7 @@ end;
 
 
 procedure read_tags(s: TStream; var tags: TStringList; enc: TStreamEncoding);
-var depth, i: integer; ch: unicodechar; acc: unicodestring;
+var depth: integer; ch: unicodechar; acc: unicodestring;
     encoding: TStreamEncoding; BOM: DWORD; b: TBytes;
     quoted: boolean;
     procedure add;
@@ -207,6 +207,7 @@ begin
     depth := -1;
     acc := '';
     tags.Clear;
+    quoted := false;
 
     BOM := s.ReadDWord;
     case BOM of
@@ -251,7 +252,6 @@ begin
 end;
 
 function tags_tree(tags: TStringList; var i: integer): TVList;
-var  closed: boolean;
 begin
     result := decode_tag_open(tags[i]);
 
@@ -309,7 +309,6 @@ begin
 end;
 
 procedure xml_write(s: TStream; xml: TVList; declaration: boolean = true);
-var  i: integer;
 begin
     if declaration then begin
         write_BOM(s, seUTF8);
@@ -319,7 +318,7 @@ begin
 end;
 
 function xml_from_string(s: unicodestring): TVList;
-var stream: TMemoryStream; i: integer;
+var stream: TMemoryStream;
 begin try
     result := nil;
     stream := TMemorystream.Create;
