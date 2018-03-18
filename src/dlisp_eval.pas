@@ -53,40 +53,40 @@ type
         function oph_execute_file(fn: unicodestring): boolean;
         procedure oph_bind_package(name: unicodestring; import: boolean = false);
         function oph_eval_indices(V, target: TValue): TValue;
+        procedure oph_eval_link_for_modification(var CP: TVChainPointer; P: TValue);
 
         function opl_elt(PL: TVList): TVChainPointer;
         function opl_key(PL: TVList): TVChainPointer;
         function opl_last(PL: TVList): TVChainPointer;
 
         function op_and(PL: TVList): TValue;
-        function op_append(PL: TVList): TValue;
+    {m} function op_append(PL: TVList): TValue;
         function op_assemble(PL: TVList): TValue;
         function op_block(PL: TVList): TValue;
         function op_case(PL: TVList): TValue;
         function op_cond(PL: TVList): TValue;
         function op_const(PL: TVList): TValue;
         function op_debug(PL: TVList): TValue;
-        function op_default(PL: TVList): TValue;
-        function op_delete(PL: TVList): TValue;
+    {m} function op_default(PL: TVList): TValue;
+    {m} function op_delete(PL: TVList): TValue;
         function op_elt(PL: TVList): TValue;
         function op_error(PL: TVList): TValue;
         function op_execute_file(PL: TVList): TValue;
-        //function op_filter(PL: TVList): TValue;
         function op_for(PL: TVList): TValue;
         function op_goto(PL: TVList): TValue;
         function op_if(PL: TVList): TValue;
         function op_if_nil(PL: TVList): TValue;
-        function op_insert(PL: TVList): TValue;
+    {m} function op_insert(PL: TVList): TValue;
         function op_key(PL: TVList): TValue;
         function op_last(PL: TVList): TValue;
         function op_let(PL: TVList): TValue;
         function op_macro_symbol(PL: TVList): TValue;
         function op_or(PL: TVList): TValue;
         function op_package(PL: TVList): TValue;
-        function op_pop(PL: TVList): TValue;
+    {m} function op_pop(PL: TVList): TValue;
         function op_procedure(PL: TVList): TValue;
-        function op_push(PL: TVList): TValue;
-        function op_set(PL: TVList): TValue;
+    {m} function op_push(PL: TVList): TValue;
+    {m} function op_set(PL: TVList): TValue;
         function op_record(PL: TVList): TValue;
         function op_record_as(PL: TVList): TValue;
         function op_return(PL: TVList): TValue;
@@ -3057,6 +3057,18 @@ begin
     else result := V;
 end;
 
+procedure TEvaluationFlow.oph_eval_link_for_modification(
+    var CP: TVChainPointer; P: TValue);
+begin
+    CP := nil;
+    CP := eval_link(P);
+    if CP.constant then begin
+        FreeAndNil(CP);
+        raise ELE.Create('target is not variable');
+    end;
+    CP.CopyOnWrite;
+end;
+
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
 var i: integer; tmp: TValue; ind: TValue; expr: TVList;
 begin
@@ -3260,37 +3272,30 @@ finally
 end;
 end;
 
-function TEvaluationFlow.op_push                    (PL: TVList): TValue;
-var i: integer; CP: TVChainPointer; target: TValue;
-begin
-    CP := eval_link(PL.look[1]);
-try
-    if CP.constant then raise ELE.Create('target is not variable');
-    target := CP.look;
-    if not tpList(target)
-    then raise ELE.Create('target is not list');
-
-    CP.CopyOnWrite;
-
-    if tpList(target)
-    then for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
-
-    result := TVT.Create;
-finally
-    CP.Free; //TODO: может упасть здесь если возникло исключение при вычислении параметров?
-end;
-end;
-
 function TEvaluationFlow.op_pop                     (PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
-    CP := nil;
-    CP := eval_link(PL.look[1]);
+    oph_eval_link_for_modification(CP, PL.look[1]);
 try
-    if CP.constant then raise ELE.Create('target is not variable');
     if not tpList(CP.look) then raise ELE.Create('target is not list');
-    CP.CopyOnWrite;
+
     result := (cp.look as TVList).POP;
+finally
+    CP.Free;
+end;
+end;
+
+function TEvaluationFlow.op_push                    (PL: TVList): TValue;
+var i: integer; CP: TVChainPointer; target: TValue;
+begin
+    oph_eval_link_for_modification(CP, PL.look[1]);
+try
+    target := CP.look;
+    if not tpList(target) then raise ELE.Create('target is not list');
+
+    for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
+
+    result := TVT.Create;
 finally
     CP.Free;
 end;
@@ -3456,15 +3461,13 @@ var CP: TVChainPointer; marks: array of boolean;
     i, j: integer;
 begin
     if PL.Count<>3 then raise ELE.Malformed('DELETE');
-    CP := nil;
     arg := nil;
     ind := nil;
     indices := nil;
-    CP := eval_link(PL.look[1]);
 try
-    if CP.constant then raise ELE.Create('target is not variable');
+    oph_eval_link_for_modification(CP, PL.look[1]);
+
     if not tpList(CP.look) then raise ELE.Create('target is not list');
-    CP.CopyOnWrite;
     target := CP.look as TVList;
 
     arg := oph_eval_indices(eval(PL[2]), target);
@@ -3616,14 +3619,9 @@ begin try
     //TODO: set не падает если устанавливает параметр функции переданный по значению
     if (PL.Count<3) or (PL.Count>3) then raise ELE.InvalidParameters;
 
-    CP := nil;
-    CP := eval_link(PL.look[1]);
-    if CP.constant then raise ELE.Create('target is not variable');
-    CP.CopyOnWrite;
+    oph_eval_link_for_modification(CP, PL.look[1]);
 
     CP.set_target(eval(PL[2]));
-
-//    CP.look.AsString;
 
     result := TVT.Create;
 finally
@@ -3742,13 +3740,11 @@ try
     V := nil;
     result := nil;
     frame_start := stack.Count;
-    //stack.new_var(' <for-list2>', TVT.Create);
 
     case op_var of
         sequence: begin
             high_i := (CP.look as TVCompoundIndexed).high;
             CP.add_index(0);
-            //stack.new_var(PL.uname[1], CP, true);
             stack.new_var(PL.SYM[1], CP, true);
             for i := 0 to high_i do begin
                 CP.set_last_index(i);
@@ -3859,13 +3855,10 @@ var CP: TVChainPointer; marks: array of boolean;
     expr, target: TVList; arg, tmp: TValue;
 begin
     if PL.Count<>4 then raise ELE.Malformed('INSERT');
-    CP := nil;
     arg := nil;
-    CP := eval_link(PL.look[1]);
 try
-    if CP.constant then raise ELE.Create('target is not variable');
+    oph_eval_link_for_modification(CP, PL.look[1]);
     if not tpList(CP.look) then raise ELE.Create('target is not list');
-    CP.CopyOnWrite;
     target := CP.look as TVList;
 
     arg := oph_eval_indices(eval(PL[2]), target);
@@ -4027,43 +4020,45 @@ end;
 
 
 function TEvaluationFlow.op_append(PL: TVList): TValue;
-var CP: TVChainPointer; i: integer;
-begin try
-
+var CP: TVChainPointer; i: integer; PLI: TVList;
+begin
+    if PL.Count<3 then raise ELE.InvalidParameters;
+try
     //TODO: слишком много копирований
     //TODO: нет предварительной проверки корректности параметров
     // в случае несоответствия параметров программа упадёт при
     // попытке приведения типов
-    if PL.Count<3 then raise ELE.InvalidParameters;
-    for i := 2 to PL.high do PL[i] := eval(PL[i]);
 
-    CP := eval_link(PL.look[1]);
-    if CP.constant then raise ELE.Create('target is not variable');
+    PLI := TVList.Create;
+    for i := 2 to PL.high do PLI.Add(eval(PL[i]));
 
+    oph_eval_link_for_modification(CP, PL.look[1]);
 
     if CP.look is TVString
     then
-        for i := 2 to PL.high do
-            (CP.look as TVString).S := (CP.look as TVString).S + PL.S[i]
+        for i := 0 to PLI.high do
+            (CP.look as TVString).S := (CP.look as TVString).S + PLI.S[i]
+
 
     else if CP.look is TVList
-    then begin
-        CP.CopyOnWrite;
-        for i := 2 to PL.high do (CP.look as TVList).Append(PL[i] as TVList)
-    end
+    then
+        for i := 0 to PLI.high do (CP.look as TVList).Append(PLI[i] as TVList)
+
 
     else if CP.look is TVByteVector
     then
-        for i := 2 to PL.high do
-            (CP.look as TVByteVector).append(PL[i] as TVByteVector)
+        for i := 0 to PLI.high do
+            (CP.look as TVByteVector).append(PLI[i] as TVByteVector)
+
 
     else raise ELE.InvalidParameters;
-
 
     result := TVT.Create;
 finally
     FreeAndNil(CP);
-end end;
+    PLI.Free;
+end
+end;
 
 
 function TEvaluationFlow.op_assemble(PL: TVList): TValue;

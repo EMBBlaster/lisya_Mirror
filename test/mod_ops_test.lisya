@@ -139,7 +139,19 @@
         (var a (list 1 (record s0 2 s1 (list 3 4))))
         (var b a)
         (append b\1\s1 \(6 7))
-        (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "append side"))
+        (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "append side")
+
+        (var L1 (list (byte-vector 1)))
+        (var L2 L1)
+        (append L1/0 (byte-vector 2))
+        (assertion (= (list (byte-vector 1 2)) L1) "append side bv")
+        (assertion (= (list (byte-vector 1)) L2) "append side bv 2")
+
+        (var L3 (list "a"))
+        (var L4 L3)
+        (append L3/0 "b")
+        (assertion (= (list "ab") L3) "append side str")
+        (assertion (= (list "a") L4) "append side str 2"))
 
     (block "DEFAULT"
         (var a (list 1 (record s0 2 s1 (list 3 nil))))
@@ -152,7 +164,13 @@
         (var a (list 1 (record s0 2 s1 (list 3 4))))
         (var b a)
         (for e b\1\s1 (set e 7))
-        (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "for side"))
+        (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "for side")
+
+        (var L1 \((1 2)))
+        (var L2 L1)
+        (for e L1/0 (set e 0))
+        (assertion (= \((1 2)) L2) "for side 2")
+        (assertion (= \((0 0)) L1) "for side 3"))
 
     (block "POP"
         (var a (list 1 (record s0 2 s1 (list 3 4))))
