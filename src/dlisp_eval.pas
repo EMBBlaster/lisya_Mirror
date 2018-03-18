@@ -88,7 +88,6 @@ type
     {m} function op_push(PL: TVList): TValue;
     {m} function op_set(PL: TVList): TValue;
         function op_return(PL: TVList): TValue;
-        function op_val(PL: TVList): TValue;
         function op_var(PL: TVList): TValue;
         function op_when(PL: TVList): TValue;
         function op_while(PL: TVList): TValue;
@@ -850,6 +849,13 @@ begin
     end;
 end;
 
+function if_val                   (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpAny]) of
+        1: result := PL[0];
+    end;
+end;
 
 function if_test_dyn            (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
@@ -2567,7 +2573,7 @@ begin
     end;
 end;
 
-const int_fun_count = 121;
+const int_fun_count = 122;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2600,6 +2606,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'EQUAL-SETS';                f:if_equal_sets;            s:'(a b)'),
 (n:'LENGTH-MORE';               f:if_length_more;           s:'(a b)'),
 (n:'LENGTH-LESS';               f:if_length_less;           s:'(a b)'),
+(n:'VAL';                       f:if_val;                   s:'(v)'),
 
 (n:'TEST-DYN';                  f:if_test_dyn;              s:'(:rest msgs)'),
 (n:'TEST';                      f:if_test;                  s:'(s)'),
@@ -2781,7 +2788,6 @@ begin
             oeRETURN    : op('RETURN');
             oeSET       : op('SET');
             oeUSE       : op('USE');
-            oeVAL       : op('VAL');
             oeVAR       : op('VAR');
             oeWHEN      : op('WHEN');
             oeWHILE     : op('WHILE');
@@ -3636,13 +3642,6 @@ end;
 end;
 
 
-function TEvaluationFlow.op_val                     (PL: TVList): TValue;
-begin
-    if PL.Count<>2 then raise ELE.malformed('VAL');
-
-    result := eval(PL[1]);
-end;
-
 function TEvaluationFlow.op_set                     (PL: TVList): TValue;
 var CP :TVChainPointer;
 begin try
@@ -4389,7 +4388,6 @@ begin
         oeRETURN    : result := op_return(PL);
         oeSET       : result := op_set(PL);
         oeUSE       : result := op_with(PL, true);
-        oeVAL       : result := op_val(PL);
         oeVAR       : result := op_var(PL);
         oeWHEN      : result := op_when(PL);
         oeWHILE     : result := op_while(PL);

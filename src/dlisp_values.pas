@@ -724,7 +724,7 @@ type
             oeELT,
             oeERROR,
             oeEXECUTE_FILE,
-            oeFOR,         //mod
+            oeFOR,
             oeGOTO,
             oeIF,
             oeIF_NIL,
@@ -743,7 +743,6 @@ type
             oeRETURN,
             oeSET,          //mod
             oeUSE,
-            oeVAL,
             oeVAR,
             oeWHEN,
             oeWHILE,

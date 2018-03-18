@@ -122,8 +122,6 @@ function tpZIPArchivePointer                        (V: TValue): boolean;
 function vpComplexNotZero                           (V: TValue): boolean;
 
 
-function vpCallOp_VAL                               (V: TValue): boolean;
-
 function vpIntegerAbsOne                            (V: TValue): boolean;
 
 function vpIntegerByte                              (V: TValue): boolean;
@@ -264,8 +262,6 @@ function vpListWithLastList                         (V: TValue): boolean;
 
 function vpNumberNotZero                            (V: TValue): boolean;
 
-
-function vpOperator_VAL                             (V: TValue): boolean;
 
 
 function vpRangeNotNegative                         (V: TValue): boolean;
@@ -628,11 +624,6 @@ begin
         (((V as TVComplex).fC.re<>0) or ((V as TVComplex).fC.im<>0));
 end;
 
-function vpCallOp_VAL(V: TValue): boolean;
-begin
-    result := (V is TVList) and ((V as TVList).Count=2) and
-        vpOperator_VAL((V as TVList).look[0]);
-end;
 
 function vpIntegerAbsOne                            (V: TValue): boolean;
 begin
@@ -1060,11 +1051,6 @@ begin
     result := (V is TVNumber) and not ((V as TVNumber).C = _0);
 end;
 
-function vpOperator_VAL(V: TValue): boolean;
-begin
-    result := vphSymbolName(V, 'VAL') or
-        ((V is TVOperator) and ((V as TVOperator).op_enum=oeVAL));
-end;
 
 function vpRangeNotNegative                         (V: TValue): boolean;
 begin
