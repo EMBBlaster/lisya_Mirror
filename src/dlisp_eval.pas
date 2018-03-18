@@ -811,6 +811,7 @@ begin
     end;
 end;
 
+
 function if_test_dyn            (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
@@ -832,6 +833,7 @@ begin
     //end;
     result := PL.Copy();
 end;
+
 
 function if_extract_file_ext    (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2185,7 +2187,8 @@ begin
                 if tpTrue(PL.look[1]) then WriteLn(ifh_format(PL.L[1]));
                 System.Write(PL.S[0]);
                 System.Read(S);
-                result := TVString.Create(S);
+                result := TVList.Create([TVString.Create(S)]);
+                (result as TVList).Append(read_from_string('('+S+')') as TVList);
             end;
         end;
 end;
