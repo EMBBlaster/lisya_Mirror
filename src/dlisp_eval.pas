@@ -52,6 +52,7 @@ type
         function oph_bind_to_list(s, P: TVList): TVList;
         function oph_execute_file(fn: unicodestring): boolean;
         procedure oph_bind_package(name: unicodestring; import: boolean = false);
+        function oph_eval_indices(V, target: TValue): TValue;
 
         function opl_elt(PL: TVList): TVChainPointer;
         function opl_key(PL: TVList): TVChainPointer;
@@ -3037,8 +3038,27 @@ begin
     raise ELE.Create('package '+name+' not found');
 end;
 
+function TEvaluationFlow.oph_eval_indices(V, target: TValue): TValue;
+var expr: TVList;
+begin
+    //эта функция предназначена для случая когда вместо индексов передаётся
+    //функция, возвращающая индексы. Использование этой функции блокирует
+    //использование подпрограмм в качестве индексов для списков свойств и
+    //хэш-таблиц
+    if tpSubprogram(V)
+    then try
+        result := nil;
+        expr := TVList.Create([V, target], false);
+        result := call(expr);
+        V.Free;
+    finally
+        expr.Free;
+    end
+    else result := V;
+end;
+
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
-var i: integer; tmp: TValue; ind, ind_i: TValue; expr: TVList;
+var i: integer; tmp: TValue; ind: TValue; expr: TVList;
 begin
     //  Эта процедура должна вернуть указатель на компонент составного типа
     //для дальнейшего извлечения или перезаписи значения.
@@ -3046,35 +3066,21 @@ begin
     result := nil;
     tmp := nil;
     ind := nil;
-    ind_i := nil;
-    expr := nil;
 
     if PL.Count<2 then raise ELE.Create('недостаточно параметров');
 
     result := eval_link(PL.look[1]);
     //TODO: result не освобождается при возникновении исключения
-try
 
-    for i := 2 to PL.high do begin
+    for i := 2 to PL.high do try
         tmp := result.look;
-        ind := eval(PL[i]);
+        ind := oph_eval_indices(eval(PL[i]), tmp);
         if tpCompoundIndexed(tmp) and vpIntegerNotNegative(ind)
         then result.add_index((ind as TVInteger).fI)
         else
 
         if tpCompoundIndexed(tmp) and (vpSymbol_LAST(ind) or vpKeyword_LAST(ind))
         then result.add_index((tmp as TVCompound).Count-1)
-        else
-
-        if tpCompoundIndexed(tmp) and tpSubprogram(ind)
-        then begin
-            expr := TVList.Create([ind, tmp], false);
-            ind_i := call(expr);
-            if not tpInteger(ind_i) then raise ELE.Create('invalid index', 'invalid parametes');
-            result.add_index((ind_i as TVInteger).fI);
-            FreeAndNil(ind_i);
-            FreeAndNil(expr);
-        end
         else
 
         if tpHashTable(tmp)
@@ -3094,14 +3100,9 @@ try
         else
 
         raise ELE.InvalidParameters;
-
+    finally
         FreeAndNil(ind);
     end;
-finally
-    ind.Free;
-    FreeAndNil(ind_i);
-    FreeAndNil(expr);
-end;
 end;
 
 function TEvaluationFlow.opl_key(PL: TVList): TVChainPointer;
@@ -3451,14 +3452,13 @@ end;
 
 function TEvaluationFlow.op_delete(PL: TVList): TValue;
 var CP: TVChainPointer; marks: array of boolean;
-    indices, expr, target, ind: TVList; arg, tmp: TValue;
+    indices, target, ind: TVList; arg: TValue;
     i, j: integer;
 begin
     if PL.Count<>3 then raise ELE.Malformed('DELETE');
     CP := nil;
     arg := nil;
     ind := nil;
-    tmp := nil;
     indices := nil;
     CP := eval_link(PL.look[1]);
 try
@@ -3467,17 +3467,7 @@ try
     CP.CopyOnWrite;
     target := CP.look as TVList;
 
-    arg := eval(PL[2]);
-    if tpProcedure(arg)
-    then try
-        expr := TVList.Create([arg, target], false);
-        tmp := nil;
-        tmp := call(expr);
-        arg.Free;
-        arg := tmp;
-    finally
-        expr.Free;
-    end;
+    arg := oph_eval_indices(eval(PL[2]), target);
 
     if tpListOfIndices(arg)
     then indices:=arg as TVList
@@ -3878,17 +3868,7 @@ try
     CP.CopyOnWrite;
     target := CP.look as TVList;
 
-    arg := eval(PL[2]);
-    if tpProcedure(arg)
-    then try
-        expr := TVList.Create([arg, target], false);
-        tmp := nil;
-        tmp := call(expr);
-        arg.Free;
-        arg := tmp;
-    finally
-        expr.Free;
-    end;
+    arg := oph_eval_indices(eval(PL[2]), target);
 
     if not (tpInteger(arg) and ((arg as TVInteger).fI in [0..target.Count]))
     then raise ELE.InvalidParameters;
