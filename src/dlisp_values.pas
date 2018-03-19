@@ -49,14 +49,15 @@ type
         function Copy: TValue; virtual; abstract;
         function AsString: unicodestring; virtual;
         function hash: DWORD; virtual;
-        function equal(V: TValue): boolean; virtual;
+        function equal({%H-}V: TValue): boolean; virtual;
     end;
     TValueList = array of TValue;
 
     { TVInternal }
 
     TVInternal = class (TValue)
-        function equal(V: TValue): boolean; override;
+        function Copy: TValue; override;
+        function equal({%H-}V: TValue): boolean; override;
     end;
 
     { TVEndOfStream }
@@ -255,7 +256,6 @@ type
     { TVBreak }
 
     TVBreak = class (TVGo)
-        function Copy: TVBreak; override;
         function hash: DWORD; override;
     end;
 
@@ -263,7 +263,6 @@ type
     { TVContinue }
 
     TVContinue = class (TVGo)
-        function Copy: TVContinue; override;
         function hash: DWORD; override;
     end;
 
@@ -284,7 +283,6 @@ type
     TVPrimitive = class (TVInternal)
         //класс заглушка, позволяющий функции look вернуть информацию о том,
         //что компонент является примитивным типом
-        function Copy: TValue; override;
         function hash: DWORD; override;
     end;
 
@@ -303,7 +301,6 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function hash: DWORD; override;
-
 
         function constant: boolean;
         function value: TValue;
@@ -337,7 +334,10 @@ type
         //function append(ss: TVCompoundIndexed): TValue; virtual; abstract;
     end;
 
+    { TVCompoundOfPrimitive }
+
     TVCompoundOfPrimitive = class (TVCompoundIndexed)
+        function LookItem({%H-}index: integer): TValue; override;
     end;
 
 
@@ -347,7 +347,6 @@ type
     private
         function GetItem(index: integer): TValue; override;
         procedure SetItem(index: integer; _V: TValue); override;
-        function LookItem({%H-}index: integer): TValue; override;
       public
         S: unicodestring;
         constructor Create(S: unicodestring);
@@ -440,7 +439,6 @@ type
 
         function GetItem(index: integer): TValue; override;
         procedure SetItem(index: integer; _V: TValue); override;
-        function LookItem({%H-}index: integer): TValue; override;
 
     public
         fBytes: TBytes;
@@ -966,7 +964,7 @@ begin
 end;
 
 procedure ReleaseVariable(var P: PVariable);
-{$IFDEF RECURSIVERELEASE}var no_refs: boolean;{$ENDIF}
+{$IFDEF RECURSIVERELEASE} {$ELSE}var no_refs: boolean;{$ENDIF}
 begin
     if P<>nil then begin
         {$IFDEF RECURSIVERELEASE}
@@ -1009,7 +1007,20 @@ begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
 
+{ TVCompoundOfPrimitive }
+
+function TVCompoundOfPrimitive.LookItem(index: integer): TValue;
+begin
+    result := nil;
+    raise ELE.Create('look for item of '+self.ClassName, 'internal');
+end;
+
 { TVInternal }
+
+function TVInternal.Copy: TValue;
+begin
+    result := self.ClassType.Create as TValue;
+end;
 
 function TVInternal.equal(V: TValue): boolean;
 begin
@@ -1694,11 +1705,6 @@ end;
 
 { TVPrimitive }
 
-function TVPrimitive.Copy: TValue;
-begin
-    raise ELE.Create('primitive copy');
-    result := nil;
-end;
 
 function TVPrimitive.hash: DWORD;
 begin
@@ -1931,12 +1937,6 @@ procedure TVByteVector.SetItem(index: integer; _V: TValue);
 begin
     fBytes[index] := (_V as TVInteger).fI;
     _V.Free;
-end;
-
-function TVByteVector.LookItem(index: integer): TValue;
-begin
-    raise ELE.Create('TVByteVector.LookItem');
-    result := nil;
 end;
 
 constructor TVByteVector.Create;
@@ -2647,11 +2647,6 @@ end;
 
 { TVContinue }
 
-function TVContinue.Copy: TVContinue;
-begin
-    result := TVContinue.Create;
-end;
-
 
 function TVContinue.hash: DWORD;
 begin
@@ -2659,11 +2654,6 @@ begin
 end;
 
 { TVBreak }
-
-function TVBreak.Copy: TVBreak;
-begin
-    result := TVBreak.Create;
-end;
 
 function TVBreak.hash: DWORD;
 begin
@@ -2861,12 +2851,6 @@ procedure TVString.SetItem(index: integer; _V: TValue);
 begin
     S[index+1] := (_V as TVString).S[1];
     _V.Free;
-end;
-
-function TVString.LookItem(index: integer): TValue;
-begin
-    raise ELE.Create('TVString.LookItem');
-    result := nil;
 end;
 
 constructor TVString.Create(S: unicodestring);
@@ -3101,7 +3085,6 @@ end;
 
 function TVList.GetElementL(index: integer): TVList;
 begin
-    //writeln(self.asstring);
     Assert(fL[index] is TVList, 'Элемент '+IntToStr(index)+' не список');
     result := (fL[index] as TVList);
 end;
@@ -3120,7 +3103,6 @@ end;
 
 function TVList.Count: integer;
 begin
-    //WriteLn('count>>');
     result := fL.Count;
 end;
 
@@ -3316,11 +3298,10 @@ initialization
     kwOPTIONAL := TVKeyword.Create(':OPTIONAL');
     kwREST := TVKeyword.Create(':REST');
 
-
 finalization
     kwREST.Free;
     kwOPTIONAL.Free;
     kwKEY.Free;
     kwFLAG.Free;
     _.Free;
-end.  //3477 3361
+end.  //3477 3361 3324
