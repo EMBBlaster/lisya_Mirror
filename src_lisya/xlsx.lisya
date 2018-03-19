@@ -1,44 +1,42 @@
 ﻿(package xlsx (
-    tag
+    xlsx_open
+    cell
+    set-cell
+    )
+    (use xml)
 
-    tag-val
-    tag-set)
+    (const column-indices \(
+     A  B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  U  V  W  X  Y  Z
+    AA AB AC AD AE AF AG AH AI AJ AK AL AM AN AO AP AQ AR AS AT AU AV AW AX AY AZ))
 
+    (procedure xlsx_open (fn)
+        (var doc (record
+            \f (ZIP:OPEN fn :mode :append)
+            \stream nil
+            \sheet nil))
+        (for fn (ZIP:FILELIST doc\f)
+            (when (= 0 (position fn "xl/worksheets/"))
+                (var f (ZIP:FILE doc\f fn))
+                (push doc\stream f)
+                (push doc\sheet (XML:READ f))))
+        doc)
 
-(procedure find-tag-index (root name index)
-    "Функция возвращает индекс искомого дочернего тега для использования
-    в операторе ELT"
-    (var n 0)
-    (for i (range 2 (length root))
-        (when (and (list? root/i) (= name (car root/i)))
-            (when (= n index) (break))
-            (set n (+ 1 n)))))
+    (procedure cell (sheet c r)
+        (const cn (cond
+            ((symbol? c) (position column-indices c))
+            ((integer? c) (- c 1))))
+        (elt sheet (tag "sheetData") (tag "row" (- r 1)) (tag "c" cn) (tag "v") 2))
 
+    (procedure set-cell (sheet c r v)
+        (const cn (cond
+            ((symbol? c) (position column-indices c))
+            ((integer? c) (- c 1))))
+        (set (elt sheet (tag "sheetData") (tag "row" (- r 1)) (tag "c" cn) (tag "v") 2)
+            (fmt t v)))
 
-(procedure tag (name :optional index)
-    (default index 0)
-    (curry find-tag-index _ name index))
-
-
-(procedure tag-chain (names)
-    (var chain)
-    (for n names
-        (push chain
-            (cond
-                ((list? n) (curry find-tag-index _ n/0 n/1))
-                ((string? n) (curry find-tag-index _ n 0))
-                ((integer? n) n)
-                (t (error "неверное имя" n)))))
-    chain)
-
-
-(macro tag-val (root :rest names)
-    (assemble elt /root @(tag-chain names)))
-
-
-(macro tag-set ((root :rest names) V)
-    (assemble set (elt /root @(tag-chain names)) /V))
-
+    ;(procedure cells (sheet)
+    ;    (const dimensions (get-tag-attribute sheet "ref"  "dimension"))
+    ;    (const left-top (subseq dimensions (position
 
 
 

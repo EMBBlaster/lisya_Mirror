@@ -27,6 +27,8 @@ function tpBreak                                    (V: TValue): boolean;
 
 function tpByteVector                               (V: TValue): boolean;
 
+function tpCharacter                                (V: TValue): boolean;
+
 function tpComplex                                  (V: TValue): boolean;
 
 function tpCompoundIndexed                          (V: TValue): boolean;
@@ -339,6 +341,11 @@ end;
 function tpByteVector(V: TValue): boolean;
 begin
     result := V is TVByteVector;
+end;
+
+function tpCharacter(V: TValue): boolean;
+begin
+    result := (V is TVString) and ((V as TVString).Count=1);
 end;
 
 function tpComplex(V: TValue): boolean;

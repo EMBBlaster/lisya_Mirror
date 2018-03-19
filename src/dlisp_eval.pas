@@ -656,6 +656,27 @@ begin
     end;
 end;
 
+function if_split_string        (const PL: TVList; {%H-}call: TCallProc): TValue;
+var sl: TStringList; var i: integer;
+begin
+    case params_is(PL, result, [
+        tpString, tpNIL,
+        tpString, tpCharacter]) of
+        1,2: try
+            result := TVList.Create;
+            sl := TStringList.Create;
+            if tpNIL(PL.look[1])
+            then sl.Delimiter:=' '
+            else sl.Delimiter:=PL.S[1][1];
+            sl.DelimitedText:=PL.S[0];
+            for i := 0 to sl.Count-1 do
+                (result as TVList).Add(TVString.Create(sl[i]));
+        finally
+            sl.Free;
+        end;
+    end;
+end;
+
 
 function if_equal               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2475,7 +2496,7 @@ begin
     end;
 end;
 
-const int_fun_count = 122;
+const int_fun_count = 123;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2496,6 +2517,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RE';                        f:if_re;                    s:'(a)'),
 (n:'IM';                        f:if_im;                    s:'(a)'),
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
+(n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
 
 (n:'=';                         f:if_equal;                 s:'(a b)'),
 (n:'>';                         f:if_more;                  s:'(a b)'),
