@@ -2817,7 +2817,7 @@ begin
             then begin
                 pc := -1;
                 for i := 1 to PL.Count-1 do
-                    if tpKeyword(PL.look[i]) and (PL.uname[i]=(V as TVGoto).uname)
+                    if tpKeyword(PL.look[i]) and (PL.SYM[i].N=(V as TVGoto).N)
                     then pc := i;
                 if pc<0 then break;
             end

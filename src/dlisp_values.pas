@@ -53,6 +53,12 @@ type
     end;
     TValueList = array of TValue;
 
+    { TVInternal }
+
+    TVInternal = class (TValue)
+        function equal(V: TValue): boolean; override;
+    end;
+
     { TVEndOfStream }
 
     TVEndOfStream = class (TValue)
@@ -231,22 +237,18 @@ type
 
     { TVGo }
 
-    TVGo = class (TValue)
+    TVGo = class (TVInternal)
     end;
 
 
     { TVGoto }
 
     TVGoto = class (TVGo)
-        uname: unicodestring;
         n: integer;
-        constructor Create(name: unicodestring); overload;
-        constructor Create(mark: TVSymbol); overload;
-        destructor Destroy; override;
+        constructor Create(mark: TVSymbol);
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
-        function equal(V: TValue): boolean; override;
     end;
 
 
@@ -275,23 +277,21 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function hash: DWORD; override;
-        function equal(V: TValue): boolean; override;
     end;
 
     { TVPrimitive }
 
-    TVPrimitive = class (TValue)
+    TVPrimitive = class (TVInternal)
         //класс заглушка, позволяющий функции look вернуть информацию о том,
         //что компонент является примитивным типом
         function Copy: TValue; override;
         function hash: DWORD; override;
-        function equal(V: TValue): boolean; override;
     end;
 
 
     { TVChainPointer }
 
-    TVChainPointer = class (TValue)
+    TVChainPointer = class (TVInternal)
     private
         primitive: TVPrimitive;
         V: PVariable;
@@ -303,7 +303,7 @@ type
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function hash: DWORD; override;
-        function equal(V: TValue): boolean; override;
+
 
         function constant: boolean;
         function value: TValue;
@@ -745,7 +745,6 @@ type
         fstream: TStream;
         encoding: TStreamEncoding;
 
-        //constructor Create; overload;
         destructor Destroy; override;
         function Copy: TValue; override;
         function hash: DWORD; override;
@@ -1010,6 +1009,15 @@ begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
 
+{ TVInternal }
+
+function TVInternal.equal(V: TValue): boolean;
+begin
+    result := false;
+    raise ELE.Create('equal '+self.ClassName, 'internal');
+end;
+
+
 { TValue }
 
 function TValue.AsString: unicodestring;
@@ -1025,7 +1033,6 @@ end;
 function TValue.equal(V: TValue): boolean;
 begin
     result := false;
-    raise ELE.Create('equal for '+self.ClassName, 'not supported');
 end;
 
 
@@ -1456,11 +1463,6 @@ begin
     result := crc32(value.hash, @i, SizeOf(i));
 end;
 
-function TVReturn.equal(V: TValue): boolean;
-begin
-
-    raise ELE.Create('TVReturn.equal', 'internal');
-end;
 
 { TVStreamPointer }
 
@@ -1566,10 +1568,6 @@ end;
 
 { TVStream }
 
-//constructor TVStream.Create;
-//begin
-//
-//end;
 
 destructor TVStream.Destroy;
 begin
@@ -1707,10 +1705,6 @@ begin
     Result := 10004;
 end;
 
-function TVPrimitive.equal(V: TValue): boolean;
-begin
-    result := V is TVPrimitive;
-end;
 
 { TVChainPointer }
 
@@ -1758,12 +1752,6 @@ end;
 function TVChainPointer.hash: DWORD;
 begin
     Result:= look.hash;
-end;
-
-function TVChainPointer.equal(V: TValue): boolean;
-begin
-    raise ELE.Create('TVChainPointer.equal','internal');
-    result := false;
 end;
 
 function TVChainPointer.constant: boolean;
@@ -2778,32 +2766,21 @@ end;
 
 { TVGoto }
 
-constructor TVGoto.Create(name: unicodestring);
-begin
-    n := -1;
-    self.uname := UpperCaseU(name);
-end;
 
 constructor TVGoto.Create(mark: TVSymbol);
 begin
-    n := -1;
-    self.uname:=mark.uname;
-end;
-
-destructor TVGoto.Destroy;
-begin
-    uname :='';
+    if mark<>nil then N := mark.N;
 end;
 
 function TVGoto.Copy: TValue;
 begin
-    result := TVGoto.Create(uname);
-    (result as TVGoto).n := n;
+    result := TVGoto.Create(nil);
+    (result as TVGoto).N := N;
 end;
 
 function TVGoto.AsString: unicodestring;
 begin
-    result := '#<GOTO '+IntTostr(n)+' '+uname+'>';
+    result := '#<GOTO '+TVSymbol.symbol_uname(N)+'>';
 end;
 
 function TVGoto.hash: DWORD;
@@ -2811,10 +2788,6 @@ begin
     result := crc32(3, @n, SizeOf(n));
 end;
 
-function TVGoto.equal(V: TValue): boolean;
-begin
-    Result := (V is TVGoto) and (N=(V as TVGoto).N);
-end;
 
 
 { TVT }
