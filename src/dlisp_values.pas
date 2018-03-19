@@ -46,10 +46,10 @@ type
     { TValue }
 
     TValue = class
-        function Copy(): TValue; virtual; abstract;
-        function AsString(): unicodestring; virtual; abstract;
-        function hash: DWORD; virtual; abstract;
-        function equal(V: TValue): boolean; virtual; abstract;
+        function Copy: TValue; virtual; abstract;
+        function AsString: unicodestring; virtual;
+        function hash: DWORD; virtual;
+        function equal(V: TValue): boolean; virtual;
     end;
     TValueList = array of TValue;
 
@@ -57,7 +57,6 @@ type
 
     TVEndOfStream = class (TValue)
         function Copy(): TValue; override;
-        function AsString(): unicodestring; override;
     end;
 
 
@@ -134,17 +133,6 @@ type
     end;
 
 
-    { TVRange }
-
-    TVRange = class (TValue)
-        low, high: Int64;
-        constructor Create(l,h: Int64);
-        function Copy(): TValue; override;
-        function AsString(): unicodestring; override;
-        function hash: DWORD; override;
-        function equal(V: TValue): boolean; override;
-    end;
-
     { TVFloat }
 
     TVFloat = class (TVReal)
@@ -158,6 +146,17 @@ type
         function C: COMPLEX; override;
     end;
 
+
+    { TVRange }
+
+    TVRange = class (TValue)
+        low, high: Int64;
+        constructor Create(l,h: Int64);
+        function Copy(): TValue; override;
+        function AsString(): unicodestring; override;
+        function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
+    end;
 
     { TVTime }
 
@@ -233,7 +232,6 @@ type
     { TVGo }
 
     TVGo = class (TValue)
-        function equal(V: TValue): boolean; override;
     end;
 
 
@@ -256,7 +254,6 @@ type
 
     TVBreak = class (TVGo)
         function Copy: TVBreak; override;
-        function AsString: unicodestring; override;
         function hash: DWORD; override;
     end;
 
@@ -265,7 +262,6 @@ type
 
     TVContinue = class (TVGo)
         function Copy: TVContinue; override;
-        function AsString: unicodestring; override;
         function hash: DWORD; override;
     end;
 
@@ -288,7 +284,6 @@ type
         //класс заглушка, позволяющий функции look вернуть информацию о том,
         //что компонент является примитивным типом
         function Copy: TValue; override;
-        function AsString: unicodestring; override;
         function hash: DWORD; override;
         function equal(V: TValue): boolean; override;
     end;
@@ -343,7 +338,6 @@ type
     end;
 
     TVCompoundOfPrimitive = class (TVCompoundIndexed)
-
     end;
 
 
@@ -527,7 +521,6 @@ type
         data: TVList;
         index: THashTableIndex;
         keys: TVList;
-        fCount: integer;
 
         function GetItem(index: integer): TValue; override;
         procedure SetItem(index: integer; _V: TValue); override;
@@ -541,7 +534,7 @@ type
         function AsString: unicodestring; override;
         function Copy: TValue; override;
         function hash: DWORD; override;
-        function equal(V: TValue): boolean; override;
+        function equal({%H-}V: TValue): boolean; override;
         procedure print;
 
         procedure CopyOnWrite;
@@ -566,7 +559,6 @@ type
         constructor Create(parent: TVSymbolStack);
         destructor Destroy; override;
         function Copy: TValue; override;
-        function AsString: unicodestring; override;
         function equal(V: TValue): boolean; override;
 
         function Count: integer;
@@ -753,7 +745,7 @@ type
         fstream: TStream;
         encoding: TStreamEncoding;
 
-        constructor Create; overload;
+        //constructor Create; overload;
         destructor Destroy; override;
         function Copy: TValue; override;
         function hash: DWORD; override;
@@ -910,7 +902,7 @@ var vars, links: array of PVariable;
     end;
 
     procedure add_node(P: PVariable);
-    var proc: TVProcedure; i,j: integer;
+    var proc: TVProcedure; i: integer;
     begin
         if not registered_node(P) then begin
             SetLength(vars, length(vars)+1);
@@ -975,7 +967,7 @@ begin
 end;
 
 procedure ReleaseVariable(var P: PVariable);
-var no_refs: boolean;
+{$IFDEF RECURSIVERELEASE}var no_refs: boolean;{$ENDIF}
 begin
     if P<>nil then begin
         {$IFDEF RECURSIVERELEASE}
@@ -1016,6 +1008,24 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TValue }
+
+function TValue.AsString: unicodestring;
+begin
+    result := '#<'+self.ClassName+'>';
+end;
+
+function TValue.hash: DWORD;
+begin
+    result := 0;
+end;
+
+function TValue.equal(V: TValue): boolean;
+begin
+    result := false;
+    raise ELE.Create('equal for '+self.ClassName, 'not supported');
 end;
 
 
@@ -1079,12 +1089,6 @@ begin
 end;
 
 
-{ TVGo }
-
-function TVGo.equal(V: TValue): boolean;
-begin
-    result := self.ClassType=V.ClassType;
-end;
 
 { TVTime }
 
@@ -1124,7 +1128,6 @@ begin
 end;
 
 procedure TVHashTable.SetItem(index: integer; _V: TValue);
-var i, j: integer;
 begin
     data[index] := _v;
 end;
@@ -1213,6 +1216,7 @@ end;
 
 function TVHashTable.equal(V: TValue): boolean;
 begin
+    result := false;
     raise ELE.Create('TVHashTable.eqial','not implemented');
 end;
 
@@ -1454,6 +1458,7 @@ end;
 
 function TVReturn.equal(V: TValue): boolean;
 begin
+
     raise ELE.Create('TVReturn.equal', 'internal');
 end;
 
@@ -1561,10 +1566,10 @@ end;
 
 { TVStream }
 
-constructor TVStream.Create;
-begin
-
-end;
+//constructor TVStream.Create;
+//begin
+//
+//end;
 
 destructor TVStream.Destroy;
 begin
@@ -1664,6 +1669,7 @@ function TVStream.write_char(ch: unicodechar): boolean;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
     lisia_charset.write_character(fstream, ch, encoding);
+    result := true;
 end;
 
 { TVKeyword }
@@ -1694,11 +1700,6 @@ function TVPrimitive.Copy: TValue;
 begin
     raise ELE.Create('primitive copy');
     result := nil;
-end;
-
-function TVPrimitive.AsString: unicodestring;
-begin
-    result := '#<PRIMITIVE>'
 end;
 
 function TVPrimitive.hash: DWORD;
@@ -1762,6 +1763,7 @@ end;
 function TVChainPointer.equal(V: TValue): boolean;
 begin
     raise ELE.Create('TVChainPointer.equal','internal');
+    result := false;
 end;
 
 function TVChainPointer.constant: boolean;
@@ -2063,11 +2065,6 @@ begin
     result := TVEndOfStream.Create;
 end;
 
-function TVEndOfStream.AsString: unicodestring;
-begin
-    result := '#<END OF STREAM>';
-end;
-
 { ELisyaError }
 
 constructor ELisyaError.InvalidParameters;
@@ -2153,10 +2150,6 @@ begin
     end;
 end;
 
-function TVSymbolStack.AsString: unicodestring;
-begin
-    result := '#<STACK '+IntToStr(Length(stack))+'>';
-end;
 
 function TVSymbolStack.equal(V: TValue): boolean;
 var i: integer; ss: TVSymbolStack;
@@ -2495,7 +2488,7 @@ begin
 end;
 
 function TVRecord.equal(V: TValue): boolean;
-var i, j: integer; VR: TVRecord; m: boolean;
+var i, j: integer; VR: TVRecord;
 begin
     result := V is TVRecord;
     if not result then Exit;
@@ -2671,10 +2664,6 @@ begin
     result := TVContinue.Create;
 end;
 
-function TVContinue.AsString: unicodestring;
-begin
-    result := '#<CONTINUE>';
-end;
 
 function TVContinue.hash: DWORD;
 begin
@@ -2686,11 +2675,6 @@ end;
 function TVBreak.Copy: TVBreak;
 begin
     result := TVBreak.Create;
-end;
-
-function TVBreak.AsString: unicodestring;
-begin
-    result := '#<BREAK>';
 end;
 
 function TVBreak.hash: DWORD;
@@ -2725,7 +2709,6 @@ end;
 
 
 function TVProcedure.Copy: TValue;
-var i: integer;
 begin
     //TODO: копирование процедуры ненадёжно может приводить к утечкам
     //self.Complement;
@@ -2848,7 +2831,7 @@ end;
 
 function TVT.hash: DWORD;
 begin
-    result := 10001;
+    result := 1000000001;
 end;
 
 function TVT.equal(V: TValue): boolean;
@@ -3194,7 +3177,6 @@ begin
 end;
 
 function TVList.Copy: TValue;
-var i: integer;
 begin
     Inc(fL.ref_count);
     result := TVList.Create(fL);

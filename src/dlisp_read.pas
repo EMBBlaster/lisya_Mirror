@@ -110,7 +110,7 @@ end;
 end;
 
 function str_is_elt_call(s: unicodestring; out elt: TStringList): boolean;
-var last_p, i: integer; sep: unicodestring; acc: unicodestring;
+var last_p, i: integer; acc: unicodestring;
     state: (sNormal, sString, sEscaped);
     procedure add;
     begin if acc<>'' then begin elt.Add(acc); acc:=''; last_p:=i; end; end;
@@ -161,7 +161,7 @@ begin
 end;
 
 function str_is_complex(s: unicodestring; out re, im: double): boolean;
-var fs: TFormatSettings; i_pos, fs_pos, s_pos: integer;
+var fs: TFormatSettings; i_pos: integer;
     re_s, im_s: unicodestring;
     sign: unicodechar;
 begin
