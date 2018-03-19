@@ -3280,7 +3280,7 @@ var vars: array of TVarRec; links: array of TVarRec;
 
             proc := P.V as TVProcedure;
             for j := 1 to indent do Write('   ');
-            WriteLn(Int64(P), '  ', P.references,' ', proc.AsString);
+            WriteLn(PointerToStr(P), '  ', P.references,' ', proc.AsString);
             Inc(indent);
             for i:=0 to high(proc.stack.stack) do begin
                 if (proc.stack.stack[i].V<>nil) and tpProcedure(proc.stack.stack[i].V.V)
@@ -3301,7 +3301,7 @@ begin
     WriteLn();
 
     for i := 0 to high(links) do
-        WriteLn(Int64(links[i].P), '  ', (links[i].P.V as TVProcedure).AsString);
+        WriteLn(PointerToStr(links[i].P), '  ', (links[i].P.V as TVProcedure).AsString);
 
     clear := true;
     for i := 0 to high(vars) do begin

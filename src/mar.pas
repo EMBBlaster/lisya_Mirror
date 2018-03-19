@@ -15,6 +15,8 @@ function UpperCaseU(s: unicodestring): unicodestring;
 function LowerCaseU(s: unicodestring): unicodestring;
 function SplitString(S: unicodestring; separator: unicodestring = ' '): TStringArray;
 
+function PointerToStr(ptr: Pointer): unicodestring;
+
 type
 
     { TCountingObject }
@@ -145,6 +147,15 @@ begin
     end;
     SetLength(result, Length(result)+1);
     result[high(result)] := S[p1..Length(s)];
+end;
+
+function PointerToStr(ptr: Pointer): unicodestring;
+var d: record case byte of 0: (p: pointer); 1: (b: array [1..SizeOf(ptr)] of Byte); end;
+    i: integer;
+begin
+    d.p:=ptr;
+    result := '';
+    for i := low(d.b) to high(d.b) do result := IntToHex(d.b[i],2)+result;
 end;
 
     { TCountingObject }
