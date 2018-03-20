@@ -1,42 +1,99 @@
 ﻿(package xlsx (
     xlsx_open
-    cell
-    set-cell
     )
     (use xml)
+
+    (const attr 1)
+    (const text 2)
 
     (const column-indices \(
      A  B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  U  V  W  X  Y  Z
     AA AB AC AD AE AF AG AH AI AJ AK AL AM AN AO AP AQ AR AS AT AU AV AW AX AY AZ))
 
+    (procedure cn (c) (cond
+        ((symbol? c) (position column-indices c))
+        ((integer? c) (- c 1))))
+
+    (procedure digit-pos (s)
+        (for i (range s)
+            (when (member \("0" "1" "2" "3" "4" "5" "6" "7" "8" "9") s/i)
+                (break))))
+
+    (procedure decode-dimension (s d)
+        (const (left-top :optional right-bottom) (split-string s ":"))
+        (case d
+            (r (block
+                (const top (read (subseq left-top (digit-pos left-top))))
+                (list
+                    top
+                    (if right-bottom
+                        (read (subseq right-bottom (digit-pos right-bottom)))
+                        top))))
+            (c (block
+                (const left (symbol (subseq left-top 0 (digit-pos left-top))))
+                (list
+                    left
+                    (if right-bottom
+                        (symbol (subseq right-bottom 0 (digit-pos right-bottom)))
+                        left))))))
+
+    (procedure find-row-index (tag r)
+        (for e (range 2 tag)
+            (if (and (= "row" (car tag/e)) (= (fmt t r) (key tag/e/1 "r")))
+                (break))))
+
+    (procedure find-cell-index (tag c r)
+        (for e (range 2 tag)
+            (if (and (= "c" (car tag/e)) (= (fmt t c r) (key tag/e/1 "r")))
+                (break))))
+
+    (procedure row (r) (curry find-row-index _ r))
+    (procedure cell (c r) (curry find-cell-index _ c r))
+    (procedure tag-v (tag) (for e (range 2 tag) (if (= "v" (car tag/e)) (break))))
+
+
     (procedure xlsx_open (fn)
-        (var doc (record
-            \f (ZIP:OPEN fn :mode :append)
-            \stream nil
-            \sheet nil))
-        (for fn (ZIP:FILELIST doc\f)
+        (var z (ZIP:OPEN fn :mode :append))
+        (var streams)
+        (var sheets)
+        (for fn (sort (ZIP:FILELIST z))
             (when (= 0 (position fn "xl/worksheets/"))
-                (var f (ZIP:FILE doc\f fn))
-                (push doc\stream f)
-                (push doc\sheet (XML:READ f))))
-        doc)
-
-    (procedure cell (sheet c r)
-        (const cn (cond
-            ((symbol? c) (position column-indices c))
-            ((integer? c) (- c 1))))
-        (elt sheet (tag "sheetData") (tag "row" (- r 1)) (tag "c" cn) (tag "v") 2))
-
-    (procedure set-cell (sheet c r v)
-        (const cn (cond
-            ((symbol? c) (position column-indices c))
-            ((integer? c) (- c 1))))
-        (set (elt sheet (tag "sheetData") (tag "row" (- r 1)) (tag "c" cn) (tag "v") 2)
-            (fmt t v)))
-
-    ;(procedure cells (sheet)
-    ;    (const dimensions (get-tag-attribute sheet "ref"  "dimension"))
-    ;    (const left-top (subseq dimensions (position
+                (var f (ZIP:FILE z fn))
+                (push streams f)
+                (push sheets (XML:READ f))))
+        (var f-sharedStrings)
+        (var sharedStrings)
+        (when (member (ZIP:FILELIST z) "xl/sharedStrings.xml")
+            (set f-sharedStrings (ZIP:FILE z "xl/sharedStrings.xml"))
+            (set sharedStrings (XML:READ f-sharedStrings)))
+        (procedure str (n) (elt sharedStrings (tag "si" n) (tag "t") 2))
+        (procedure cell-val (cell)
+            (when cell (case (key cell/attr "t")
+                ("n" (read cell/tag-v/text))
+                ("s" (str (key cell/attr (read "s")))))))
+        (record
+            \cell (procedure (s c r)
+                (cell-val (elt sheets/s (tag "sheetData") (row r) (cell c r))))
+            \set-cell (procedure (s c r v)
+                (set (elt sheets/s (tag "sheetData")
+                    (row r) (cell c r) tag-v 2)
+                    (fmt t v)))
+            \columns (procedure (s)
+                (const (left right) (decode-dimension
+                    (key (elt sheets/s (tag "dimension") attr) "ref") \c ))
+                (subseq column-indices
+                    (position column-indices left)
+                    (+ 1 (position column-indices right))))
+            \rows (procedure (s)
+                (const (top bottom) (decode-dimension
+                    (key (elt sheets/s (tag "dimension") attr) "ref") \r ))
+                (range top (+ 1 bottom)))
+            \save (procedure ()
+                (for s (range streams)
+                    (stream-length streams/s 0)
+                    (XML:WRITE streams/s sheets/s))
+                (stream-length f-sharedStrings 0)
+                (XML:WRITE f-sharedStrings sharedStrings))))
 
 
 

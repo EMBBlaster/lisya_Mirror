@@ -258,7 +258,7 @@ begin
     if tag_open(tags[i]) then
         while i<tags.Count do begin
             Inc(i);
-            if tag_open(tags[i])
+            if tag_open(tags[i]) or tag_empty(tags[i])
             then result.Add(tags_tree(tags, i))
             else
 
