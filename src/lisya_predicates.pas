@@ -312,9 +312,11 @@ var i: integer;
 begin
     result := false;
     if V is TVList
-    then for i := 0 to (V as TVList).high do
-        if not p((V as TVList).look[i]) then Exit;
-    result := true;
+    then begin
+        for i := 0 to (V as TVList).high do
+            if not p((V as TVList).look[i]) then Exit;
+        result := true;
+    end;
 end;
 
 

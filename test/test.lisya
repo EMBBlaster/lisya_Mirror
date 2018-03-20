@@ -202,7 +202,13 @@
 
     (log "POP ELT")
     (assertion (= (pop test\slot2\1) "v") "pop elt")
-    (assertion (= test\slot2\1 \("w" "u")) "poped elt"))
+    (assertion (= test\slot2\1 \("w" "u")) "poped elt")
+
+    (var L \(1 2 3 4 5))
+    (procedure evens (L)
+        (var r) (for i (range L) (if (= 0 (mod L/i 2)) (push r i))) r)
+    (assertion (= 2 L/evens/0) "elt sub index 1")
+    (assertion (= 4 L/evens/1) "elt sub index 2"))
 
 (block
     (log \LAST)

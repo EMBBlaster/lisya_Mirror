@@ -3025,7 +3025,7 @@ begin
 end;
 
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
-var i: integer; tmp: TValue; ind: TValue;
+var i: integer; tmp: TValue; ind, ind_i: TValue;
 begin
     //  Эта процедура должна вернуть указатель на компонент составного типа
     //для дальнейшего извлечения или перезаписи значения.
@@ -3033,15 +3033,39 @@ begin
     result := nil;
     tmp := nil;
     ind := nil;
+    ind_i := nil;
 
     if PL.Count<2 then raise ELE.Create('недостаточно параметров');
 
     result := eval_link(PL.look[1]);
     //TODO: result не освобождается при возникновении исключения
 
-    for i := 2 to PL.high do try
+    i := 2;
+    while i<PL.Count do try
         tmp := result.look;
         ind := oph_eval_indices(eval(PL[i]), tmp);
+        if tpNIL(ind)
+        then begin
+            result.Free;
+            result := TVChainPointer.Create(NewVariable(TVList.Create, true));
+            exit;
+        end
+        else
+
+        if tpCompoundIndexed(tmp) and tpListOfIntegers(ind)
+        then try
+            //если функция вычисления индекса вернула список индексов,
+            //то следующий параметр ELT является индексом с списке индексов
+            Inc(i);
+            if i>PL.high then raise ELE.InvalidParameters;
+            ind_i := eval(PL[i]);
+            if not vpIntegerNotNegative(ind_i) then raise ELE.InvalidParameters;
+            result.add_index((ind as TVList).I[(ind_i as TVInteger).fI]);
+        finally
+            FreeAndNil(ind_i);
+        end
+        else
+
         if tpCompoundIndexed(tmp) and vpIntegerNotNegative(ind)
         then result.add_index((ind as TVInteger).fI)
         else
@@ -3058,16 +3082,10 @@ begin
         then result.add_index((tmp as TVRecord).get_n_of((ind as TVSymbol).uname))
         else
 
-        if tpNIL(ind)
-        then begin
-            result.Free;
-            result := TVChainPointer.Create(NewVariable(TVList.Create, true));
-            exit;
-        end
-        else
-
         raise ELE.InvalidParameters;
+
     finally
+        Inc(i);
         FreeAndNil(ind);
     end;
 end;
