@@ -59,11 +59,8 @@
                 (var f (ZIP:FILE z fn))
                 (push streams f)
                 (push sheets (XML:READ f))))
-        (var f-sharedStrings)
-        (var sharedStrings)
-        (when (member (ZIP:FILELIST z) "xl/sharedStrings.xml")
-            (set f-sharedStrings (ZIP:FILE z "xl/sharedStrings.xml"))
-            (set sharedStrings (XML:READ f-sharedStrings)))
+        (var f-sharedStrings (ZIP:FILE z "xl/sharedStrings.xml"))
+        (var sharedStrings (if f-sharedStrings (XML:READ f-sharedStrings)))
         (procedure str (n) (elt sharedStrings (tag "si" n) (tag "t") 2))
         (procedure cell-val (cell)
             (when cell (case (key cell/attr "t")
@@ -91,7 +88,7 @@
                     (stream-length streams/s 0)
                     (XML:WRITE streams/s sheets/s))
                 (stream-length f-sharedStrings 0)
-                (XML:WRITE f-sharedStrings sharedStrings))))
+                (if f-sharedStrings (XML:WRITE f-sharedStrings sharedStrings)))))
 
 
 

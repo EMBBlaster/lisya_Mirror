@@ -1833,17 +1833,17 @@ end;
 
 
 function if_zip_file            (const PL: TVList; {%H-}call: TCallProc): TValue;
-var zfs: TVZIPFileStream;  enc: TStreamEncoding; //mode: WORD;
+var zfs: TVZIPFileStream;  enc: TStreamEncoding; mode: WORD;
 begin
     case params_is(PL, result, [
         tpZIPArchivePointer, tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
         1: begin
-            //mode := ifh_keyword_to_file_mode(PL.look[2]);
+            mode := ifh_keyword_to_file_mode(PL.look[2]);
             enc := ifh_keyword_to_encoding(PL.look[3]);
 
             zfs := TVZipFileStream.Create(
                 (PL.look[0] as TVZIPArchivePointer).Z.Ref as TZIPArchive,
-                PL.S[1], enc);
+                PL.S[1], mode, enc);
             if zfs.fstream<>nil then begin
                 result := TVStreamPointer.Create(NewVariable(zfs));
             end
@@ -2607,7 +2607,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'ZIP:OPEN';                  f:if_zip_open;              s:'(n :key mode encoding)'),
 (n:'ZIP:FILELIST';              f:if_zip_filelist;          s:'(z)'),
-(n:'ZIP:FILE';                  f:if_zip_file;              s:'(z fn :key mode encoding)'),
+(n:'ZIP:FILE';                  f:if_zip_file;              s:'(z fn :optional mode encoding)'),
 (n:'ZIP:DELETE';                f:if_zip_delete;            s:'(z fn)'),
 
 (n:'STREAM-POSITION';           f:if_stream_position;       s:'(s :optional p)'),

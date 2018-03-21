@@ -103,7 +103,7 @@ type
         destructor Destroy; override;
         procedure Close;
         function FileList: TStringArray;
-        function GetFileStream(fn: unicodestring): TStream;
+        function GetFileStream(fn: unicodestring; mode: WORD): TStream;
         procedure Delete(fn: unicodestring);
         function description: unicodestring; override;
     end;
@@ -515,7 +515,7 @@ begin
     for i := 0 to high(lfh) do result[i] := lfh[i].filename;
 end;
 
-function TZIPArchive.GetFileStream(fn: unicodestring): TStream;
+function TZIPArchive.GetFileStream(fn: unicodestring; mode: WORD): TStream;
 var i, n: integer;
 begin
     result := nil;
@@ -527,6 +527,7 @@ begin
         end;
 
     //если искомый файл отсутствует в архиве, то создать
+    if (mode=fmOpenRead) or (mode=fmOpenReadWrite) then Exit;
     SetLength(lfh, Length(lfh)+1);
     SetLength(cdfh, Length(cdfh)+1);
     n := high(lfh);

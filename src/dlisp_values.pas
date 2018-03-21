@@ -848,7 +848,8 @@ type
     TVZIPFileStream = class (TVFileStream)
         Z: TZipArchive;
 
-        constructor Create(_Z: TZipArchive; fn: unicodestring; enc: TStreamEncoding);
+        constructor Create(_Z: TZipArchive; fn: unicodestring; mode: WORD;
+                            enc: TStreamEncoding);
         destructor Destroy; override;
 
         function AsString: unicodestring; override;
@@ -1050,11 +1051,11 @@ end;
 { TVZIPFileStream }
 
 constructor TVZIPFileStream.Create(_Z: TZipArchive; fn: unicodestring;
-    enc: TStreamEncoding);
+    mode: WORD; enc: TStreamEncoding);
 begin
     Z := _Z;
     file_name := fn;
-    fstream := Z.GetFileStream(fn);
+    fstream := Z.GetFileStream(fn, mode);
     if enc=seBOM then read_BOM else encoding := enc;
 end;
 
