@@ -572,6 +572,84 @@ begin
     end;
 end;
 
+function if_max                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer; max_i: integer; max_r: double; index: integer;
+begin
+    case params_is(PL, result, [
+        tpInteger,            tpListOfIntegers,
+        tpReal,               tpListOfReals,
+        tpNIL,                tpAny,
+        tpListOfIntegers,     tpNIL,
+        tpListOfReals,        tpNIL]) of
+        1: begin
+            max_i := PL.I[0];
+            for i:=0 to PL.L[1].high do max_i:=max(max_i, PL.L[1].I[i]);
+            result := TVInteger.Create(max_i);
+        end;
+        2: begin
+            max_r := PL.F[0];
+            for i:=0 to PL.L[1].high do max_r:=max(max_r, PL.L[1].F[i]);
+            result := TVFloat.Create(max_r);
+        end;
+        3: result := TVList.Create;
+        4: begin
+            index := 0;
+            max_i := PL.L[0].I[index];
+            for i:=1 to PL.L[0].high do
+                if PL.L[0].I[i]>max_i
+                then begin index:=i; max_i:=PL.L[0].I[i]; end;
+            result := TVInteger.Create(index);
+        end;
+        5: begin
+            index := 0;
+            max_r := PL.L[0].F[index];
+            for i:=1 to PL.L[0].high do
+                if PL.L[0].F[i]>max_r
+                then begin index:=i; max_r:=PL.L[0].F[i]; end;
+            result := TVInteger.Create(index);
+        end;
+    end;
+end;
+
+function if_min                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer; min_i: integer; min_r: double; index: integer;
+begin
+    case params_is(PL, result, [
+        tpInteger,            tpListOfIntegers,
+        tpReal,               tpListOfReals,
+        tpNIL,                tpAny,
+        tpListOfIntegers,     tpNIL,
+        tpListOfReals,        tpNIL]) of
+        1: begin
+            min_i := PL.I[0];
+            for i:=0 to PL.L[1].high do min_i:=min(min_i, PL.L[1].I[i]);
+            result := TVInteger.Create(min_i);
+        end;
+        2: begin
+            min_r := PL.F[0];
+            for i:=0 to PL.L[1].high do min_r:=min(min_r, PL.L[1].F[i]);
+            result := TVFloat.Create(min_r);
+        end;
+        3: result := TVList.Create;
+        4: begin
+            index := 0;
+            min_i := PL.L[0].I[index];
+            for i:=1 to PL.L[0].high do
+                if PL.L[0].I[i]<min_i
+                then begin index:=i; min_i:=PL.L[0].I[i]; end;
+            result := TVInteger.Create(index);
+        end;
+        5: begin
+            index := 0;
+            min_r := PL.L[0].F[index];
+            for i:=1 to PL.L[0].high do
+                if PL.L[0].F[i]<min_r
+                then begin index:=i; min_r:=PL.L[0].F[i]; end;
+            result := TVInteger.Create(index);
+        end;
+    end;
+end;
+
 function if_sqrt                (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -854,11 +932,10 @@ end;
 
 function if_test                  (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
-    //case params_is(PL, result, [
-    //    vpStreamPointerActive]) of
-    //    1:
-    //end;
-    result := PL.Copy();
+    case params_is(PL, result, [
+        tpString, tpString]) of
+        1: result := TVInteger.Create(ifh_like(PL.S[0],PL.S[1]));
+    end;
 end;
 
 
@@ -1385,6 +1462,19 @@ begin
     case params_is(PL, result, [
         tpList]) of
         1: result := PL.L[0].Copy;
+    end;
+end;
+
+function if_empty_list          (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer;
+begin
+    case params_is(PL, result, [
+        vpIntegerNotNegative, tpAny]) of
+        1: begin
+            result := TVList.Create;
+            (result as TVList).SetCapacity(PL.I[0]);
+            for i := 0 to PL.I[0]-1 do (result as TVList).Add(PL[1]);
+        end;
     end;
 end;
 
@@ -2502,7 +2592,7 @@ begin
     end;
 end;
 
-const int_fun_count = 123;
+const int_fun_count = 126;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2515,6 +2605,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'MOD';                       f:if_mod;                   s:'(a b)'),
 (n:'ABS';                       f:if_abs;                   s:'(a)'),
 (n:'**';                        f:if_power;                 s:'(a b)'),
+(n:'MAX';                       f:if_max;                   s:'(a :rest b)'),
+(n:'MIN';                       f:if_min;                   s:'(a :rest b)'),
 (n:'SQRT КОРЕНЬ';               f:if_sqrt;                  s:'(a)'),
 (n:'ROUND';                     f:if_round;                 s:'(a)'),
 (n:'RANGE';                     f:if_range;                 s:'(l :optional h)'),
@@ -2539,7 +2631,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'VAL';                       f:if_val;                   s:'(v)'),
 
 (n:'TEST-DYN';                  f:if_test_dyn;              s:'(:rest msgs)'),
-(n:'TEST';                      f:if_test;                  s:'(s)'),
+(n:'TEST';                      f:if_test;                  s:'(s1 s2)'),
 
 
 (n:'EXTRACT-FILE-EXT';          f:if_extract_file_ext;      s:'(s)'),
@@ -2578,6 +2670,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'POSITION';                  f:if_position;              s:'(l e)'),
 (n:'LENGTH ДЛИНА';              f:if_length;                s:'(l)'),
 (n:'LIST СПИСОК';               f:if_list;                  s:'(:rest e)'),
+(n:'EMPTY-LIST ПУСТОЙ-СПИСОК';  f:if_empty_list;            s:'(l :optional e)'),
 (n:'RECORD ЗАПИСЬ';             f:if_record;                s:'(:rest slots)'),
 (n:'RECORD-AS ЗАПИСЬ-КАК';      f:if_record_as;             s:'(template :rest slots)'),
 (n:'HASH-TABLE';                f:if_hash_table;            s:'()'),

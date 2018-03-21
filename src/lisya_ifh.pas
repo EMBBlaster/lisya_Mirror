@@ -5,7 +5,7 @@ unit lisya_ifh;
 interface
 
 uses
-    Classes, SysUtils, dlisp_values, lisya_predicates;
+    Classes, SysUtils, dlisp_values, lisya_predicates, mar,  math;
 
 type TBindings = array of record
         nN: integer;
@@ -31,6 +31,8 @@ function ifh_set_include        (const A, B: TVList): boolean;
 
 function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
 function ifh_fold(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
+
+function ifh_like (str1, str2: unicodestring): integer;
 
 implementation
 
@@ -457,8 +459,67 @@ end;
 ////////////////////////////////////////////////////////////////////////////////
 /// строки /////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+function ifh_like (str1, str2: unicodestring): integer;
+var v: array of record s: unicodestring; n: array[1..2] of integer; end;
+    procedure add_point(n: byte; p: unicodestring);
+    var i: integer;
+    begin
+        for i := 0 to high(v) do
+            if v[i].s=p then begin Inc(v[i].n[n]); Exit; end;
+        SetLength(v, Length(v)+1);
+        v[high(v)].s:=p;
+        v[high(v)].n[1]:=0;
+        v[high(v)].n[2]:=0;
+        v[high(v)].n[n]:=1;
+    end;
 
+    procedure vectorize(n: byte; s: unicodestring);
+    var i: integer;
+    begin
+        for i:=1 to length(s)   do add_point(n, s[i..i]);
+        for i:=1 to length(s)-1 do add_point(n, s[i..i+1]);
+        for i:=1 to length(s)-2 do add_point(n, s[i..i+2]);
+        for i:=1 to length(s)-2 do add_point(n, s[i]+#1+s[i+2]);
+    end;
 
+    function distance: integer;
+    var i: integer;
+    begin
+        result := 0;
+        for i := 0 to high(v) do result := result+min(v[i].n[1],v[i].n[2]);
+    end;
+
+    function abbr(s: unicodestring): unicodestring;
+    var i: integer; word_start: boolean;
+    begin
+        result := '';
+        word_start := true;
+        for i := 1 to Length(s) do
+            case s[i] of
+                ' ': word_start:=true;
+                else
+                    if word_start
+                    then begin result := result+s[i]; word_start:=false; end;
+            end;
+    end;
+
+var i: integer; chars: TVList; s1, s2: unicodestring;
+begin
+    s1 := UpperCaseU(str1);
+    s2 := UpperCaseU(str2);
+    if (Length(s1)=0) or (Length(s2)=0) then begin result:=0; Exit; end;
+    //построение вектора
+    SetLength(v, 0);
+    vectorize(1, s1);
+    vectorize(1, abbr(s1));
+    vectorize(2, s2);
+    vectorize(2, abbr(s2));
+
+    //for i := 0 to high(v) do WriteLn(v[i].s, #9, #9, v[i].n[1], #9, v[i].n[2]);
+
+    result := distance;
+    if length(s1)=length(s2) then Inc(result);
+end;
 
 end.
 
