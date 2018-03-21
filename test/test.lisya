@@ -206,7 +206,10 @@
 
     (var L \(1 2 3 4 5))
     (procedure evens (L)
-        (var r) (for i (range L) (if (= 0 (mod L/i 2)) (push r i))) r)
+        (var j 0)
+        (var ind)
+        (for i (range L) (when (= 0 (mod L/i 2)) (push ind j i) (set j (+ 1 j))))
+        ind)
     (assertion (= 2 L/evens/0) "elt sub index 1")
     (assertion (= 4 L/evens/1) "elt sub index 2"))
 

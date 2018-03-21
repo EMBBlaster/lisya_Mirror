@@ -17,6 +17,7 @@
     (assertion (= "b" (elt "abcd" 1)) "elt string val")
     (assertion (= 2 (elt (byte-vector 1 2 3) 1)) "elt byte-vector val")
 
+
     (set l\1 9)
     (assertion (= 9 l\1) "set elt list")
     (set su\slot1 9)
@@ -85,6 +86,7 @@
 
     (for c s (set c "-"))
     (assertion (= "------" s) "for string modification"))
+
 
 (block "DELETE"
     (var L \(1 2 3 4 5))
