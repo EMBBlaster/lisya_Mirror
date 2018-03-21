@@ -9,7 +9,8 @@
     (const column-indices \(
      A  B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  U  V  W  X  Y  Z
     AA AB AC AD AE AF AG AH AI AJ AK AL AM AN AO AP AQ AR AS AT AU AV AW AX AY AZ
-    BA BB BC BD BE BF BG BH BI BJ BK BL BM BN BO BP BQ BR BS BT BU BV BW BX BY BZ))
+    BA BB BC BD BE BF BG BH BI BJ BK BL BM BN BO BP BQ BR BS BT BU BV BW BX BY BZ
+    CA CB CC CD CE CF CG CH CI CJ CK CL CM CN CO CP CQ CR CS CT CU CV CW CX CY CZ))
 
 
     (procedure digit-pos (s)
@@ -17,23 +18,18 @@
             (when (member \("0" "1" "2" "3" "4" "5" "6" "7" "8" "9") s/i)
                 (break))))
 
+    (procedure col-symbol (s) (symbol (subseq s 0 (digit-pos s))))
+    (procedure row-number (s) (read (subseq s (digit-pos s))))
+
     (procedure decode-dimension (s d)
         (const (left-top :optional right-bottom) (split-string s ":"))
         (case d
             (r (block
-                (const top (read (subseq left-top (digit-pos left-top))))
-                (list
-                    top
-                    (if right-bottom
-                        (read (subseq right-bottom (digit-pos right-bottom)))
-                        top))))
+                (const top (row-number left-top))
+                (list top (if right-bottom (row-number right-bottom) top))))
             (c (block
-                (const left (symbol (subseq left-top 0 (digit-pos left-top))))
-                (list
-                    left
-                    (if right-bottom
-                        (symbol (subseq right-bottom 0 (digit-pos right-bottom)))
-                        left))))))
+                (const left (col-symbol left-top))
+                (list left (if right-bottom (col-symbol right-bottom) left))))))
 
     (procedure find-row-index (tag r)
         (for e (range 2 tag)
@@ -64,15 +60,15 @@
         (procedure str (n) (elt sharedStrings (tag "si" n) (tag "t") 2))
         (procedure cell-val (cell)
             (when cell (case (key cell/attr "t")
-                ("n" (read cell/tag-v/text))
-                ("s" (str (key cell/attr (read "s")))))))
+                ("s" (str (key cell/attr (read "s"))))
+                (t (read cell/tag-v/text)))))
         (record
             \cell (procedure (s c r)
                 (cell-val (elt sheets/s (tag "sheetData") (row r) (cell c r))))
-            \set-cell (procedure (s c r v)
-                (set (elt sheets/s (tag "sheetData")
-                    (row r) (cell c r) tag-v 2)
-                    (fmt t v)))
+            ;\set-cell (procedure (s c r v)
+            ;    (set (elt sheets/s (tag "sheetData")
+            ;        (row r) (cell c r) tag-v 2)
+            ;        (fmt t v)))
             \columns (procedure (s)
                 (const (left right) (decode-dimension
                     (key (elt sheets/s (tag "dimension") attr) "ref") \c ))
@@ -83,6 +79,7 @@
                 (const (top bottom) (decode-dimension
                     (key (elt sheets/s (tag "dimension") attr) "ref") \r ))
                 (range top (+ 1 bottom)))
+            \sheets (range sheets)
             \save (procedure ()
                 (for s (range streams)
                     (stream-length streams/s 0)

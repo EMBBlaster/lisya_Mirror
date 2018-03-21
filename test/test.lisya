@@ -211,7 +211,8 @@
         (for i (range L) (when (= 0 (mod L/i 2)) (push ind j i) (set j (+ 1 j))))
         ind)
     (assertion (= 2 L/evens/0) "elt sub index 1")
-    (assertion (= 4 L/evens/1) "elt sub index 2"))
+    (assertion (= 4 L/evens/1) "elt sub index 2")
+    (assertion (= nil L/evens/2) "elt sub index nil"))
 
 (block
     (log \LAST)
