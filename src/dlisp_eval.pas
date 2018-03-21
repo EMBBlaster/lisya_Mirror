@@ -2982,19 +2982,18 @@ begin
 
     if load_and_bind(name+'.lisya') then Exit;
     if load_and_bind(name+'.лися') then Exit;
-
+try
     path := TStringList.Create;
-
     path.Delimiter := {$IFDEF WINDOWS}';'{$ELSE}':'{$ENDIF};
-
     path.DelimitedText := GetEnvironmentVariable('LISYA_PATH');
 
     for i := 0 to path.Count-1 do begin
         if load_and_bind(path[i]+'/'+name+'.lisya') then Exit;
         if load_and_bind(path[i]+'/'+name+'.лися') then Exit;
     end;
-
+finally
     path.Free;
+end;
 
     raise ELE.Create('package '+name+' not found');
 end;
