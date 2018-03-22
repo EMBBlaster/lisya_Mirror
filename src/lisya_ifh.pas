@@ -519,6 +519,9 @@ begin
 
     result := distance;
     if length(s1)=length(s2) then Inc(result);
+    if (PosU(str1, str2)>0) or (PosU(str2, str1)>0) then Inc(result);
+    if s1=s2 then Inc(result);
+    if str1=str2 then Inc(result);
 end;
 
 end.

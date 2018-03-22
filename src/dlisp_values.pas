@@ -1,8 +1,6 @@
 ﻿unit dlisp_values;
 
-{$IFDEF FPC}
-  {$MODE Delphi}
-{$ENDIF}
+{$IFDEF FPC} {$MODE Delphi} {$ENDIF}
 
 {$ASSERTIONS ON}
 
@@ -512,7 +510,8 @@ type
 
 
     { TVHashTable }
-    THashTableIndex = array of array of record h: DWORD; k: integer; v: integer end;
+    //THashTableIndex = array of array of record h: DWORD; k: integer; v: integer end;
+    THashTableIndex = array of record h: DWORD; k:integer; end;
 
     TVHashTable = class (TVCompound)
     private
@@ -525,6 +524,7 @@ type
         function LookItem(index: integer): TValue; override;
 
         procedure Expand;
+        function FindEmpty(h: DWORD): integer;
     public
         constructor Create;
         constructor CreateEmpty;
@@ -539,7 +539,6 @@ type
         procedure AddPair(key, value: TValue);
         function Get(key: TValue): TValue;
         function GetIndex(key: TValue): integer;
-        procedure Clear;
 
         function Count: integer; override;
     end;
@@ -1158,36 +1157,46 @@ end;
 
 
 function TVHashTable.GetIndex(key: TValue): integer;
-var h, nest: DWORD; i: integer;
+var h: DWORD; i, li: integer;
 begin
     h := key.hash;
-    nest := h mod Length(index);
-    for i := 0 to Length(index[nest])-1 do
-        if (index[nest][i].h=h) and ifh_equal(keys.look[index[nest][i].k], key)
+    for i := h mod Length(index) to (h mod Length(index)) + Length(index) do begin
+        li := i mod Length(index);
+        if (index[li].h=h) and (index[li].k>=0) and key.equal(keys.look[index[li].k])
         then begin
-            result := index[nest][i].v;
+            result := index[li].k;
             Exit;
         end;
-
-    AddPair(key.Copy, TVList.Create);
-    result := data.high;
+        if index[li].k=-1 then begin
+            AddPair(key.Copy, TVList.Create);
+            result := data.high;
+            Exit;
+        end;
+    end;
 end;
 
 procedure TVHashTable.Expand;
-var old_index: THashTableIndex; i, j,  nest: integer;
+var old_index: THashTableIndex; i: integer;
 begin
     if count<(Length(index) div 4) then Exit;
 
-    old_index := index;
-
+    old_index := System.Copy(index);
     SetLength(index, Length(old_index)*2);
+    for i := 0 to high(index) do index[i].k:=-1;
+    for i := 0 to high(old_index) do
+        index[FindEmpty(old_index[i].h)] := old_index[i];
+end;
 
-    for i := 0 to Length(old_index)-1 do
-        for j := 0 to Length(old_index[i])-1 do begin
-            nest := old_index[i][j].h mod Length(index);
-            SetLength(index[nest], Length(index[nest])+1);
-            index[nest][Length(index[nest])-1] := old_index[i][j];
+function TVHashTable.FindEmpty(h: DWORD): integer;
+var i, li: integer;
+begin
+    for i := h mod Length(index) to h mod Length(index) + Length(index) do
+        li := i mod Length(index);
+        if index[li].k=-1 then begin
+            result := li;
+            Exit;
         end;
+    raise ELE.Create('filfull hash-table', 'internal');
 end;
 
 
@@ -1196,8 +1205,8 @@ begin
     data := TVList.Create;
     keys := TVList.Create;
     SetLength(index, 2);
-    SetLength(index[0], 0);
-    SetLength(index[1], 0);
+    index[0].k:=-1;
+    index[1].k:=-1;
 end;
 
 constructor TVHashTable.CreateEmpty;
@@ -1225,7 +1234,7 @@ begin
     result := TVHashTable.CreateEmpty;
     (result as TVHashTable).data := data.Copy as TVList;
     (result as TVHashTable).keys := keys.Copy as TVList;
-    (result as TVHashTable).index := index;
+    (result as TVHashTable).index := System.Copy(index);
 end;
 
 function TVHashTable.hash: DWORD;
@@ -1243,10 +1252,7 @@ procedure TVHashTable.print;
 var i, j: integer;
 begin
     WriteLn('--------',AsString,'--------');
-    for i := 0 to Length(index)-1 do
-        for j := 0 to Length(index[i])-1 do
-            with index[i][j] do
-                WriteLn(h, '   ', k, ' = ', v);
+    for i:=0 to Length(index)-1 do WriteLn(index[i].h, '   ', index[i].k);
     WriteLn('keys');
     for i := 0 to keys.high do WriteLn('    ', i, '  ', keys.look[i].AsString);
     WriteLn('values');
@@ -1262,33 +1268,22 @@ begin
 end;
 
 procedure TVHashTable.AddPair(key, value: TValue);
-var h: DWORD; nest: DWORD;
+var h: DWORD; i: integer;
 begin
     Expand;
 
     h := key.hash;
     keys.Add(key);
     data.Add(value);
-    nest := h mod Length(index);
-    SetLength(index[nest], Length(index[nest])+1);
-    index[nest][high(index[nest])].h := h;
-    index[nest][high(index[nest])].k := keys.high;
-    index[nest][high(index[nest])].v := data.high;
+    i := FindEmpty(h);
+    index[i].h := h;
+    index[i].k := data.high;
 end;
 
 
 function TVHashTable.Get(key: TValue): TValue;
-var i: integer;
 begin
-    i := GetIndex(key);
-    if i>=0
-    then result := data[i]
-    else result := TVList.Create;
-end;
-
-procedure TVHashTable.Clear;
-begin
-
+    result := data[GetIndex(key)]
 end;
 
 function TVHashTable.Count: integer;
