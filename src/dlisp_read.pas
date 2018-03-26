@@ -110,10 +110,9 @@ end;
 end;
 
 function str_is_elt_call(s: unicodestring; out elt: TStringList): boolean;
-var last_p, i: integer; acc: unicodestring;
+var i: integer; acc: unicodestring;
     state: (sNormal, sString, sEscaped);
-    procedure add;
-    begin if acc<>'' then begin elt.Add(acc); acc:=''; last_p:=i; end; end;
+    procedure add; begin if acc<>'' then begin elt.Add(acc); acc:=''; end; end;
 begin
     result := (PosU('\', s)>1) or (PosU('/', s)>1);
     if not result then Exit;
@@ -140,8 +139,8 @@ try
             sEscaped: begin acc:=acc+s[i]; state:=sString; end;
         end;
 
-    if last_p=Length(s) then raise ELE.Malformed('ELT '+s);
-    elt.Add(s[last_p+1..Length(s)]);
+    if acc='' then raise ELE.Malformed('ELT '+s);
+    add;
     elt.Add(')');
 except
     FreeAndNil(elt);

@@ -4394,7 +4394,7 @@ begin
         oeLET       : result := op_let(PL);
         oeMACRO     : result := op_procedure(PL);
         oeMACRO_SYMBOL: result := op_macro_symbol(PL);
-        oeOR        : result := op_OR(PL);
+        oeOR        : result := op_or(PL);
         oePACKAGE   : result := op_package(PL);
         oePOP       : result := op_pop(PL);
         oePROCEDURE : result := op_procedure(PL);
