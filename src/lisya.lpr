@@ -10,11 +10,8 @@ uses
     Interfaces, Forms, lisya_canvas,
     {$ENDIF}
     sysutils,
-    LResources,
     lisya_repl,
     dlisp_eval, lisya_zip;
-
-var i: integer;
 
 begin
     {$if declared(UseHeapTrace)}
@@ -26,10 +23,6 @@ begin
     RequireDerivedFormResource := True;
     {$ENDIF}
 
-    {$i ascii.lrs}
-
-//    WriteLn(LazarusResources.Find('ascii').Value);
-    for i:=0 to lazarusResources.Count-1 do WriteLn(lazarusResources.Items[i].Name);
 
     if (ParamCount=0) or not EXEC(paramStr(1)) then REPL;
 

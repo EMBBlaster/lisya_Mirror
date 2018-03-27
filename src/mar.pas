@@ -95,7 +95,7 @@ end;
 function LowerCaseU(s: unicodestring): unicodestring;
 var i: integer;
 begin
-    result := UpperCase(s);
+    result := LowerCase(s);
     for i := 1 to Length(result) do
         case result[i] of
             'А': result[i] := 'а';

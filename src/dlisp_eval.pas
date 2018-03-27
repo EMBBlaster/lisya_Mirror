@@ -3043,6 +3043,7 @@ end;
 
 procedure TEvaluationFlow.oph_bind_package(name: unicodestring; import: boolean);
 var pack: TPackage; prefix: unicodestring; path: TStringList; i: integer;
+    built_in_stream: TStream;
     procedure bind_pack;
     var i: integer;
     begin
@@ -3065,6 +3066,7 @@ var pack: TPackage; prefix: unicodestring; path: TStringList; i: integer;
     end;
 
 begin
+    built_in_stream := nil;
     if import then prefix := '' else prefix := UpperCaseU(name)+':';
     pack := FindPackage(name);
     if pack<>nil
@@ -3087,6 +3089,9 @@ try
 finally
     path.Free;
 end;
+
+    built_in_stream := GetBuiltInPackageStream(LowerCaseU(name));
+    if built_in_stream<>nil then WriteLn(read(built_in_stream, seUTF8).AsString);
 
     raise ELE.Create('package '+name+' not found');
 end;
