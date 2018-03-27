@@ -3090,8 +3090,15 @@ finally
     path.Free;
 end;
 
+try
     built_in_stream := GetBuiltInPackageStream(LowerCaseU(name));
-    if built_in_stream<>nil then WriteLn(read(built_in_stream, seUTF8).AsString);
+    if built_in_stream<>nil then begin
+        eval(read(built_in_stream, seUTF8)).Free;
+        Exit;
+    end;
+finally
+   built_in_stream.Free;
+end;
 
     raise ELE.Create('package '+name+' not found');
 end;
@@ -4013,7 +4020,7 @@ begin
     stack := package_stack;
     result := nil;
 try
-    result := oph_block(PL, 3, false);
+    result := oph_block(PL, 3, true);
 
     //  сохранение пакета
     pack := TPackage.Create;

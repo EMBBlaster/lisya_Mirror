@@ -95,13 +95,11 @@ var i: integer;
 begin
     result := nil;
 
-    for i:=0 to lazarusResources.Count-1 do begin
-        WriteLn(lazarusResources.Items[i].Name);
+    for i:=0 to lazarusResources.Count-1 do
         if lazarusResources.Items[i].Name=name then begin
             result := TLazarusResourceStream.CreateFromHandle(lazarusResources.Items[i]);
             Exit;
         end;
-    end;
 end;
 
 initialization
