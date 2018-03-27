@@ -1,0 +1,81 @@
+(const NUL (character $00))
+(const SOH (character $01))
+(const STX (character $02))
+(const ETX (character $03))
+(const EOT (character $04))
+(const ENQ (character $05))
+(const ACK (character $06))
+(const BEL (character $07))
+(const BS  (character $08))
+(const HT  (character $09))
+(const LF  (character $0A))
+(const VT  (character $0B))
+(const FF  (character $0C))
+(const CR  (character $0D))
+(const SO  (character $0E))
+(const SI  (character $0F))
+
+(const DLE (character $10))
+(const DC1 (character $11))
+(const DC2 (character $12))
+(const DC3 (character $13))
+(const DC4 (character $14))
+(const NAK (character $15))
+(const SYN (character $16))
+(const ETB (character $17))
+(const CAN (character $18))
+(const EM  (character $19))
+(const SUB (character $1A))
+(const ESC (character $1B))
+(const FS  (character $1C))
+(const GS  (character $1D))
+(const RS  (character $1E))
+(const US  (character $1F))
+
+(const DEL (character $7F))
+
+(const ASCII (list
+	NUL  SOH  STX  ETX  EOY  ENQ  ACK  BEL  BS   HT   LF   VT   FF   CR   SO   SI
+	DLE  DC1  DC2  DC3  DC4  NAK  SYN  ETB  CAN  EM   SUB  ESC  FS   GS   RS   US
+	" "  "!"  "\"" "#"  "$"  "%"  "&"  "'"  "("  ")"  "*"  "+"  ","  "-"  "."  "/"
+	"0"  "1"  "2"  "3"  "4"  "5"  "6"  "7"  "8"  "9"  ":"  ";"  "<"  "="  ">"  "?"
+	"@"  "A"  "B"  "C"  "D"  "E"  "F"  "G"  "H"  "I"  "J"  "K"  "L"  "M"  "N"  "O"
+	"P"  "Q"  "R"  "S"  "T"  "U"  "V"  "W"  "X"  "Y"  "Z"  "["  "\\" "]"  "^"  "_"
+	"`"  "a"  "b"  "c"  "d"  "e"  "f"  "g"  "h"  "i"  "j"  "k"  "l"  "m"  "n"  "o"
+	"p"  "q"  "r"  "s"  "t"  "u"  "v"  "w"  "x"  "y"  "z"  "{"  "|"  "}"  "~"  DEL))
+
+
+(const cp1251 (block
+	(const c98 (character $98))
+	(const cA0 (character $A0))
+	(const cAD (character $AD))
+	
+	(concatenate ASCII (list
+  	"Ђ"  "Ѓ"  "‚"  "ѓ"  "„"  "…"  "†"  "‡"  "€"  "‰"  "Љ"  "‹"  "Њ"  "Ќ"  "Ћ"  "Џ"
+  	"ђ"  "‘"  "’"  "“"  "”"  "•"  "–"  "—"  c98  "™"  "љ"  "›"  "њ"  "ќ"  "ћ"  "џ"
+	cA0  "Ў"  "ў"  "Ј"  "¤"  "Ґ"  "¦"  "§"  "Ё"  "©"  "Є"  "«"  "¬"  cAD­  "®"  "Ї"
+  	"°"  "±"  "І"  "і"  "ґ"  "µ"  "¶"  "·"  "ё"  "№"  "є"  "»"  "ј"  "Ѕ"  "ѕ"  "ї"
+	"А"  "Б"  "В"  "Г"  "Д"  "Е"  "Ж"  "З"  "И"  "Й"  "К"  "Л"  "М"  "Н"  "О"  "П"
+	"Р"  "С"  "Т"  "У"  "Ф"  "Х"  "Ц"  "Ч"  "Ш"  "Щ"  "Ъ"  "Ы"  "Ь"  "Э"  "Ю"  "Я"
+  	"а"  "б"  "в"  "г"  "д"  "е"  "ж"  "з"  "и"  "й"  "к"  "л"  "м"  "н"  "о"  "п"
+  	"р"  "с"  "т"  "у"  "ф"  "х"  "ц"  "ч"  "ш"  "щ"  "ъ"  "ы"  "ь"  "э"  "ю"  "я"))))
+	
+;(const cp1251 (list 
+;	(character $00) (character $01) (character $02) (character $03) (character $04) (character $05) (character $06) (character $07) (character $08) (character $09) (character $0A) (character $0B) (character $0C) (character $0D) (character $0E) (character $0F)
+;	(character $10) (character $11) (character $12) (character $13) (character $14) (character $15) (character $16) (character $17) (character $18) (character $19) (character $1A) (character $1B) (character $1C) (character $1D) (character $1E) (character $1F)
+;	(character $20) (character $21) (character $22) (character $23) (character $24) (character $25) (character $26) (character $27) (character $28) (character $29) (character $2A) (character $2B) (character $2C) (character $2D) (character $2E) (character $2F)
+;	(character $30) (character $31) (character $32) (character $33) (character $34) (character $35) (character $36) (character $37) (character $38) (character $39) (character $3A) (character $3B) (character $3C) (character $3D) (character $3E) (character $3F)
+;	(character $40) (character $41) (character $42) (character $43) (character $44) (character $45) (character $46) (character $47) (character $48) (character $49) (character $4A) (character $4B) (character $4C) (character $4D) (character $4E) (character $4F)
+;	(character $50) (character $51) (character $52) (character $53) (character $54) (character $55) (character $56) (character $57) (character $58) (character $59) (character $5A) (character $5B) (character $5C) (character $5D) (character $5E) (character $5F)
+;	(character $60) (character $61) (character $62) (character $63) (character $64) (character $65) (character $66) (character $67) (character $68) (character $69) (character $6A) (character $6B) (character $6C) (character $6D) (character $6E) (character $6F)
+;	(character $70) (character $71) (character $72) (character $73) (character $74) (character $75) (character $76) (character $77) (character $78) (character $79) (character $7A) (character $7B) (character $7C) (character $7D) (character $7E) (character $7F)
+;	
+;	(character $402)  (character $403)  (character $201A) (character $453)  (character $201E) (character $2026) (character $2020) (character $2021) (character $20AC) (character $2030) (character $409)  (character $2039) (character $40A)  (character $40C)  (character $40B)  (character $40F)
+;       (character $452)  (character $2018) (character $2019) (character $201C) (character $201D) (character $2022) (character $2013) (character $2014) (character $003F) (character $2122) (character $459)  (character $203A) (character $45A)  (character $45C)  (character $45B)  (character $45F)
+;       (character $A0)   (character $40E)  (character $45E)  (character $408)  (character $A4)   (character $490)  (character $A6)   (character $A7)   (character $401)  (character $A9)   (character $404)  (character $AB)   (character $AC)   (character $AD)   (character $AE)   (character $407)
+;       (character $B0)   (character $B1)   (character $406)  (character $456)  (character $491)  (character $B5)   (character $B6)   (character $B7)   (character $451)  (character $2116) (character $454)  (character $BB)   (character $458)  (character $405)  (character $455)  (character $457)
+;       (character $410)  (character $411)  (character $412)  (character $413)  (character $414)  (character $415)  (character $416)  (character $417)  (character $418)  (character $419)  (character $41A)  (character $41B)  (character $41C)  (character $41D)  (character $41E)  (character $41F)
+;       (character $420)  (character $421)  (character $422)  (character $423)  (character $424)  (character $425)  (character $426)  (character $427)  (character $428)  (character $429)  (character $42A)  (character $42B)  (character $42C)  (character $42D)  (character $42E)  (character $42F)
+;       (character $430)  (character $431)  (character $432)  (character $433)  (character $434)  (character $435)  (character $436)  (character $437)  (character $438)  (character $439)  (character $43A)  (character $43B)  (character $43C)  (character $43D)  (character $43E)  (character $43F)
+;       (character $440)  (character $441)  (character $442)  (character $443)  (character $444)  (character $445)  (character $446)  (character $447)  (character $448)  (character $449)  (character $44A)  (character $44B)  (character $44C)  (character $44D)  (character $44E)  (character $44F)))
+	
