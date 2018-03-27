@@ -3049,6 +3049,8 @@ var pack: TPackage; prefix: unicodestring; path: TStringList; i: integer;
     begin
         pack := FindPackage(name);
         if pack=nil then raise ELE.Create('package '+name+' not found');
+        //WriteLn(pack.export_list.AsString());
+        //pack.stack.Print();
         for i := 0 to pack.export_list.high do
             stack.new_ref(
                 prefix+pack.export_list.uname[i],
@@ -4021,7 +4023,7 @@ begin
     stack := package_stack;
     result := nil;
 try
-    result := oph_block(PL, 3, true);
+    result := oph_block(PL, 3, false);
 
     //  сохранение пакета
     pack := TPackage.Create;
@@ -4036,8 +4038,6 @@ try
 finally
     stack := external_stack;
     package_stack.Free;
-    result.Free;
-    result := TVT.Create;
 end;
 end;
 
