@@ -1,0 +1,52 @@
+﻿(package xml (
+    tag
+    get-tag-element
+    set-tag-element
+
+    get-tag-attribute
+    set-tag-attribute)
+
+
+    (procedure find-tag-index (root name index)
+        "Функция возвращает индекс искомого дочернего тега для использования
+        в операторе ELT"
+        (var n 0)
+        (for i (range 2 (length root))
+            (when (and (list? root/i) (= name (car root/i)))
+                (when (= n index) (break))
+                (set n (+ 1 n)))))
+
+
+    (procedure tag (name :optional index)
+        (default index 0)
+        (curry find-tag-index _ name index))
+
+
+    (procedure tag-chain (names)
+        (var chain)
+        (for n names
+            (push chain
+                (cond
+                    ((list? n) (curry find-tag-index _ n/0 n/1))
+                    ((string? n) (curry find-tag-index _ n 0))
+                    ((integer? n) n)
+                    (t (error "неверное имя" n)))))
+        chain)
+
+
+    (macro get-tag-element (root :rest names)
+        (assemble elt /root @(tag-chain names)))
+
+    (macro set-tag-element ((root :rest names) V)
+        (assemble set (elt /root @(tag-chain names)) /V))
+
+    (macro get-tag-attribute (root attribute :rest names)
+        (assemble key (elt /root @(tag-chain names) 1) /attribute))
+
+    (macro set-tag-attribute ((root attribute :rest names) V)
+        (assemble set (key (elt /root @(tag-chain names) 1) /attribute) /V))
+
+)
+
+
+
