@@ -3094,6 +3094,7 @@ try
     built_in_stream := GetBuiltInPackageStream(LowerCaseU(name));
     if built_in_stream<>nil then begin
         eval(read(built_in_stream, seUTF8)).Free;
+        bind_pack;
         Exit;
     end;
 finally
@@ -4035,6 +4036,8 @@ try
 finally
     stack := external_stack;
     package_stack.Free;
+    result.Free;
+    result := TVT.Create;
 end;
 end;
 
