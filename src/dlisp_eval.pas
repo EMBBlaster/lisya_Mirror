@@ -337,14 +337,6 @@ begin
     if b then E := TVT.Create else E := TVList.Create;
 end;
 
-function DirSep(s: unicodestring): unicodestring;
-var buf: string;
-begin
-    buf := s;
-    DoDirSeparators(buf);
-    result := buf;
-end;
-
 
 function ifh_format(const L: TVList): unicodestring;
 var i: integer;
@@ -3076,6 +3068,7 @@ end;
 
 procedure TEvaluationFlow.oph_bind_package(name: unicodestring; import: boolean);
 var pack: TPackage; prefix: unicodestring; path: TStringList; i: integer;
+    package_file: unicodestring;
     built_in_stream: TStream;
     procedure bind_pack;
     var i: integer;
@@ -3110,20 +3103,23 @@ begin
         Exit;
     end;
 
-    if load_and_bind(name+'.lisya') then Exit;
-    if load_and_bind(name+'.лися') then Exit;
-try
-    path := TStringList.Create;
-    path.Delimiter := {$IFDEF WINDOWS}';'{$ELSE}':'{$ENDIF};
-    path.DelimitedText := GetEnvironmentVariable('LISYA_PATH');
+//    if load_and_bind(name+'.lisya') then Exit;
+//    if load_and_bind(name+'.лися') then Exit;
+//try
+//    path := TStringList.Create;
+//    path.Delimiter := {$IFDEF WINDOWS}';'{$ELSE}':'{$ENDIF};
+//    path.DelimitedText := GetEnvironmentVariable('LISYA_PATH');
+//
+//    for i := 0 to path.Count-1 do begin
+//        if load_and_bind(path[i]+'/'+name+'.lisya') then Exit;
+//        if load_and_bind(path[i]+'/'+name+'.лися') then Exit;
+//    end;
+//finally
+//    path.Free;
+//end;
 
-    for i := 0 to path.Count-1 do begin
-        if load_and_bind(path[i]+'/'+name+'.lisya') then Exit;
-        if load_and_bind(path[i]+'/'+name+'.лися') then Exit;
-    end;
-finally
-    path.Free;
-end;
+      package_file := FindLisyaFile(name);
+      if (package_file<>'') and load_and_bind(package_file) then Exit;
 
 try
     built_in_stream := GetBuiltInPackageStream(LowerCaseU(name));

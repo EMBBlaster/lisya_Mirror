@@ -16,6 +16,7 @@ function LowerCaseU(s: unicodestring): unicodestring;
 function SplitString(S: unicodestring; separator: unicodestring = ' '): TStringArray;
 
 function PointerToStr(ptr: Pointer): unicodestring;
+function DirSep(s: unicodestring): unicodestring;
 
 type
 
@@ -156,6 +157,14 @@ begin
     d.p:=ptr;
     result := '';
     for i := low(d.b) to high(d.b) do result := IntToHex(d.b[i],2)+result;
+end;
+
+function DirSep(s: unicodestring): unicodestring;
+var buf: string;
+begin
+    buf := s;
+    DoDirSeparators(buf);
+    result := buf;
 end;
 
     { TCountingObject }

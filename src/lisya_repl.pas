@@ -9,7 +9,7 @@ uses
     cwstring,
     {$ENDIF}
 
-    Classes, SysUtils, dlisp_eval, dlisp_values, dlisp_read, mar;
+    Classes, SysUtils, dlisp_eval, dlisp_values, dlisp_read, mar, lisya_packages;
 
 
 
@@ -59,15 +59,18 @@ end;
 
 
 function EXEC(filename: unicodestring): boolean;
+var fn: unicodestring;
 begin
     result := false;
+    fn := FindLisyaFile(filename);
+    if fn='' then raise ELE.Create(filename, 'script not found');
     try
-        result := root_evaluation_flow.oph_execute_file(filename);
+        result := root_evaluation_flow.oph_execute_file(fn);
     except
         on E:ELE do begin
             if E.EClass<>'repl'
             then begin
-                WriteLn('ERROR during execution ',filename);
+                WriteLn('ERROR during execution ',fn);
                 Write(E.EStack);
                 WriteLn(E.Message,' (',E.EClass,')');
             end;

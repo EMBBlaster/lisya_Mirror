@@ -31,6 +31,8 @@ function FindPackage(name: unicodestring): TPackage;
 procedure FreePackages;
 
 function GetBuiltInPackageStream(name: unicodestring): TStream;
+function FindLisyaFile(name: unicodestring): unicodestring;
+//function FindPackageFile(name: unicodestring; out expr: TVList): boolean;
 
 //TODO: в пакете хранится его стэк целиком (хотя он не нужен)
 //и перечень экспортируемых переменных отдельно
@@ -38,6 +40,8 @@ function GetBuiltInPackageStream(name: unicodestring): TStream;
 //нужно удалить стек, а в список экспорта сохранить указатели
 
 implementation
+
+uses dlisp_read;
 
 var packages: array of TPackage;
 
@@ -100,6 +104,47 @@ begin
             result := TLazarusResourceStream.CreateFromHandle(lazarusResources.Items[i]);
             Exit;
         end;
+end;
+
+function FindLisyaFile(name: unicodestring): unicodestring;
+var oname,ename,rname, sdir: unicodestring; i: integer; path: TStringList;
+begin
+     oname := DirSep(name);
+     ename := ChangeFileExt(DirSep(name),'.lisya');
+     rname := ChangeFileExt(DirSep(name),'.лися');
+     //поиск в текущей папке
+     if FileExists(oname) then begin result := ExpandFileName(oname); Exit; end;
+     if FileExists(ename) then begin result := ExpandFileName(ename); Exit; end;
+     if FileExists(rname) then begin result := ExpandFileName(rname); Exit; end;
+     //поиск в папке стартового скрипта
+     if (ParamCount>0) then begin
+        sdir := ExtractFilePath(ExpandFileName(paramStr(1)));
+        result := sdir+oname; if FileExists(result) then Exit;
+        result := sdir+ename; if FileExists(result) then Exit;
+        result := sdir+rname; if FileExists(result) then Exit;
+     end;
+     //поиск в LISYA_PATH
+     try
+        path := TStringList.Create;
+        path.Delimiter := {$IFDEF WINDOWS}';'{$ELSE}':'{$ENDIF};
+        path.DelimitedText := GetEnvironmentVariable('LISYA_PATH');
+
+    for i := 0 to path.Count-1 do begin
+        sdir := path[i]+{$IFDEF WINDOWS}'\'{$ELSE}'/'{$ENDIF};
+        result := sdir+oname; if FileExists(result) then Exit;
+        result := sdir+ename; if FileExists(result) then Exit;
+        result := sdir+rname; if FileExists(result) then Exit;
+    end;
+    finally
+           path.Free;
+    end;
+     //поиск в папке с программой
+     sdir := ExtractFilePath(paramstr(0));
+     result := sdir+oname; if FileExists(result) then Exit;
+     result := sdir+ename; if FileExists(result) then Exit;
+     result := sdir+rname; if FileExists(result) then Exit;
+
+    result := '';
 end;
 
 initialization
