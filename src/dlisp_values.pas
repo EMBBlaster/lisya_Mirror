@@ -870,7 +870,7 @@ var symbols: array of unicodestring;
 
 implementation
 
-uses lisya_ifh, lisya_predicates;
+uses lisya_predicates;
 
 var gensym_n: Int64 = -1;
 
@@ -1249,7 +1249,7 @@ begin
 end;
 
 procedure TVHashTable.print;
-var i, j: integer;
+var i: integer;
 begin
     WriteLn('--------',AsString,'--------');
     for i:=0 to Length(index)-1 do WriteLn(index[i].h, '   ', index[i].k);

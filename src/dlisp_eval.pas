@@ -18,7 +18,10 @@ uses
     Interfaces, forms,
     lisya_canvas,
     {$ENDIF}
-    process, Classes, SysUtils, math, ucomplex, zstream
+    process,
+    Classes, SysUtils, math, ucomplex,
+    zstream,
+    fphttpclient in './fpc_backport/fphttpclient.pp'
     , dlisp_values, dlisp_read, lisya_xml, mar,
     lisya_packages
     ,lisya_predicates
@@ -2592,7 +2595,35 @@ begin
     end;
 end;
 
-const int_fun_count = 126;
+
+
+function if_http_get            (const PL: TVList; {%H-}call: TCallProc): TValue;
+var http: TFPHTTPClient; scp: integer;
+begin
+    case params_is(PL, result, [
+        tpString, tpNIL,
+        tpString, tpString]) of
+        1,2: try
+            http := TFPHTTPClient.Create(nil);//TFPHTTPClient.Create(nil);
+            http.AllowRedirect:=true;
+            if tpString(PL.look[1]) then begin
+                scp:= PosU(':',PL.S[1]);
+                if scp>0
+                then begin
+                    http.Proxy.host := PL.S[1][1..scp-1];
+                    http.proxy.port := StrToIntDef(PL.S[1][scp+1..Length(PL.S[0])],0);
+                end
+                else http.Proxy.host := PL.S[1];
+            end;
+            http.AddHeader('User-Agent','Mozilla/5.0 (compatible; fpweb)');
+            result := TVString.Create(http.Get(PL.S[0]));
+        finally
+            http.Free;
+        end;
+    end;
+end;
+
+const int_fun_count = 127;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2739,7 +2770,9 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'SQL:MYSQL-CONNECTION';      f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
 (n:'SQL:QUERY';                 f:if_sql_query;             s:'(db :rest q)'),
-(n:'SQL:QUERY-LIST';            f:if_sql_query_list;        s:'(db :rest q)')
+(n:'SQL:QUERY-LIST';            f:if_sql_query_list;        s:'(db :rest q)'),
+
+(n:'HTTP:GET';                  f:if_http_get;              s:'(url :key proxy)')
 );
 
 
@@ -3138,7 +3171,7 @@ begin
 end;
 
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
-var i: integer; tmp: TValue; ind, ind_i: TValue;
+var i: integer; tmp: TValue; ind: TValue;
     procedure key;
     var j: integer; k: TValue;
     begin try

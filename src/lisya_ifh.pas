@@ -503,7 +503,7 @@ var v: array of record s: unicodestring; n: array[1..2] of integer; end;
             end;
     end;
 
-var i: integer; chars: TVList; s1, s2: unicodestring;
+var s1, s2: unicodestring;
 begin
     s1 := UpperCaseU(str1);
     s2 := UpperCaseU(str2);

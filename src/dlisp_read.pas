@@ -110,7 +110,7 @@ end;
 end;
 
 function str_is_elt_call(s: unicodestring; out elt: TStringList): boolean;
-var i: integer; acc: unicodestring; b:byte;
+var i: integer; acc: unicodestring;
     state: (sNormal, sString, sEscaped);
     procedure add; begin if acc<>'' then begin elt.Add(acc); acc:=''; end; end;
 begin

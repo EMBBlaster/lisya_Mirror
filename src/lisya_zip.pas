@@ -146,7 +146,7 @@ begin
 end;
 
 function read_to_stream(f: TStream; count: integer; crc: DWORD): TBytesStream;
-var i: integer; b: byte;
+var i: integer;
 begin
     result := TBytesStream.Create;
     result.SetSize(count);

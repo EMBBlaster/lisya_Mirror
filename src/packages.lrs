@@ -1,0 +1,215 @@
+LazarusResources.Add('ascii','LISYA',[
+  '(const NUL (character $00))'#10'(const SOH (character $01))'#10'(const STX ('
+  +'character $02))'#10'(const ETX (character $03))'#10'(const EOT (character $'
+  +'04))'#10'(const ENQ (character $05))'#10'(const ACK (character $06))'#10'(c'
+  +'onst BEL (character $07))'#10'(const BS  (character $08))'#10'(const HT  (c'
+  +'haracter $09))'#10'(const LF  (character $0A))'#10'(const VT  (character $0'
+  +'B))'#10'(const FF  (character $0C))'#10'(const CR  (character $0D))'#10'(co'
+  +'nst SO  (character $0E))'#10'(const SI  (character $0F))'#10#10'(const DLE '
+  +'(character $10))'#10'(const DC1 (character $11))'#10'(const DC2 (character '
+  +'$12))'#10'(const DC3 (character $13))'#10'(const DC4 (character $14))'#10'('
+  +'const NAK (character $15))'#10'(const SYN (character $16))'#10'(const ETB ('
+  +'character $17))'#10'(const CAN (character $18))'#10'(const EM  (character $'
+  +'19))'#10'(const SUB (character $1A))'#10'(const ESC (character $1B))'#10'(c'
+  +'onst FS  (character $1C))'#10'(const GS  (character $1D))'#10'(const RS  (c'
+  +'haracter $1E))'#10'(const US  (character $1F))'#10#10'(const DEL (character'
+  +' $7F))'#10#10'(const ASCII (list'#10#9'NUL  SOH  STX  ETX  EOY  ENQ  ACK  B'
+  +'EL  BS   HT   LF   VT   FF   CR   SO   SI'#10#9'DLE  DC1  DC2  DC3  DC4  NA'
+  +'K  SYN  ETB  CAN  EM   SUB  ESC  FS   GS   RS   US'#10#9'" "  "!"  "\"" "#"'
+  +'  "$"  "%"  "&"  "''"  "("  ")"  "*"  "+"  ","  "-"  "."  "/"'#10#9'"0"  "1'
+  +'"  "2"  "3"  "4"  "5"  "6"  "7"  "8"  "9"  ":"  ";"  "<"  "="  ">"  "?"'#10
+  +#9'"@"  "A"  "B"  "C"  "D"  "E"  "F"  "G"  "H"  "I"  "J"  "K"  "L"  "M"  "N"'
+  +'  "O"'#10#9'"P"  "Q"  "R"  "S"  "T"  "U"  "V"  "W"  "X"  "Y"  "Z"  "["  "\\'
+  +'" "]"  "^"  "_"'#10#9'"`"  "a"  "b"  "c"  "d"  "e"  "f"  "g"  "h"  "i"  "j"'
+  +'  "k"  "l"  "m"  "n"  "o"'#10#9'"p"  "q"  "r"  "s"  "t"  "u"  "v"  "w"  "x"'
+  +'  "y"  "z"  "{"  "|"  "}"  "~"  DEL))'#10#10#10'(const cp1251 (block'#10#9
+  +'(const c98 (character $98))'#10#9'(const cA0 (character $A0))'#10#9'(const '
+  +'cAD (character $AD))'#10#9#10#9'(concatenate ASCII (list'#10'  '#9'"'#208
+  +#130'"  "'#208#131'"  "'#226#128#154'"  "'#209#147'"  "'#226#128#158'"  "'
+  +#226#128#166'"  "'#226#128#160'"  "'#226#128#161'"  "'#226#130#172'"  "'#226
+  +#128#176'"  "'#208#137'"  "'#226#128#185'"  "'#208#138'"  "'#208#140'"  "'
+  +#208#139'"  "'#208#143'"'#10'  '#9'"'#209#146'"  "'#226#128#152'"  "'#226#128
+  +#153'"  "'#226#128#156'"  "'#226#128#157'"  "'#226#128#162'"  "'#226#128#147
+  +'"  "'#226#128#148'"  c98  "'#226#132#162'"  "'#209#153'"  "'#226#128#186'" '
+  +' "'#209#154'"  "'#209#156'"  "'#209#155'"  "'#209#159'"'#10#9'cA0  "'#208
+  +#142'"  "'#209#158'"  "'#208#136'"  "'#194#164'"  "'#210#144'"  "'#194#166'"'
+  +'  "'#194#167'"  "'#208#129'"  "'#194#169'"  "'#208#132'"  "'#194#171'"  "'
+  +#194#172'"  cAD'#194#173'  "'#194#174'"  "'#208#135'"'#10'  '#9'"'#194#176'"'
+  +'  "'#194#177'"  "'#208#134'"  "'#209#150'"  "'#210#145'"  "'#194#181'"  "'
+  +#194#182'"  "'#194#183'"  "'#209#145'"  "'#226#132#150'"  "'#209#148'"  "'
+  +#194#187'"  "'#209#152'"  "'#208#133'"  "'#209#149'"  "'#209#151'"'#10#9'"'
+  +#208#144'"  "'#208#145'"  "'#208#146'"  "'#208#147'"  "'#208#148'"  "'#208
+  +#149'"  "'#208#150'"  "'#208#151'"  "'#208#152'"  "'#208#153'"  "'#208#154'"'
+  +'  "'#208#155'"  "'#208#156'"  "'#208#157'"  "'#208#158'"  "'#208#159'"'#10#9
+  +'"'#208#160'"  "'#208#161'"  "'#208#162'"  "'#208#163'"  "'#208#164'"  "'#208
+  +#165'"  "'#208#166'"  "'#208#167'"  "'#208#168'"  "'#208#169'"  "'#208#170'"'
+  +'  "'#208#171'"  "'#208#172'"  "'#208#173'"  "'#208#174'"  "'#208#175'"'#10
+  +'  '#9'"'#208#176'"  "'#208#177'"  "'#208#178'"  "'#208#179'"  "'#208#180'" '
+  +' "'#208#181'"  "'#208#182'"  "'#208#183'"  "'#208#184'"  "'#208#185'"  "'
+  +#208#186'"  "'#208#187'"  "'#208#188'"  "'#208#189'"  "'#208#190'"  "'#208
+  +#191'"'#10'  '#9'"'#209#128'"  "'#209#129'"  "'#209#130'"  "'#209#131'"  "'
+  +#209#132'"  "'#209#133'"  "'#209#134'"  "'#209#135'"  "'#209#136'"  "'#209
+  +#137'"  "'#209#138'"  "'#209#139'"  "'#209#140'"  "'#209#141'"  "'#209#142'"'
+  +'  "'#209#143'"))))'#10#9#10';(const cp1251 (list '#10';'#9'(character $00) '
+  +'(character $01) (character $02) (character $03) (character $04) (character '
+  +'$05) (character $06) (character $07) (character $08) (character $09) (chara'
+  +'cter $0A) (character $0B) (character $0C) (character $0D) (character $0E) ('
+  +'character $0F)'#10';'#9'(character $10) (character $11) (character $12) (ch'
+  +'aracter $13) (character $14) (character $15) (character $16) (character $17'
+  +') (character $18) (character $19) (character $1A) (character $1B) (characte'
+  +'r $1C) (character $1D) (character $1E) (character $1F)'#10';'#9'(character '
+  +'$20) (character $21) (character $22) (character $23) (character $24) (chara'
+  +'cter $25) (character $26) (character $27) (character $28) (character $29) ('
+  +'character $2A) (character $2B) (character $2C) (character $2D) (character $'
+  +'2E) (character $2F)'#10';'#9'(character $30) (character $31) (character $32'
+  +') (character $33) (character $34) (character $35) (character $36) (characte'
+  ,'r $37) (character $38) (character $39) (character $3A) (character $3B) (cha'
+  +'racter $3C) (character $3D) (character $3E) (character $3F)'#10';'#9'(chara'
+  +'cter $40) (character $41) (character $42) (character $43) (character $44) ('
+  +'character $45) (character $46) (character $47) (character $48) (character $'
+  +'49) (character $4A) (character $4B) (character $4C) (character $4D) (charac'
+  +'ter $4E) (character $4F)'#10';'#9'(character $50) (character $51) (characte'
+  +'r $52) (character $53) (character $54) (character $55) (character $56) (cha'
+  +'racter $57) (character $58) (character $59) (character $5A) (character $5B)'
+  +' (character $5C) (character $5D) (character $5E) (character $5F)'#10';'#9'('
+  +'character $60) (character $61) (character $62) (character $63) (character $'
+  +'64) (character $65) (character $66) (character $67) (character $68) (charac'
+  +'ter $69) (character $6A) (character $6B) (character $6C) (character $6D) (c'
+  +'haracter $6E) (character $6F)'#10';'#9'(character $70) (character $71) (cha'
+  +'racter $72) (character $73) (character $74) (character $75) (character $76)'
+  +' (character $77) (character $78) (character $79) (character $7A) (character'
+  +' $7B) (character $7C) (character $7D) (character $7E) (character $7F)'#10';'
+  +#9#10';'#9'(character $402)  (character $403)  (character $201A) (character '
+  +'$453)  (character $201E) (character $2026) (character $2020) (character $20'
+  +'21) (character $20AC) (character $2030) (character $409)  (character $2039)'
+  +' (character $40A)  (character $40C)  (character $40B)  (character $40F)'#10
+  +';       (character $452)  (character $2018) (character $2019) (character $2'
+  +'01C) (character $201D) (character $2022) (character $2013) (character $2014'
+  +') (character $003F) (character $2122) (character $459)  (character $203A) ('
+  +'character $45A)  (character $45C)  (character $45B)  (character $45F)'#10';'
+  +'       (character $A0)   (character $40E)  (character $45E)  (character $40'
+  +'8)  (character $A4)   (character $490)  (character $A6)   (character $A7)  '
+  +' (character $401)  (character $A9)   (character $404)  (character $AB)   (c'
+  +'haracter $AC)   (character $AD)   (character $AE)   (character $407)'#10'; '
+  +'      (character $B0)   (character $B1)   (character $406)  (character $456'
+  +')  (character $491)  (character $B5)   (character $B6)   (character $B7)   '
+  +'(character $451)  (character $2116) (character $454)  (character $BB)   (ch'
+  +'aracter $458)  (character $405)  (character $455)  (character $457)'#10';  '
+  +'     (character $410)  (character $411)  (character $412)  (character $413)'
+  +'  (character $414)  (character $415)  (character $416)  (character $417)  ('
+  +'character $418)  (character $419)  (character $41A)  (character $41B)  (cha'
+  +'racter $41C)  (character $41D)  (character $41E)  (character $41F)'#10';   '
+  +'    (character $420)  (character $421)  (character $422)  (character $423) '
+  +' (character $424)  (character $425)  (character $426)  (character $427)  (c'
+  +'haracter $428)  (character $429)  (character $42A)  (character $42B)  (char'
+  +'acter $42C)  (character $42D)  (character $42E)  (character $42F)'#10';    '
+  +'   (character $430)  (character $431)  (character $432)  (character $433)  '
+  +'(character $434)  (character $435)  (character $436)  (character $437)  (ch'
+  +'aracter $438)  (character $439)  (character $43A)  (character $43B)  (chara'
+  +'cter $43C)  (character $43D)  (character $43E)  (character $43F)'#10';     '
+  +'  (character $440)  (character $441)  (character $442)  (character $443)  ('
+  +'character $444)  (character $445)  (character $446)  (character $447)  (cha'
+  +'racter $448)  (character $449)  (character $44A)  (character $44B)  (charac'
+  +'ter $44C)  (character $44D)  (character $44E)  (character $44F)))'#10#9
+]);
+LazarusResources.Add('xml','LISYA',[
+  #239#187#191'(package xml ('#10'    tag'#10'    get-tag-element'#10'    set-t'
+  +'ag-element'#10#10'    get-tag-attribute'#10'    set-tag-attribute)'#10#10#10
+  +'    (procedure find-tag-index (root name index)'#10'        "'#208#164#209
+  +#131#208#189#208#186#209#134#208#184#209#143' '#208#178#208#190#208#183#208
+  +#178#209#128#208#176#209#137#208#176#208#181#209#130' '#208#184#208#189#208
+  +#180#208#181#208#186#209#129' '#208#184#209#129#208#186#208#190#208#188#208
+  +#190#208#179#208#190' '#208#180#208#190#209#135#208#181#209#128#208#189#208
+  +#181#208#179#208#190' '#209#130#208#181#208#179#208#176' '#208#180#208#187
+  +#209#143' '#208#184#209#129#208#191#208#190#208#187#209#140#208#183#208#190
+  +#208#178#208#176#208#189#208#184#209#143#10'        '#208#178' '#208#190#208
+  +#191#208#181#209#128#208#176#209#130#208#190#209#128#208#181' ELT"'#10'     '
+  +'   (var n 0)'#10'        (for i (range 2 (length root))'#10'            (wh'
+  +'en (and (list? root/i) (= name (car root/i)))'#10'                (when (= '
+  +'n index) (break))'#10'                (set n (+ 1 n)))))'#10#10#10'    (pro'
+  +'cedure tag (name :optional index)'#10'        (default index 0)'#10'       '
+  +' (curry find-tag-index _ name index))'#10#10#10'    (procedure tag-chain (n'
+  +'ames)'#10'        (var chain)'#10'        (for n names'#10'            (pus'
+  +'h chain'#10'                (cond'#10'                    ((list? n) (curry'
+  +' find-tag-index _ n/0 n/1))'#10'                    ((string? n) (curry fin'
+  +'d-tag-index _ n 0))'#10'                    ((integer? n) n)'#10'          '
+  +'          (t (error "'#208#189#208#181#208#178#208#181#209#128#208#189#208
+  +#190#208#181' '#208#184#208#188#209#143'" n)))))'#10'        chain)'#10#10#10
+  +'    (macro get-tag-element (root :rest names)'#10'        (assemble elt /ro'
+  +'ot @(tag-chain names)))'#10#10'    (macro set-tag-element ((root :rest name'
+  +'s) V)'#10'        (assemble set (elt /root @(tag-chain names)) /V))'#10#10
+  +'    (macro get-tag-attribute (root attribute :rest names)'#10'        (asse'
+  +'mble key (elt /root @(tag-chain names) 1) /attribute))'#10#10'    (macro se'
+  +'t-tag-attribute ((root attribute :rest names) V)'#10'        (assemble set '
+  +'(key (elt /root @(tag-chain names) 1) /attribute) /V))'#10#10')'#10#10#10#10
+]);
+LazarusResources.Add('xlsx','LISYA',[
+  #239#187#191'(package xlsx ('#10'    xlsx_open'#10'    )'#10'    (use xml)'#10
+  +#10'    (const attr 1)'#10'    (const text 2)'#10#10'    (const column-indic'
+  +'es \('#10'     A  B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  '
+  +'U  V  W  X  Y  Z'#10'    AA AB AC AD AE AF AG AH AI AJ AK AL AM AN AO AP AQ'
+  +' AR AS AT AU AV AW AX AY AZ'#10'    BA BB BC BD BE BF BG BH BI BJ BK BL BM '
+  +'BN BO BP BQ BR BS BT BU BV BW BX BY BZ'#10'    CA CB CC CD CE CF CG CH CI C'
+  +'J CK CL CM CN CO CP CQ CR CS CT CU CV CW CX CY CZ))'#10#10#10'    (procedur'
+  +'e digit-pos (s)'#10'        (for i (range s)'#10'            (when (member '
+  +'\("0" "1" "2" "3" "4" "5" "6" "7" "8" "9") s/i)'#10'                (break)'
+  +')))'#10#10'    (procedure col-symbol (s) (read (subseq s 0 (digit-pos s))))'
+  +#10'    (procedure row-number (s) (read (subseq s (digit-pos s))))'#10#10'  '
+  +'  (procedure decode-dimension (s d)'#10'        (const (left-top :optional '
+  +'right-bottom) (split-string s ":"))'#10'        (case d'#10'            (r '
+  +'(block'#10'                (const top (row-number left-top))'#10'          '
+  +'      (list top (if right-bottom (row-number right-bottom) top))))'#10'    '
+  +'        (c (block'#10'                (const left (col-symbol left-top))'#10
+  +'                (list left (if right-bottom (col-symbol right-bottom) left)'
+  +')))))'#10#10'    (procedure find-row-index (tag r)'#10'        (for e (rang'
+  +'e 2 tag)'#10'            (if (and (= "row" (car tag/e)) (= (fmt t r) (key t'
+  +'ag/e/1 "r")))'#10'                (break))))'#10#10'    (procedure find-cel'
+  +'l-index (tag c r)'#10'        (for e (range 2 tag)'#10'            (if (and'
+  +' (= "c" (car tag/e)) (= (fmt t c r) (key tag/e/1 "r")))'#10'               '
+  +' (break))))'#10#10'    (procedure row (r) (curry find-row-index _ r))'#10' '
+  +'   (procedure cell (c r) (curry find-cell-index _ c r))'#10'    (procedure '
+  +'tag-v (tag) (for e (range 2 tag) (if (= "v" (car tag/e)) (break))))'#10#10
+  +'    (procedure extract-rows (sheetData cols extract-val)'#10'        (var d'
+  +'ata)'#10'        (for r (range 2 sheetData)'#10'            (when (= "row" '
+  +'(car sheetData/r))'#10'                (push data (empty-list (length cols)'
+  +'))'#10'                (for c (range 2 sheetData/r)'#10'                   '
+  +' (when (= "c" (car sheetData/r/c))'#10'                        (const col ('
+  +'position cols (col-symbol (key sheetData/r/c/attr "r"))))'#10'             '
+  +'           (set data\last/col (extract-val sheetData/r/c))))))'#10'        '
+  +'data)'#10#10#10'    (procedure xlsx_open (fn)'#10'        (var z (ZIP:OPEN '
+  +'fn))'#10'        (var streams)'#10'        (var sheets)'#10'        (for fn'
+  +' (sort (ZIP:FILELIST z))'#10'            (when (= 0 (position fn "xl/worksh'
+  +'eets/"))'#10'                (var f (ZIP:FILE z fn))'#10'                (p'
+  +'ush streams f)'#10'                (push sheets (XML:READ f))))'#10'       '
+  +' (var f-sharedStrings (ZIP:FILE z "xl/sharedStrings.xml"))'#10'        (var'
+  +' sharedStrings (if f-sharedStrings (XML:READ f-sharedStrings)))'#10'       '
+  +' (procedure str (n) (elt sharedStrings (tag "si" n) (tag "t") 2))'#10'     '
+  +'   (procedure cell-val (cell)'#10'            (when cell (case (key cell/at'
+  +'tr "t")'#10'                (nil nil)'#10'                ("s" (str (read c'
+  +'ell/tag-v/text)))'#10'                (t (read (if-nil cell/tag-v/text "NIL'
+  +'"))))))'#10'        (procedure columns (s)'#10'                (const (left'
+  +' right) (decode-dimension'#10'                    (key (elt sheets/s (tag "'
+  +'dimension") attr) "ref") \c ))'#10'                (subseq column-indices'
+  +#10'                    (position column-indices left)'#10'                 '
+  +'   (+ 1 (position column-indices right))))'#10'        (record'#10'        '
+  +'    \cell (procedure (s c r)'#10'                ;(log (elt sheets/s (tag "'
+  +'sheetData") (row r) (cell c r)))'#10'                (cell-val (elt sheets/'
+  +'s (tag "sheetData") (row r) (cell c r))))'#10'            ;\set-cell (proce'
+  +'dure (s c r v)'#10'            ;    (set (elt sheets/s (tag "sheetData")'#10
+  +'            ;        (row r) (cell c r) tag-v 2)'#10'            ;        ('
+  +'fmt t v)))'#10'            \columns columns'#10'            \rows (procedur'
+  +'e (s)'#10'                (const (top bottom) (decode-dimension'#10'       '
+  +'             (key (elt sheets/s (tag "dimension") attr) "ref") \r ))'#10'  '
+  +'              (range top (+ 1 bottom)))'#10'            \sheets (range shee'
+  +'ts)'#10'            \data (procedure (s)'#10'                (extract-rows '
+  +'(elt sheets/s (tag "sheetData")) (columns s) cell-val))'#10'            \sa'
+  +'ve (procedure ()'#10'                (for s (range streams)'#10'           '
+  +'         (stream-length streams/s 0)'#10'                    (XML:WRITE str'
+  +'eams/s sheets/s))'#10'                (stream-length f-sharedStrings 0)'#10
+  +'                (if f-sharedStrings (XML:WRITE f-sharedStrings sharedString'
+  +'s)))))'#10#10#10#10')'#10#10#10#10
+]);
+LazarusResources.Add('test','LISYA',[
+  #239#187#191'(package test ('#10#9'test-var)'#10#9#10#9'(var test-var "'#209
+  +#128#209#131#209#129#209#129#208#186#208#184#208#185'")'#10#9#10')'
+]);
