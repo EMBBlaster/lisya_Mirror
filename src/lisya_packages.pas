@@ -119,7 +119,6 @@ begin
      //поиск в папке стартового скрипта
      if (ParamCount>0) then begin
         sdir := ExtractFilePath(ExpandFileName(paramStr(1)));
-        result := sdir+oname; if FileExists(result) then Exit;
         result := sdir+ename; if FileExists(result) then Exit;
         result := sdir+rname; if FileExists(result) then Exit;
      end;
@@ -131,7 +130,6 @@ begin
 
     for i := 0 to path.Count-1 do begin
         sdir := path[i]+{$IFDEF WINDOWS}'\'{$ELSE}'/'{$ENDIF};
-        result := sdir+oname; if FileExists(result) then Exit;
         result := sdir+ename; if FileExists(result) then Exit;
         result := sdir+rname; if FileExists(result) then Exit;
     end;
@@ -140,7 +138,6 @@ begin
     end;
      //поиск в папке с программой
      sdir := ExtractFilePath(paramstr(0));
-     result := sdir+oname; if FileExists(result) then Exit;
      result := sdir+ename; if FileExists(result) then Exit;
      result := sdir+rname; if FileExists(result) then Exit;
 
