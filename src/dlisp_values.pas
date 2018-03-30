@@ -571,6 +571,7 @@ type
         procedure set_var(symbol: TVSymbol; V: TValue);
         procedure clear_frame(n: integer = -1);
         procedure bind_var(symbol, target: TVSymbol);
+//        procedure bind_var(symbol, target: TVSymbol);
         function find_ref(symbol: TVSymbol): PVariable; overload;
         function find_ref(N: integer): PVariable; overload;
         function look_var(N: integer): PVariable;
@@ -1650,7 +1651,7 @@ end;
 procedure TVStream.read_BOM;
 begin
     Assert(fstream<>nil, 'operation on closed stream');
-    encoding := lisia_charset.read_BOM(fstream, seCP1251);
+    encoding := lisia_charset.read_BOM(fstream, seUTF8);
 end;
 
 procedure TVStream.write_BOM;
@@ -3300,4 +3301,4 @@ finalization
     kwKEY.Free;
     kwFLAG.Free;
     _.Free;
-end.  //3477 3361 3324 3307
+end.  //3477 3361 3324 3307

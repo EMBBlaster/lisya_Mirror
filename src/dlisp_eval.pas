@@ -4270,7 +4270,7 @@ end;
 end;
 
 function TEvaluationFlow.op_with(PL: TVList; export_symbols: boolean): TValue;
-var i: integer;
+var i, p: integer;
 begin
     if (PL.Count<2) then raise ELE.Malformed('WITH/USE');
     for i := 1 to PL.high do
@@ -4282,7 +4282,20 @@ begin
     for i := 1 to PL.high do begin
         if tpString(PL.look[i])
         then oph_execute_file(DirSep(PL.S[i]))
-        else oph_bind_package(PL.name[i], export_symbols);
+        else
+
+        if vpSymbolQualified(PL.look[i])
+        then begin
+            if export_symbols
+            then stack.new_ref(
+                    PL.uname[i][Pos(':',PL.name[i])+1..Length(PL.name[i])],
+                    stack.find_ref(PL.SYM[i]))
+            else raise ELE.Create('invalid package name '+PL.name[i], 'syntax')
+        end
+        else
+
+        if tpOrdinarySymbol(PL.look[i])
+        then oph_bind_package(PL.name[i], export_symbols);
     end;
 
     result := TVT.Create;

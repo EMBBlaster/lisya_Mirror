@@ -304,6 +304,8 @@ function vpSymbol_OTHERWISE                         (V: TValue): boolean;
 
 function vpSymbol_RANGE                             (V: TValue): boolean;
 
+function vpSymbolQualified                          (V: TValue): boolean;
+
 
 implementation /////////////////////////////////////////////////////////////////
 
@@ -1146,6 +1148,11 @@ end;
 function vpSymbol_RANGE                             (V: TValue): boolean;
 begin
     result := vphSymbolName(V, 'RANGE');
+end;
+
+function vpSymbolQualified(V: TValue): boolean;
+begin
+    result := tpOrdinarySymbol(V) and (Pos(':', (V as TVSymbol).name)>1);
 end;
 
 
