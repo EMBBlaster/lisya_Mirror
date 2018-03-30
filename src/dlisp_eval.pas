@@ -3067,7 +3067,7 @@ end;
 
 
 procedure TEvaluationFlow.oph_bind_package(name: unicodestring; import: boolean);
-var pack: TPackage; prefix: unicodestring; path: TStringList; i: integer;
+var pack: TPackage; prefix: unicodestring;
     package_file: unicodestring;
     built_in_stream: TStream;
     procedure bind_pack;
@@ -3083,18 +3083,26 @@ var pack: TPackage; prefix: unicodestring; path: TStringList; i: integer;
                 pack.stack.find_ref(pack.export_list.SYM[i]));
     end;
 
-    function load_and_bind(fn: unicodestring): boolean;
-    begin
-        if FileExists(DirSep(fn)) then begin
-            oph_execute_file(DirSep(fn));
-            bind_pack;
-            result := true;
-        end
-        else result := false;
-    end;
+    procedure load_pack(fn: unicodestring);
+    var expr: TValue; f: TFileStream;
+    begin try
+        expr := nil;
+        f := nil;
+        f := TFileStream.Create(fn, fmOpenRead);
+        expr := read(f, read_BOM(f));
+        if (expr is TVList)
+            and ((expr as TVList).Count>=3)
+            and ((expr as TVList).look[0] is TVSymbol)
+            and (((expr as TVList).uname[0]='PACKAGE') or ((expr as TVList).uname[0]='ПАКЕТ'))
+            and ((expr as TVList).look[1] is TVSymbol)
+            and ((expr as TVList).uname[1]=UpperCaseU(name))
+        then eval(expr).Free
+        else raise ELE.Create(fn+' is not package '+name,'package');
+    finally
+        f.Free;
+    end end;
 
 begin
-    built_in_stream := nil;
     if import then prefix := '' else prefix := UpperCaseU(name)+':';
     pack := FindPackage(name);
     if pack<>nil
@@ -3103,23 +3111,8 @@ begin
         Exit;
     end;
 
-//    if load_and_bind(name+'.lisya') then Exit;
-//    if load_and_bind(name+'.лися') then Exit;
-//try
-//    path := TStringList.Create;
-//    path.Delimiter := {$IFDEF WINDOWS}';'{$ELSE}':'{$ENDIF};
-//    path.DelimitedText := GetEnvironmentVariable('LISYA_PATH');
-//
-//    for i := 0 to path.Count-1 do begin
-//        if load_and_bind(path[i]+'/'+name+'.lisya') then Exit;
-//        if load_and_bind(path[i]+'/'+name+'.лися') then Exit;
-//    end;
-//finally
-//    path.Free;
-//end;
-
-      package_file := FindLisyaFile(name);
-      if (package_file<>'') and load_and_bind(package_file) then Exit;
+    package_file := FindLisyaFile(name);
+    if package_file<>'' then begin load_pack(package_file); bind_pack; Exit; end;
 
 try
     built_in_stream := GetBuiltInPackageStream(LowerCaseU(name));
