@@ -3067,20 +3067,25 @@ end;
 
 
 procedure TEvaluationFlow.oph_bind_package(name: unicodestring; import: boolean);
-var pack: TPackage; prefix: unicodestring;
+var pack: TPackage;
     package_file: unicodestring;
     built_in_stream: TStream;
     procedure bind_pack;
-    var i: integer;
+    var i: integer; prefix: unicodestring;
     begin
         pack := FindPackage(name);
         if pack=nil then raise ELE.Create('package '+name+' not found');
         //WriteLn(pack.export_list.AsString());
         //pack.stack.Print();
+        prefix := UpperCaseU(name)+':';
         for i := 0 to pack.export_list.high do
             stack.new_ref(
                 prefix+pack.export_list.uname[i],
                 pack.stack.find_ref(pack.export_list.SYM[i]));
+        if import then for i := 0 to pack.export_list.high do
+                stack.new_ref(
+                    pack.export_list.uname[i],
+                    pack.stack.find_ref(pack.export_list.SYM[i]));
     end;
 
     procedure load_pack(fn: unicodestring);
@@ -3103,7 +3108,6 @@ var pack: TPackage; prefix: unicodestring;
     end end;
 
 begin
-    if import then prefix := '' else prefix := UpperCaseU(name)+':';
     pack := FindPackage(name);
     if pack<>nil
     then begin
@@ -3122,7 +3126,7 @@ try
         Exit;
     end;
 finally
-   built_in_stream.Free;
+    built_in_stream.Free;
 end;
 
     raise ELE.Create('package '+name+' not found');
@@ -4268,7 +4272,7 @@ end;
 function TEvaluationFlow.op_with(PL: TVList; export_symbols: boolean): TValue;
 var i: integer;
 begin
-    if (PL.Count<2) then raise ELE.Malformed('WITH');
+    if (PL.Count<2) then raise ELE.Malformed('WITH/USE');
     for i := 1 to PL.high do
         if not (tpOrdinarySymbol(PL.look[i]) or tpString(PL.look[i]))
         then raise ELE.InvalidParameters;
@@ -4276,8 +4280,9 @@ begin
     result := nil;
 
     for i := 1 to PL.high do begin
-        oph_bind_package(PL.name[i], false);
-        if export_symbols then oph_bind_package(PL.name[i], true);
+        if tpString(PL.look[i])
+        then oph_execute_file(DirSep(PL.S[i]))
+        else oph_bind_package(PL.name[i], export_symbols);
     end;
 
     result := TVT.Create;
