@@ -4279,7 +4279,7 @@ begin
 
     result := nil;
 
-    for i := 1 to PL.high do begin
+    for i := 1 to PL.high do
         if tpString(PL.look[i])
         then oph_execute_file(DirSep(PL.S[i]))
         else
@@ -4296,7 +4296,7 @@ begin
 
         if tpOrdinarySymbol(PL.look[i])
         then oph_bind_package(PL.name[i], export_symbols);
-    end;
+
 
     result := TVT.Create;
 end;

@@ -32,6 +32,7 @@ type
         function description: unicodestring; virtual; abstract;
     end;
 
+procedure ReleaseAndNil(var co: TCountingObject);
 
 
 implementation
@@ -166,6 +167,13 @@ begin
     DoDirSeparators(buf);
     result := buf;
 end;
+
+procedure ReleaseAndNil(var co: TCountingObject);
+begin try
+    co.Release;
+finally
+    co := nil;
+end; end;
 
     { TCountingObject }
 
