@@ -9,7 +9,7 @@ uses
     cwstring,
     {$ENDIF}
     LResources,
-    Classes, SysUtils, dlisp_values, mar;
+    Classes, SysUtils, dlisp_values, mar, lisya_exceptions;
 
 type
 

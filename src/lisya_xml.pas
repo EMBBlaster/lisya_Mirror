@@ -13,6 +13,7 @@ uses
     , mar
     ,lisya_predicates
     ,lisia_charset
+    ,lisya_exceptions
     ;
 
 

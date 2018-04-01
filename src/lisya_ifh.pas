@@ -5,7 +5,7 @@ unit lisya_ifh;
 interface
 
 uses
-    Classes, SysUtils, dlisp_values, lisya_predicates, mar,  math;
+    Classes, SysUtils, dlisp_values, lisya_predicates, mar,  math, lisya_exceptions;
 
 type TBindings = array of record
         nN: integer;

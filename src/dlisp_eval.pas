@@ -28,6 +28,7 @@ uses
     ,lisya_ifh
     ,lisya_zip
     ,lisia_charset
+    ,lisya_exceptions
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -4203,7 +4204,6 @@ begin
     if sign_pos=2 then
         stack.new_var(PL.SYM[1],result.Copy, true);
 
-
 end;
 
 function TEvaluationFlow.op_var                     (PL: TVList): TValue;
@@ -4296,7 +4296,6 @@ begin
 
         if tpOrdinarySymbol(PL.look[i])
         then oph_bind_package(PL.name[i], export_symbols);
-
 
     result := TVT.Create;
 end;

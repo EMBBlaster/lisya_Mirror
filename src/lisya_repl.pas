@@ -9,7 +9,8 @@ uses
     cwstring,
     {$ENDIF}
 
-    Classes, SysUtils, dlisp_eval, dlisp_values, dlisp_read, mar, lisya_packages;
+    Classes, SysUtils, dlisp_eval, dlisp_values, dlisp_read, mar, lisya_packages,
+    lisya_exceptions;
 
 
 

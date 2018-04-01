@@ -8,7 +8,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    Classes, SysUtils, dlisp_values, mar, lisia_charset;
+    Classes, SysUtils, dlisp_values, mar, lisia_charset, lisya_exceptions;
 
 
 
