@@ -122,6 +122,7 @@ begin
     SetLength(bb, count);
     for i := 0 to count-1 do bb[i] := f.ReadByte;
     result := lisia_charset.bytes_to_string(bb, encoding);
+    //SetLength(bb,0);
 end;
 
 procedure write_string(f: TFileStream; s: unicodestring);

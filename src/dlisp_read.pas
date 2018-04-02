@@ -211,7 +211,8 @@ var  i: integer; sn: unicodestring;
     var i: integer;
     begin
         if stream<>nil
-        then for i := 1 to Length(s) do stream.stream.write_char(s[i])
+        //then for i := 1 to Length(s) do stream.stream.write_char(s[i])
+        then for i := 1 to Length(s) do stream.body.write_char(s[i])
         else System.Write(s);
     end;
     procedure indent;
@@ -492,7 +493,8 @@ end;
 
 function read(sp: TVStreamPointer): TValue;
 begin
-    result := read(sp.stream.fstream, sp.stream.encoding);
+    //result := read(sp.stream.fstream, sp.stream.encoding);
+  result := read(sp.body.stream, sp.body.encoding);
 end;
 
 function read_from_string(s: unicodestring): TValue;

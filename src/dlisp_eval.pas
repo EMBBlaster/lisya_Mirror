@@ -29,6 +29,7 @@ uses
     ,lisya_zip
     ,lisia_charset
     ,lisya_exceptions
+    ,lisya_streams
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -353,7 +354,8 @@ function ifh_write_string(stream: TVStreamPointer; s: unicodestring): boolean;
 var i: integer;
 begin
     result := true;
-    for i := 1 to Length(s) do result := stream.stream.write_char(s[i]);
+    //for i := 1 to Length(s) do result := stream.stream.write_char(s[i]);
+    for i := 1 to Length(s) do result := stream.body.write_char(s[i]);
 end;
 
 
@@ -926,7 +928,7 @@ begin
     result := TVT.Create;
 end;
 
-function if_test                  (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_likeness              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString, tpString]) of
@@ -1584,22 +1586,18 @@ begin
     end;
 end;
 
-function if_mismatch            (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i, j: integer;
+function if_strings_mismatch    (const PL: TVList; {%H-}call: TCallProc): TValue;
+var mm: integer;
 begin
     case params_is(PL, result, [
-        tpString, tpListOfStrings]) of
-        1: begin
-            for i := 1 to Length(PL.S[0]) do
-                for j := 0 to PL.L[1].high do
-                    if (Length(PL.L[1].S[j])<i) or (PL.S[0][i]<>PL.L[1].S[j][i])
-                    then begin
-                        result := TVInteger.Create(i-1);
-                        Exit;
-                    end;
-            result := TVList.Create;
-        end;
+        tpString, tpString, tpNIL,
+        tpString, tpString, vpKeyword_CASE_INSENSITIVE]) of
+        1: mm := ifh_strings_mismatch(PL.S[0],PL.S[1]);
+        2: mm := ifh_strings_mismatch(UpperCaseU(PL.S[0]),UpperCaseU(PL.S[1]));
     end;
+    if mm<0
+    then result := TVList.Create
+    else result := TVInteger.Create(mm);
 end;
 
 function if_byte_vector         (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -1870,29 +1868,53 @@ begin
     result := TVDateTime.Create(now);
 end;
 
+//function if_open_file           (const PL: TVList; {%H-}call: TCallProc): TValue;
+//begin
+//    case params_is(PL, result, [
+//        tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
+//        1: result := TVStreamPointer.Create(
+//                NewVariable(
+//                    TVFileStream.Create(
+//                        DirSep(PL.S[0]),
+//                        ifh_keyword_to_file_mode(PL.look[1]),
+//                        ifh_keyword_to_encoding(PL.look[2]))));
+//    end;
+//end;
+
 function if_open_file           (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
         1: result := TVStreamPointer.Create(
-                NewVariable(
-                    TVFileStream.Create(
+            TLFileStream.Create(
                         DirSep(PL.S[0]),
                         ifh_keyword_to_file_mode(PL.look[1]),
-                        ifh_keyword_to_encoding(PL.look[2]))));
+                        ifh_keyword_to_encoding(PL.look[2])));
     end;
 end;
 
+//function if_set_encoding        (const PL: TVList; {%H-}call: TCallProc): TValue;
+//var enc: TStreamEncoding;
+//begin
+//    case params_is(PL, result, [
+//    {1} vpStreamPointerActive, tpKeywordOrNIL]) of
+//        1: begin
+//            enc := ifh_keyword_to_encoding(PL.look[1]);
+//            if enc = seBOM
+//            then (PL.look[0] as TVStreamPointer).stream.read_BOM
+//            else (PL.look[0] as TVStreamPointer).stream.encoding := enc;
+//            result := TVT.Create;
+//        end;
+//    end;
+//end;
+
 function if_set_encoding        (const PL: TVList; {%H-}call: TCallProc): TValue;
-var enc: TStreamEncoding;
 begin
     case params_is(PL, result, [
     {1} vpStreamPointerActive, tpKeywordOrNIL]) of
         1: begin
-            enc := ifh_keyword_to_encoding(PL.look[1]);
-            if enc = seBOM
-            then (PL.look[0] as TVStreamPointer).stream.read_BOM
-            else (PL.look[0] as TVStreamPointer).stream.encoding := enc;
+            (PL.look[0] as TVStreamPointer).body.SetEncoding(
+                                            ifh_keyword_to_encoding(PL.look[1]));
             result := TVT.Create;
         end;
     end;
@@ -1924,8 +1946,31 @@ begin
 end;
 
 
+//function if_zip_file            (const PL: TVList; {%H-}call: TCallProc): TValue;
+//var zfs: TVZIPFileStream;  enc: TStreamEncoding; mode: WORD;
+//begin
+//    case params_is(PL, result, [
+//        tpZIPArchivePointer, tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
+//        1: begin
+//            mode := ifh_keyword_to_file_mode(PL.look[2]);
+//            enc := ifh_keyword_to_encoding(PL.look[3]);
+//
+//            zfs := TVZipFileStream.Create(
+//                (PL.look[0] as TVZIPArchivePointer).Z.Ref as TZIPArchive,
+//                PL.S[1], mode, enc);
+//            if zfs.fstream<>nil then begin
+//                result := TVStreamPointer.Create(NewVariable(zfs));
+//            end
+//            else begin
+//                zfs.Free;
+//                result := TVList.Create;
+//            end;
+//        end;
+//    end;
+//end;
+
 function if_zip_file            (const PL: TVList; {%H-}call: TCallProc): TValue;
-var zfs: TVZIPFileStream;  enc: TStreamEncoding; mode: WORD;
+var zf: TLZIPFile;  enc: TStreamEncoding; mode: WORD;
 begin
     case params_is(PL, result, [
         tpZIPArchivePointer, tpString, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
@@ -1933,14 +1978,13 @@ begin
             mode := ifh_keyword_to_file_mode(PL.look[2]);
             enc := ifh_keyword_to_encoding(PL.look[3]);
 
-            zfs := TVZipFileStream.Create(
+            zf := TLZipFile.Create(
                 (PL.look[0] as TVZIPArchivePointer).Z.Ref as TZIPArchive,
                 PL.S[1], mode, enc);
-            if zfs.fstream<>nil then begin
-                result := TVStreamPointer.Create(NewVariable(zfs));
-            end
+            if zf.stream<>nil
+            then result := TVStreamPointer.Create(zf)
             else begin
-                zfs.Free;
+                zf.Free;
                 result := TVList.Create;
             end;
         end;
@@ -1970,6 +2014,39 @@ begin
 end;
 
 
+//function if_deflate             (const PL: TVList; {%H-}call: TCallProc): TValue;
+//var i: integer; bv: TVByteVector; cs: TCompressionStream; ms: TMemoryStream;
+//begin
+//    case params_is(PL, result, [
+//        vpStreamPointerActive, tpKeywordOrNIL, tpAny,
+//        tpByteVector,           tpKeywordOrNil, tpAny,
+//        tpStreamPointer, tpKeywordOrNIL, tpAny]) of
+//        1:  begin
+//            result := TVStreamPointer.Create(
+//                NewVariable(
+//                    TVDeflateStream.Create(
+//                        RefVariable((PL.look[0] as TVStreamPointer).body),
+//                        ifh_keyword_to_encoding(PL.look[1]),
+//                        tpTrue(PL.look[2]))));
+//        end;
+//        2: begin
+//            bv := PL.look[0] as TVByteVector;
+//            ms := TMemoryStream.Create;
+//            ms.Position :=0 ;
+//            cs := TCompressionStream.create(clDefault, ms, not tpTrue(PL.look[2]));
+//            for i := 0 to high(bv.fBytes) do cs.WriteByte(bv.fBytes[i]);
+//            cs.Free;
+//            ms.Position := 0;
+//            result := TVByteVector.Create;
+//            bv := result as TVByteVector;
+//            bv.SetCount(ms.Size);
+//            for i := 0 to high(bv.fBytes) do bv.fBytes[i] := ms.ReadByte;
+//            ms.Free;
+//        end;
+//        3: raise ELE.Create('inactive stream', 'invalid parameters');
+//    end;
+//end;
+
 function if_deflate             (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; bv: TVByteVector; cs: TCompressionStream; ms: TMemoryStream;
 begin
@@ -1979,11 +2056,10 @@ begin
         tpStreamPointer, tpKeywordOrNIL, tpAny]) of
         1:  begin
             result := TVStreamPointer.Create(
-                NewVariable(
-                    TVDeflateStream.Create(
-                        RefVariable((PL.look[0] as TVStreamPointer).body),
-                        ifh_keyword_to_encoding(PL.look[1]),
-                        tpTrue(PL.look[2]))));
+                    TLDeflateStream.Create(
+                        (PL.look[0] as TVStreamPointer).body.Ref as TLStream,
+                        tpTrue(PL.look[2]),
+                        ifh_keyword_to_encoding(PL.look[1])));
         end;
         2: begin
             bv := PL.look[0] as TVByteVector;
@@ -2003,6 +2079,46 @@ begin
     end;
 end;
 
+//function if_inflate             (const PL: TVList; {%H-}call: TCallProc): TValue;
+//var i: integer; bv: TVByteVector; ds: TDecompressionStream; ms: TMemoryStream;
+//begin
+//    case params_is(PL, result, [
+//        vpStreamPointerActive, tpKeywordOrNIL, tpAny,
+//        tpByteVector,           tpKeywordOrNil, tpAny,
+//        tpStreamPointer, tpKeywordOrNIL, tpAny]) of
+//        1:  begin
+//            result := TVStreamPointer.Create(
+//                NewVariable(
+//                    TVInflateStream.Create(
+//                        RefVariable((PL.look[0] as TVStreamPointer).body),
+//                        ifh_keyword_to_encoding(PL.look[1]),
+//                        tpTrue(PL.look[2]))));
+//        end;
+//        2: begin
+//            bv := PL.look[0] as TVByteVector;
+//            ms := TMemoryStream.Create;
+//            ms.SetSize(Length(bv.fBytes));
+//            ms.Position :=0 ;
+//            for i := 0 to high(bv.fBytes) do ms.WriteByte(bv.fBytes[i]);
+//            try
+//                ms.Position := 0;
+//                ds := TDecompressionStream.create(ms, not tpTrue(PL.look[2]));
+//                result := TVByteVector.Create;
+//                bv := result as TVByteVector;
+//                try
+//                    while true do bv.Add(ds.ReadByte);
+//                except
+//                    //on E:EDecompressionError do;
+//                end;
+//            finally
+//                ms.Free;
+//                ds.Free;
+//            end;
+//        end;
+//        3: raise ELE.Create('inactive stream', 'invalid parameters');
+//    end;
+//end;
+
 function if_inflate             (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; bv: TVByteVector; ds: TDecompressionStream; ms: TMemoryStream;
 begin
@@ -2012,11 +2128,10 @@ begin
         tpStreamPointer, tpKeywordOrNIL, tpAny]) of
         1:  begin
             result := TVStreamPointer.Create(
-                NewVariable(
-                    TVInflateStream.Create(
-                        RefVariable((PL.look[0] as TVStreamPointer).body),
-                        ifh_keyword_to_encoding(PL.look[1]),
-                        tpTrue(PL.look[2]))));
+                    TLInflateStream.Create(
+                        (PL.look[0] as TVStreamPointer).body.Ref as TLStream,
+                        tpTrue(PL.look[2]),
+                        ifh_keyword_to_encoding(PL.look[1])));
         end;
         2: begin
             bv := PL.look[0] as TVByteVector;
@@ -2043,6 +2158,26 @@ begin
     end;
 end;
 
+//function if_memory_stream       (const PL: TVList; {%H-}call: TCallProc): TValue;
+//begin
+//    case params_is(PL, result, [
+//        tpByteVector,
+//        tpString,
+//        tpNIL]) of
+//        1: result := TVStreamPointer.Create(
+//                NewVariable(
+//                    TVMemoryStream.Create(
+//                        (PL.look[0] as TVByteVector).fBytes)));
+//        2: result := TVStreamPointer.Create(
+//                NewVariable(
+//                    TVMemoryStream.Create(
+//                        (PL.look[0] as TVString).S)));
+//        3: result := TVStreamPointer.Create(
+//                NewVariable(
+//                    TVMemoryStream.Create));
+//    end;
+//end;
+
 function if_memory_stream       (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2050,18 +2185,29 @@ begin
         tpString,
         tpNIL]) of
         1: result := TVStreamPointer.Create(
-                NewVariable(
-                    TVMemoryStream.Create(
-                        (PL.look[0] as TVByteVector).fBytes)));
+                    TLMemoryStream.Create(
+                        (PL.look[0] as TVByteVector).fBytes,
+                        seUTF8));
         2: result := TVStreamPointer.Create(
-                NewVariable(
-                    TVMemoryStream.Create(
-                        (PL.look[0] as TVString).S)));
-        3: result := TVStreamPointer.Create(
-                NewVariable(
-                    TVMemoryStream.Create));
+                    TLMemoryStream.Create(
+                        (PL.look[0] as TVString).S));
+        3: result := TVStreamPointer.Create(TLMemoryStream.Create(seUTF8));
     end;
 end;
+
+//function if_stream_position     (const PL: TVList; {%H-}call: TCallProc): TValue;
+//begin
+//    case params_is(PL, result, [
+//        vpStreamPointerActive, vpIntegerNotNegative,
+//        vpStreamPointerActive, tpNIL]) of
+//        1: begin
+//            (PL.look[0] as TVStreamPointer).stream.fstream.Position := PL.I[1];
+//            result := TVT.Create;
+//        end;
+//        2: result := TVInteger.Create(
+//            (PL.look[0] as TVStreamPointer).stream.fstream.Position);
+//    end;
+//end;
 
 function if_stream_position     (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2069,13 +2215,27 @@ begin
         vpStreamPointerActive, vpIntegerNotNegative,
         vpStreamPointerActive, tpNIL]) of
         1: begin
-            (PL.look[0] as TVStreamPointer).stream.fstream.Position := PL.I[1];
+            (PL.look[0] as TVStreamPointer).body.stream.Position := PL.I[1];
             result := TVT.Create;
         end;
         2: result := TVInteger.Create(
-            (PL.look[0] as TVStreamPointer).stream.fstream.Position);
+            (PL.look[0] as TVStreamPointer).body.stream.Position);
     end;
 end;
+
+//function if_stream_length       (const PL: TVList; {%H-}call: TCallProc): TValue;
+//begin
+//    case params_is(PL, result, [
+//        vpStreamPointerActive, tpNIL,
+//        vpStreamPointerActive, vpIntegerNotNegative]) of
+//        1: result := TVInteger.Create(
+//            (PL.look[0] as TVStreamPointer).stream.fstream.Size);
+//        2: begin
+//            (PL.look[0] as TVStreamPointer).stream.fstream.Size := PL.I[1];
+//            result := TVT.Create;
+//        end;
+//    end;
+//end;
 
 function if_stream_length       (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2083,9 +2243,9 @@ begin
         vpStreamPointerActive, tpNIL,
         vpStreamPointerActive, vpIntegerNotNegative]) of
         1: result := TVInteger.Create(
-            (PL.look[0] as TVStreamPointer).stream.fstream.Size);
+            (PL.look[0] as TVStreamPointer).body.stream.Size);
         2: begin
-            (PL.look[0] as TVStreamPointer).stream.fstream.Size := PL.I[1];
+            (PL.look[0] as TVStreamPointer).body.stream.Size := PL.I[1];
             result := TVT.Create;
         end;
     end;
@@ -2098,21 +2258,38 @@ begin
         vpStreamPointerActive, tpNIL,
         vpStreamPointerActive, vpIntegerNotNegative,
         vpStreamPointerActive, vpKeyword_ALL]) of
-        1: if (PL.look[0] as TVStreamPointer).stream.read_byte(b)
+        1: if (PL.look[0] as TVStreamPointer).body.read_byte(b)
             then result := TVInteger.Create(b)
             else result := TVList.Create;
         2: begin
             result := TVByteVector.Create;
-            (PL.look[0] as TVStreamPointer).stream.read_bytes(
+            (PL.look[0] as TVStreamPointer).body.read_bytes(
                 (result as TVByteVector).fBytes, PL.I[1]);
         end;
         3: begin
             result := TVByteVector.Create;
-            (PL.look[0] as TVStreamPointer).stream.read_bytes(
+            (PL.look[0] as TVStreamPointer).body.read_bytes(
                 (result as TVByteVector).fBytes, -1);
         end;
     end;
 end;
+
+//function if_write_byte          (const PL: TVList; {%H-}call: TCallProc): TValue;
+//begin
+//    case params_is(PL, result, [
+//        vpStreamPointerActive, vpIntegerByte,
+//        vpStreamPointerActive, tpByteVector]) of
+//        1: begin
+//            (PL.look[0] as TVStreamPointer).stream.write_byte(PL.I[1]);
+//            result := TVT.Create
+//        end;
+//        2: begin
+//            (PL.look[0] as TVStreamPointer).stream.write_bytes(
+//                (PL.look[1] as TVByteVector).fBytes);
+//            result := TVT.Create;
+//        end;
+//    end;
+//end;
 
 function if_write_byte          (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2120,11 +2297,11 @@ begin
         vpStreamPointerActive, vpIntegerByte,
         vpStreamPointerActive, tpByteVector]) of
         1: begin
-            (PL.look[0] as TVStreamPointer).stream.write_byte(PL.I[1]);
+            (PL.look[0] as TVStreamPointer).body.write_byte(PL.I[1]);
             result := TVT.Create
         end;
         2: begin
-            (PL.look[0] as TVStreamPointer).stream.write_bytes(
+            (PL.look[0] as TVStreamPointer).body.write_bytes(
                 (PL.look[1] as TVByteVector).fBytes);
             result := TVT.Create;
         end;
@@ -2139,13 +2316,13 @@ begin
         vpStreamPointerActive, vpIntegerNotnegative,
         vpStreamPointerActive, vpKeyword_ALL,
         tpNIL, tpAny]) of
-        1: if (PL.look[0] as TVStreamPointer).stream.read_char(ch)
+        1: if (PL.look[0] as TVStreamPointer).body.read_char(ch)
             then result := TVString.Create(ch)
             else result := TVList.Create;
         2: begin
             s := '';
             for i := 1 to PL.I[1] do begin
-                if (PL.look[0] as TVStreamPointer).stream.read_char(ch)
+                if (PL.look[0] as TVStreamPointer).body.read_char(ch)
                 then s := s + ch
                 else break;
             end;
@@ -2153,7 +2330,7 @@ begin
         end;
         3: begin
             s := '';
-            while (PL.look[0] as TVStreamPointer).stream.read_char(ch) do
+            while (PL.look[0] as TVStreamPointer).body.read_char(ch) do
                 s := s + ch;
             result := TVString.Create(s);
         end;
@@ -2175,6 +2352,34 @@ begin
     result := TVT.Create;
 end;
 
+//function if_read_line           (const PL: TVList; {%H-}call: TCallProc): TValue;
+//var ch: unicodechar; s: unicodestring;
+//begin
+//    case params_is(PL, result, [
+//        vpStreamPointerActive,
+//        tpNIL]) of
+//        1: begin
+//            s := '';
+//            try
+//                while (PL.look[0] as TVStreamPointer).stream.read_char(ch) do
+//                    case ch of
+//                        #13,#10: if s<>'' then break;
+//                        else s := s + ch;
+//                    end;
+//            finally
+//
+//            end;
+//            if s<>''
+//            then result := TVString.Create(s)
+//            else result := TVList.Create;
+//        end;
+//        2: begin
+//            System.ReadLn(s);
+//            result := TVString.Create(s);
+//        end;
+//    end;
+//end;
+
 function if_read_line           (const PL: TVList; {%H-}call: TCallProc): TValue;
 var ch: unicodechar; s: unicodestring;
 begin
@@ -2184,7 +2389,7 @@ begin
         1: begin
             s := '';
             try
-                while (PL.look[0] as TVStreamPointer).stream.read_char(ch) do
+                while (PL.look[0] as TVStreamPointer).body.read_char(ch) do
                     case ch of
                         #13,#10: if s<>'' then break;
                         else s := s + ch;
@@ -2214,11 +2419,20 @@ begin
     result := TVT.Create
 end;
 
+//function if_read_bom            (const PL: TVList; {%H-}call: TCallProc): TValue;
+//begin
+//    case params_is(PL, result, [
+//        vpStreamPointerActive]) of
+//        1:  (PL.look[0] as TVStreamPointer).stream.read_BOM;
+//    end;
+//    result := TVT.Create;
+//end;
+
 function if_read_bom            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive]) of
-        1:  (PL.look[0] as TVStreamPointer).stream.read_BOM;
+        1:  (PL.look[0] as TVStreamPointer).body.SetEncoding(seBOM);
     end;
     result := TVT.Create;
 end;
@@ -2227,7 +2441,7 @@ function if_write_bom           (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         vpStreamPointerActive]) of
-        1: (PL.look[0] as TVStreamPointer).stream.write_BOM;
+        1: (PL.look[0] as TVStreamPointer).body.write_BOM;
     end;
     result := TVT.Create;
 end;
@@ -2262,6 +2476,7 @@ begin
         vpStreamPointerActive, tpAny,
         tpNIL,           tpAny]) of
         1: begin
+            //WriteLn('==1',PL.AsString());
             dlisp_read.print(PL.look[1], PL.look[0] as TVStreamPointer);
             result := TVT.Create;
             //TODO: не возвращается ошибка при записи в файл
@@ -2428,16 +2643,40 @@ begin
 end;
 
 
+//function if_xml_read            (const PL: TVList; {%H-}call: TCallProc): TValue;
+//begin
+//    case params_is(PL, result, [
+//        vpStreamPointerActive,
+//        tpString]) of
+//        1: result := xml_read((PL.look[0] as TVStreamPointer).stream.fstream,
+//                (PL.look[0] as TVStreamPointer).stream.encoding);
+//        2: result := xml_from_string(PL.S[0]);
+//    end;
+//end;
+
 function if_xml_read            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive,
         tpString]) of
-        1: result := xml_read((PL.look[0] as TVStreamPointer).stream.fstream,
-                (PL.look[0] as TVStreamPointer).stream.encoding);
+        1: result := xml_read((PL.look[0] as TVStreamPointer).body.stream,
+                (PL.look[0] as TVStreamPointer).body.encoding);
         2: result := xml_from_string(PL.S[0]);
     end;
 end;
+
+//function if_xml_write           (const PL: TVList; {%H-}call: TCallProc): TValue;
+//begin
+//    case params_is(PL, result, [
+//        vpStreamPointerActive,  tpList,
+//        tpT,                    tpList]) of
+//        1: begin
+//            xml_write((PL.look[0] as TVStreamPointer).stream.fstream, PL.L[1]);
+//            result := TVT.Create;
+//        end;
+//        2: result := TVString.Create(xml_to_string(PL.L[1]));
+//    end;
+//end;
 
 function if_xml_write           (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2445,13 +2684,12 @@ begin
         vpStreamPointerActive,  tpList,
         tpT,                    tpList]) of
         1: begin
-            xml_write((PL.look[0] as TVStreamPointer).stream.fstream, PL.L[1]);
+            xml_write((PL.look[0] as TVStreamPointer).body.stream, PL.L[1]);
             result := TVT.Create;
         end;
         2: result := TVString.Create(xml_to_string(PL.L[1]));
     end;
 end;
-
 
 function if_sql_mysql_connection(const PL: TVList; {%H-}call: TCallProc): TValue;
 var database, username, host, password: unicodestring; port: integer;
@@ -2655,7 +2893,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'VAL';                       f:if_val;                   s:'(v)'),
 
 (n:'TEST-DYN';                  f:if_test_dyn;              s:'(:rest msgs)'),
-(n:'TEST';                      f:if_test;                  s:'(s1 s2)'),
+(n:'LIKENESS СХОДСТВО';         f:if_likeness;              s:'(s1 s2)'),
 
 
 (n:'EXTRACT-FILE-EXT';          f:if_extract_file_ext;      s:'(s)'),
@@ -2700,7 +2938,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'HASH-TABLE';                f:if_hash_table;            s:'()'),
 (n:'CONCATENATE';               f:if_concatenate;           s:'(:rest a)'),
 (n:'GROUP ГРУППИРОВКА';         f:if_group;                 s:'(s :rest p)'),
-(n:'MISMATCH';                  f:if_mismatch;              s:'(a :rest b)'),
+(n:'STRINGS-MISMATCH';          f:if_strings_mismatch;      s:'(a b)'),
 
 (n:'BYTE-VECTOR BYTES';         f:if_byte_vector;           s:'(:rest b)'),
 (n:'BITWISE-AND';               f:if_bitwise_and;           s:'(a b)'),
@@ -3042,9 +3280,11 @@ begin
     try
         prog_file := nil;
         res := nil;
+        //prog_file := TVStreamPointer.Create(
+        //        NewVariable(
+        //            TVFileStream.Create(DirSep(fn), fmOpenRead, seBOM)));
         prog_file := TVStreamPointer.Create(
-                NewVariable(
-                    TVFileStream.Create(DirSep(fn), fmOpenRead, seBOM)));
+                    TLFileStream.Create(DirSep(fn), fmOpenRead, seBOM));
         while true do begin
             expr := nil;
             expr := dlisp_read.read(prog_file);
@@ -4529,7 +4769,9 @@ begin try
     PLI := TVList.Create([PL[0]]);
     PLI.SetCapacity(PL.Count);
     for i := 1 to PL.high do PLI.Add(eval(PL[i]));
+    //WriteLn('==2',PLI.AsString());
     result := call_internal(PLI);
+    //WriteLn('==3',PLI.AsString());
 finally
     PLI.Free;
 end; end;
@@ -4573,7 +4815,7 @@ var PL: TVList;
 label return;
 begin try
     {$IFDEF EVAL_DEBUG_PRINT}
-    indent; Write('eval>> ');print_stdout_ln(V);
+    indent; WriteLn('eval>> ',V.AsString);
     //stack.print(78);
     inc(eval_indent);
     {$ENDIF}
@@ -4654,7 +4896,7 @@ return:
    if result=nil then raise ELE.Create('eval без результата');
    {$IFDEF EVAL_DEBUG_PRINT}
    Dec(eval_indent);
-   indent; write('=  '); print_stdout_ln(result);
+   indent; writeLn('=  ',result.asString);
    {$ENDIF}
    FreeAndNil(V);
 

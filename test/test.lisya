@@ -291,13 +291,6 @@
     (var in (open-file "1.txt"))
 	(assertion (= 37 (read-byte in)) "file stream"))
 
-(log \MISMATCH)
-(block
-    (var a "thing number 1")
-    (var b "thing number 11")
-    (var c "thing number 21")
-    (assertion (= "thing number 1" (subseq a 0 (mismatch a b))) "mismatch 1")
-    (assertion (= "thing number " (subseq a 0 (mismatch a b c))) "mismatch 2"))
 
 (log \XML)
 (block
@@ -309,7 +302,7 @@
 
 (log)
 (var tests (directory "../test/*_test.lisya"))
-(assertion (= 13 (length tests)) "tests count")
+(assertion (= 14 (length tests)) "tests count")
 (for test tests (execute-file test))
 
 

@@ -11,7 +11,7 @@ uses
     cwstring,
     {$ENDIF}
     SysUtils, Classes, Contnrs, ucomplex, crc,
-    lisia_charset, zstream, mar, lisya_zip, lisya_exceptions;
+    lisia_charset, zstream, mar, lisya_zip, lisya_exceptions, lisya_streams;
 
 
 const
@@ -724,85 +724,102 @@ type
     end;
 
 
-    { TVStream }
-
-    TVStream = class (TValue)
-        fstream: TStream;
-        encoding: TStreamEncoding;
-
-        destructor Destroy; override;
-        function Copy: TValue; override;
-        function hash: DWORD; override;
-        function equal(V: TValue): boolean; override;
-
-        function read_byte(out b: byte): boolean;
-        function read_bytes(var bb: TBytes; count: integer = -1): boolean;
-        function write_byte(b: byte): boolean;
-        function write_bytes(bb: TBytes): boolean;
-
-        procedure read_BOM; virtual;
-        procedure write_BOM;
-
-        function read_char(out ch: unicodechar): boolean;
-        function write_char(ch: unicodechar): boolean;
-    end;
-
-
-    { TVFileStream }
-
-    TVFileStream = class (TVStream)
-        file_name: unicodestring;
-
-        constructor Create(fn: unicodestring; mode: WORD;
-            enc: TStreamEncoding = seUTF8);
-
-        function AsString: unicodestring; override;
-    end;
-
-
-    { TVInflateStream }
-
-    TVInflateStream = class (TVStream)
-        target: PVariable;
-
-        constructor Create(_target: PVariable; enc: TStreamEncoding = seUTF8;
-            head: boolean = false);
-        destructor Destroy; override;
-
-        procedure read_BOM; override;
-        function AsString: unicodestring; override;
-    end;
-
-
-    { TVDeflateStream }
-
-    TVDeflateStream = class (TVStream)
-        target: PVariable;
-
-        constructor Create(_target: PVariable; enc: TStreamEncoding = seUTF8;
-            head: boolean = false);
-        destructor Destroy; override;
-
-        function AsString: unicodestring; override;
-    end;
-
-    { TVMemoryStream }
-
-    TVMemoryStream = class (TVStream)
-        constructor Create; overload;
-        constructor Create(const bb: TBytes); overload;
-        constructor Create(const s: unicodestring); overload;
-
-        function AsString: unicodestring; override;
-    end;
+    //{ TVStream }
+    //
+    //TVStream = class (TValue)
+    //    fstream: TStream;
+    //    encoding: TStreamEncoding;
+    //
+    //    destructor Destroy; override;
+    //    function Copy: TValue; override;
+    //    function hash: DWORD; override;
+    //    function equal(V: TValue): boolean; override;
+    //
+    //    function read_byte(out b: byte): boolean;
+    //    function read_bytes(var bb: TBytes; count: integer = -1): boolean;
+    //    function write_byte(b: byte): boolean;
+    //    function write_bytes(bb: TBytes): boolean;
+    //
+    //    procedure read_BOM; virtual;
+    //    procedure write_BOM;
+    //
+    //    function read_char(out ch: unicodechar): boolean;
+    //    function write_char(ch: unicodechar): boolean;
+    //end;
+    //
+    //
+    //{ TVFileStream }
+    //
+    //TVFileStream = class (TVStream)
+    //    file_name: unicodestring;
+    //
+    //    constructor Create(fn: unicodestring; mode: WORD;
+    //        enc: TStreamEncoding = seUTF8);
+    //
+    //    function AsString: unicodestring; override;
+    //end;
+    //
+    //
+    //{ TVInflateStream }
+    //
+    //TVInflateStream = class (TVStream)
+    //    target: PVariable;
+    //
+    //    constructor Create(_target: PVariable; enc: TStreamEncoding = seUTF8;
+    //        head: boolean = false);
+    //    destructor Destroy; override;
+    //
+    //    procedure read_BOM; override;
+    //    function AsString: unicodestring; override;
+    //end;
+    //
+    //
+    //{ TVDeflateStream }
+    //
+    //TVDeflateStream = class (TVStream)
+    //    target: PVariable;
+    //
+    //    constructor Create(_target: PVariable; enc: TStreamEncoding = seUTF8;
+    //        head: boolean = false);
+    //    destructor Destroy; override;
+    //
+    //    function AsString: unicodestring; override;
+    //end;
+    //
+    //{ TVMemoryStream }
+    //
+    //TVMemoryStream = class (TVStream)
+    //    constructor Create; overload;
+    //    constructor Create(const bb: TBytes); overload;
+    //    constructor Create(const s: unicodestring); overload;
+    //
+    //    function AsString: unicodestring; override;
+    //end;
+    //
+    //{ TVStreamPointer }
+    //
+    //TVStreamPointer = class (TValue)
+    //    body: PVariable;
+    //    stream: TVStream;
+    //
+    //    constructor Create(_body: PVariable);
+    //    destructor Destroy; override;
+    //
+    //    function Copy: TValue; override;
+    //    function AsString: unicodestring; override;
+    //    function hash: DWORD; override;
+    //    function equal(V: TValue): boolean; override;
+    //
+    //    procedure close_stream;
+    //end;
 
     { TVStreamPointer }
 
     TVStreamPointer = class (TValue)
-        body: PVariable;
-        stream: TVStream;
+        body: TLStream;
 
-        constructor Create(_body: PVariable);
+        constructor Create(_body: TLStream);
+        constructor CreateCopy(origin: TVStreamPointer);
         destructor Destroy; override;
 
         function Copy: TValue; override;
@@ -812,7 +829,6 @@ type
 
         procedure close_stream;
     end;
-
 
     { TVZIPArchivePointer }
 
@@ -832,15 +848,15 @@ type
 
     { TVZIPFileStream }
 
-    TVZIPFileStream = class (TVFileStream)
-        Z: TZipArchive;
-
-        constructor Create(_Z: TZipArchive; fn: unicodestring; mode: WORD;
-                            enc: TStreamEncoding);
-        destructor Destroy; override;
-
-        function AsString: unicodestring; override;
-    end;
+    //TVZIPFileStream = class (TVFileStream)
+    //    Z: TZipArchive;
+    //
+    //    constructor Create(_Z: TZipArchive; fn: unicodestring; mode: WORD;
+    //                        enc: TStreamEncoding);
+    //    destructor Destroy; override;
+    //
+    //    function AsString: unicodestring; override;
+    //end;
 
 
 procedure Assign(var v1, v2: TValue);
@@ -995,6 +1011,7 @@ begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
 
+
 { TVCompoundOfPrimitive }
 
 function TVCompoundOfPrimitive.LookItem(index: integer): TValue;
@@ -1037,24 +1054,24 @@ end;
 
 { TVZIPFileStream }
 
-constructor TVZIPFileStream.Create(_Z: TZipArchive; fn: unicodestring;
-    mode: WORD; enc: TStreamEncoding);
-begin
-    Z := _Z;
-    file_name := fn;
-    fstream := Z.GetFileStream(fn, mode);
-    if enc=seBOM then read_BOM else encoding := enc;
-end;
-
-destructor TVZIPFileStream.Destroy;
-begin
-    Z.Release;
-end;
-
-function TVZIPFileStream.AsString: unicodestring;
-begin
-    result := '#<FILE '+Z.description+': '+file_name+'>';
-end;
+//constructor TVZIPFileStream.Create(_Z: TZipArchive; fn: unicodestring;
+//    mode: WORD; enc: TStreamEncoding);
+//begin
+//    Z := _Z;
+//    file_name := fn;
+//    fstream := Z.GetFileStream(fn, mode);
+//    if enc=seBOM then read_BOM else encoding := enc;
+//end;
+//
+//destructor TVZIPFileStream.Destroy;
+//begin
+//    Z.Release;
+//end;
+//
+//function TVZIPFileStream.AsString: unicodestring;
+//begin
+//    result := '#<FILE '+Z.description+': '+file_name+'>';
+//end;
 
 { TVZIPArchivePointer }
 
@@ -1292,58 +1309,58 @@ end;
 
 { TVDeflateStream }
 
-constructor TVDeflateStream.Create(_target: PVariable; enc: TStreamEncoding;
-    head: boolean);
-begin
-    encoding := enc;
-    target := _target;
-    fStream := TCompressionStream.create(clDefault,
-        (target.V as TVStream).fstream, not head);
-    inherited Create();
-end;
-
-destructor TVDeflateStream.Destroy;
-begin
-    ReleaseVariable(target);
-    inherited Destroy;
-end;
-
-function TVDeflateStream.AsString: unicodestring;
-begin
-    result := '#<DEFLATE-STREAM '+target.V.AsString+'>';
-end;
+//constructor TVDeflateStream.Create(_target: PVariable; enc: TStreamEncoding;
+//    head: boolean);
+//begin
+//    encoding := enc;
+//    target := _target;
+//    fStream := TCompressionStream.create(clDefault,
+//        (target.V as TVStream).fstream, not head);
+//    inherited Create();
+//end;
+//
+//destructor TVDeflateStream.Destroy;
+//begin
+//    ReleaseVariable(target);
+//    inherited Destroy;
+//end;
+//
+//function TVDeflateStream.AsString: unicodestring;
+//begin
+//    result := '#<DEFLATE-STREAM '+target.V.AsString+'>';
+//end;
 
 { TVMemoryStream }
 
-constructor TVMemoryStream.Create;
-begin
-    encoding := seUTF8;
-    fstream := TMemoryStream.Create;
-    inherited Create;
-end;
-
-constructor TVMemoryStream.Create(const bb: TBytes);
-var i: integer;
-begin
-    encoding := seUTF8;
-    fstream := TMemoryStream.Create;
-    for i := 0 to high(bb) do fstream.WriteByte(bb[i]);
-    inherited Create;
-end;
-
-constructor TVMemoryStream.Create(const s: unicodestring);
-var i: integer;
-begin
-    encoding := seUTF8;
-    fstream := TMemoryStream.Create;
-    for i := 1 to Length(s) do self.write_char(s[i]);
-    inherited Create;
-end;
-
-function TVMemoryStream.AsString: unicodestring;
-begin
-    result := '<#MEMORY STREAM>'
-end;
+//constructor TVMemoryStream.Create;
+//begin
+//    encoding := seUTF8;
+//    fstream := TMemoryStream.Create;
+//    inherited Create;
+//end;
+//
+//constructor TVMemoryStream.Create(const bb: TBytes);
+//var i: integer;
+//begin
+//    encoding := seUTF8;
+//    fstream := TMemoryStream.Create;
+//    for i := 0 to high(bb) do fstream.WriteByte(bb[i]);
+//    inherited Create;
+//end;
+//
+//constructor TVMemoryStream.Create(const s: unicodestring);
+//var i: integer;
+//begin
+//    encoding := seUTF8;
+//    fstream := TMemoryStream.Create;
+//    for i := 1 to Length(s) do self.write_char(s[i]);
+//    inherited Create;
+//end;
+//
+//function TVMemoryStream.AsString: unicodestring;
+//begin
+//    result := '<#MEMORY STREAM>'
+//end;
 
 { TVComplex }
 
@@ -1461,209 +1478,252 @@ end;
 
 { TVStreamPointer }
 
-constructor TVStreamPointer.Create(_body: PVariable);
+constructor TVStreamPointer.Create(_body: TLStream);
 begin
     body := _body;
-    stream := body.V as TVStream;
+end;
+
+constructor TVStreamPointer.CreateCopy(origin: TVStreamPointer);
+begin
+    body := origin.body.Ref as TLStream;
 end;
 
 destructor TVStreamPointer.Destroy;
 begin
-    ReleaseVariable(body);
+    body.Release;
     inherited Destroy;
 end;
 
 function TVStreamPointer.Copy: TValue;
 begin
-    result := TVStreamPointer.Create(RefVariable(body));
+    result := TVStreamPointer.CreateCopy(self);
 end;
 
 function TVStreamPointer.AsString: unicodestring;
 begin
-    result := '#<STREAM-POINTER '+body.V.AsString+'>';
+    result := '#<STREAM-POINTER '+body.description+'>';
 end;
 
 function TVStreamPointer.hash: DWORD;
 begin
     if body=nil
     then result := 10007
-    else result := crc32(0, @stream, SizeOf(stream));
+    else result := crc32(0, @body, SizeOf(body));
 end;
 
 function TVStreamPointer.equal(V: TValue): boolean;
 begin
-    result := (V is TVStreamPointer) and stream.equal((V as TVStreamPointer).stream);
+    result := (V is TVStreamPointer) and (body = (V as TVStreamPointer).body);
 end;
 
 procedure TVStreamPointer.close_stream;
 begin
-    if stream.fstream is TFileStream then FreeAndNil(stream.fstream);
-    stream := nil;
+    FreeAndNil(body.stream);
 end;
+
+//constructor TVStreamPointer.Create(_body: PVariable);
+//begin
+//    body := _body;
+//    stream := body.V as TVStream;
+//end;
+//
+//destructor TVStreamPointer.Destroy;
+//begin
+//    ReleaseVariable(body);
+//    inherited Destroy;
+//end;
+//
+//function TVStreamPointer.Copy: TValue;
+//begin
+//    result := TVStreamPointer.Create(RefVariable(body));
+//end;
+//
+//function TVStreamPointer.AsString: unicodestring;
+//begin
+//    result := '#<STREAM-POINTER '+body.V.AsString+'>';
+//end;
+//
+//function TVStreamPointer.hash: DWORD;
+//begin
+//    if body=nil
+//    then result := 10007
+//    else result := crc32(0, @stream, SizeOf(stream));
+//end;
+//
+//function TVStreamPointer.equal(V: TValue): boolean;
+//begin
+//    result := (V is TVStreamPointer) and stream.equal((V as TVStreamPointer).stream);
+//end;
+//
+//procedure TVStreamPointer.close_stream;
+//begin
+//    if stream.fstream is TFileStream then FreeAndNil(stream.fstream);
+//    stream := nil;
+//end;
 
 
 { TVInflateStream }
 
-constructor TVInflateStream.Create(_target: PVariable; enc: TStreamEncoding = seUTF8;
-    head: boolean = false);
-begin
-    if enc = seBOM then read_BOM else encoding := enc;
-    target := _target;
-    fStream := TDecompressionStream.create((target.V as TVStream).fstream, not head);
-    inherited Create();
-end;
-
-destructor TVInflateStream.Destroy;
-begin
-    ReleaseVariable(target);
-    inherited Destroy;
-end;
-
-procedure TVInflateStream.read_BOM;
-begin
-    raise ELE.Create('can not read BOM from decompression stream',
-                                                        'invalid parameters');
-end;
-
-function TVInflateStream.AsString: unicodestring;
-begin
-    result := '#<INFLATE-STREAM '+target.V.AsString+'>';
-end;
+//constructor TVInflateStream.Create(_target: PVariable; enc: TStreamEncoding = seUTF8;
+//    head: boolean = false);
+//begin
+//    if enc = seBOM then read_BOM else encoding := enc;
+//    target := _target;
+//    fStream := TDecompressionStream.create((target.V as TVStream).fstream, not head);
+//    inherited Create();
+//end;
+//
+//destructor TVInflateStream.Destroy;
+//begin
+//    ReleaseVariable(target);
+//    inherited Destroy;
+//end;
+//
+//procedure TVInflateStream.read_BOM;
+//begin
+//    raise ELE.Create('can not read BOM from decompression stream',
+//                                                        'invalid parameters');
+//end;
+//
+//function TVInflateStream.AsString: unicodestring;
+//begin
+//    result := '#<INFLATE-STREAM '+target.V.AsString+'>';
+//end;
 
 { TVFileStream }
 
-constructor TVFileStream.Create(fn: unicodestring; mode: WORD;
-    enc: TStreamEncoding);
-begin
-    inherited Create;
-    file_name := fn;
-    case mode of
-        fmOpenRead: begin
-            if not FileExists(fn) then ELE.Create(fn, 'file not found');
-            fStream := TFileStream.Create(fn, fmOpenRead);
-        end;
-        fmCreate: begin
-            fStream := TFileStream.Create(fn, fmCreate);
-        end;
-        fmOpenReadWrite: begin
-            if FileExists(fn)
-            then fStream := TFileStream.Create(fn, fmOpenReadWrite)
-            else fStream := TFileStream.Create(fn, fmCreate);
-            fStream.Seek(fStream.Size,0);
-        end;
-    end;
-    if enc = seBOM then read_BOM else encoding := enc;
-end;
-
-
-function TVFileStream.AsString: unicodestring;
-begin
-    result := '#<FILE-STREAM '+file_name+'>';
-end;
+//constructor TVFileStream.Create(fn: unicodestring; mode: WORD;
+//    enc: TStreamEncoding);
+//begin
+//    inherited Create;
+//    file_name := fn;
+//    case mode of
+//        fmOpenRead: begin
+//            if not FileExists(fn) then ELE.Create(fn, 'file not found');
+//            fStream := TFileStream.Create(fn, fmOpenRead);
+//        end;
+//        fmCreate: begin
+//            fStream := TFileStream.Create(fn, fmCreate);
+//        end;
+//        fmOpenReadWrite: begin
+//            if FileExists(fn)
+//            then fStream := TFileStream.Create(fn, fmOpenReadWrite)
+//            else fStream := TFileStream.Create(fn, fmCreate);
+//            fStream.Seek(fStream.Size,0);
+//        end;
+//    end;
+//    if enc = seBOM then read_BOM else encoding := enc;
+//end;
+//
+//
+//function TVFileStream.AsString: unicodestring;
+//begin
+//    result := '#<FILE-STREAM '+file_name+'>';
+//end;
 
 { TVStream }
 
 
-destructor TVStream.Destroy;
-begin
-    fstream.Free;
-    inherited Destroy;
-end;
-
-function TVStream.Copy: TValue;
-begin
-    result := nil;
-    raise ELE.Create('копирование потока', 'internal');
-end;
-
-function TVStream.hash: DWORD;
-begin
-    result := crc32(0, @fStream, SizeOf(fStream));
-end;
-
-function TVStream.equal(V: TValue): boolean;
-begin
-    result := (V is TVStream) and (fStream=(V as TVStream).fstream);
-end;
-
-function TVStream.read_byte(out b: byte): boolean;
-begin
-    Assert(fstream<>nil, 'operation on closed stream');
-    try
-        b := fstream.ReadByte;
-        result := true;
-    except
-        on E:EStreamError do result := false;
-    end;
-end;
-
-function TVStream.read_bytes(var bb: TBytes; count: integer): boolean;
-var i: integer;
-begin
-    Assert(fstream<>nil, 'operation on closed stream');
-    try
-        if count>0 then begin
-            SetLength(bb, count);
-            for i := 0 to count-1 do bb[i] := fStream.ReadByte;
-            //TODO: по загадочным причинам readbuffer вызывает разрушение памяти
-            //при освобождении буфера
-            result := true;
-        end
-        else begin
-            SetLength(bb, fStream.Size - fStream.Position);
-            for i := 0 to fStream.Size - fStream.Position - 1 do bb[i] := fStream.ReadByte;
-            result := true;
-        end;
-    except
-        on E:EStreamError do result := false;
-    end;
-end;
-
-function TVStream.write_byte(b: byte): boolean;
-begin
-    Assert(fstream<>nil, 'operation on closed stream');
-    fstream.WriteByte(b);
-    result := true;
-end;
-
-function TVStream.write_bytes(bb: TBytes): boolean;
-var i: integer;
-begin
-    Assert(fstream<>nil, 'operation on closed stream');
-    for i := 0 to high(bb) do fStream.WriteByte(bb[i]);
-    //TODO: writeBuffer глючит так же как readbuffer
-    result := true;
-end;
-
-procedure TVStream.read_BOM;
-begin
-    Assert(fstream<>nil, 'operation on closed stream');
-    encoding := lisia_charset.read_BOM(fstream, seUTF8);
-end;
-
-procedure TVStream.write_BOM;
-begin
-    Assert(fstream<>nil, 'operation on closed stream');
-    lisia_charset.write_BOM(fstream, encoding);
-end;
-
-function TVStream.read_char(out ch: unicodechar): boolean;
-begin
-    Assert(fstream<>nil, 'operation on closed stream');
-    try
-        ch := lisia_charset.read_character(fstream, encoding);
-        result := true;
-    except
-        on E:EStreamError do result := false;
-    end;
-end;
-
-function TVStream.write_char(ch: unicodechar): boolean;
-begin
-    Assert(fstream<>nil, 'operation on closed stream');
-    lisia_charset.write_character(fstream, ch, encoding);
-    result := true;
-end;
+//destructor TVStream.Destroy;
+//begin
+//    fstream.Free;
+//    inherited Destroy;
+//end;
+//
+//function TVStream.Copy: TValue;
+//begin
+//    result := nil;
+//    raise ELE.Create('копирование потока', 'internal');
+//end;
+//
+//function TVStream.hash: DWORD;
+//begin
+//    result := crc32(0, @fStream, SizeOf(fStream));
+//end;
+//
+//function TVStream.equal(V: TValue): boolean;
+//begin
+//    result := (V is TVStream) and (fStream=(V as TVStream).fstream);
+//end;
+//
+//function TVStream.read_byte(out b: byte): boolean;
+//begin
+//    Assert(fstream<>nil, 'operation on closed stream');
+//    try
+//        b := fstream.ReadByte;
+//        result := true;
+//    except
+//        on E:EStreamError do result := false;
+//    end;
+//end;
+//
+//function TVStream.read_bytes(var bb: TBytes; count: integer): boolean;
+//var i: integer;
+//begin
+//    Assert(fstream<>nil, 'operation on closed stream');
+//    try
+//        if count>0 then begin
+//            SetLength(bb, count);
+//            for i := 0 to count-1 do bb[i] := fStream.ReadByte;
+//            //TODO: по загадочным причинам readbuffer вызывает разрушение памяти
+//            //при освобождении буфера
+//            result := true;
+//        end
+//        else begin
+//            SetLength(bb, fStream.Size - fStream.Position);
+//            for i := 0 to fStream.Size - fStream.Position - 1 do bb[i] := fStream.ReadByte;
+//            result := true;
+//        end;
+//    except
+//        on E:EStreamError do result := false;
+//    end;
+//end;
+//
+//function TVStream.write_byte(b: byte): boolean;
+//begin
+//    Assert(fstream<>nil, 'operation on closed stream');
+//    fstream.WriteByte(b);
+//    result := true;
+//end;
+//
+//function TVStream.write_bytes(bb: TBytes): boolean;
+//var i: integer;
+//begin
+//    Assert(fstream<>nil, 'operation on closed stream');
+//    for i := 0 to high(bb) do fStream.WriteByte(bb[i]);
+//    //TODO: writeBuffer глючит так же как readbuffer
+//    result := true;
+//end;
+//
+//procedure TVStream.read_BOM;
+//begin
+//    Assert(fstream<>nil, 'operation on closed stream');
+//    encoding := lisia_charset.read_BOM(fstream, seUTF8);
+//end;
+//
+//procedure TVStream.write_BOM;
+//begin
+//    Assert(fstream<>nil, 'operation on closed stream');
+//    lisia_charset.write_BOM(fstream, encoding);
+//end;
+//
+//function TVStream.read_char(out ch: unicodechar): boolean;
+//begin
+//    Assert(fstream<>nil, 'operation on closed stream');
+//    try
+//        ch := lisia_charset.read_character(fstream, encoding);
+//        result := true;
+//    except
+//        on E:EStreamError do result := false;
+//    end;
+//end;
+//
+//function TVStream.write_char(ch: unicodechar): boolean;
+//begin
+//    Assert(fstream<>nil, 'operation on closed stream');
+//    lisia_charset.write_character(fstream, ch, encoding);
+//    result := true;
+//end;
 
 { TVKeyword }
 

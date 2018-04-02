@@ -30,6 +30,7 @@ type
         function Ref: TCountingObject;
         function Release: boolean;
         function description: unicodestring; virtual; abstract;
+        property refs: integer read ref_count;
     end;
 
 

@@ -151,6 +151,8 @@ function vpKeyword_CAPTURE                          (V: TValue): boolean;
 
 function vpKeyword_CAPTURED                         (V: TValue): boolean;
 
+function vpKeyword_CASE_INSENSITIVE                 (V: TValue): boolean;
+
 function vpKeyword_CENTER                           (V: TValue): boolean;
 
 function vpKeyword_CP1251                           (V: TValue): boolean;
@@ -707,6 +709,11 @@ begin
     result := (V is TVKeyword) and ((V as TVSymbol).uname = ':CAPTURED');
 end;
 
+function vpKeyword_CASE_INSENSITIVE(V: TValue): boolean;
+begin
+    result := vphKeywordName(V,':CASE-INSENSITIVE');
+end;
+
 function vpKeyword_CENTER                           (V: TValue): boolean;
 begin
     result := vphKeywordName(V, ':CENTER');
@@ -1101,10 +1108,14 @@ begin
 end;
 
 
+//function vpStreamPointerActive                      (V: TValue): boolean;
+//begin
+//    result := (V is TVStreamPointer) and
+//        ((V as TVStreamPointer).body.V <> nil);
+//end;
 function vpStreamPointerActive                      (V: TValue): boolean;
 begin
-    result := (V is TVStreamPointer) and
-        ((V as TVStreamPointer).body.V <> nil);
+    result := (V is TVStreamPointer) and ((V as TVStreamPointer).body<>nil);
 end;
 
 
@@ -1113,12 +1124,19 @@ begin
     result := (V is TVString) and ((V as TVString).S = '');
 end;
 
+//function vpStreamEnd(V: TValue): boolean;
+//begin
+//    result :=
+//    (V as TVStreamPointer).stream.fstream.Position =
+//        (V as TVStreamPointer).stream.fstream.Size;
+//end;
 function vpStreamEnd(V: TValue): boolean;
 begin
     result :=
-    (V as TVStreamPointer).stream.fstream.Position =
-        (V as TVStreamPointer).stream.fstream.Size;
+    (V as TVStreamPointer).body.stream.Position =
+        (V as TVStreamPointer).body.stream.Size;
 end;
+
 
 function vpSymbol__                                 (V: TValue): boolean;
 begin

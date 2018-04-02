@@ -59,6 +59,29 @@
         (error exception-class exception-message))
         )
 
+(assertion (= "str" "str") "str")
+
+(block "deflate"
+    (var data "test data")
+    (block
+        (var out (file "test.deflate" :write :utf8))
+        (var arch (deflate out))
+        (fmt arch data))
+
+    (block
+        (var in (file "test.deflate"))
+        (var arch (inflate in))
+        (var data-in (read-character arch :all))
+        (assertion (= data data-in) "deflate"))
+
+    (delete-file "test.deflate")
+    (exception
+        (delete-file "test.deflate")
+        (error)))
+
+
+
+
 
 (log " успешно")
 

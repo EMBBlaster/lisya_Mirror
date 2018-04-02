@@ -33,6 +33,7 @@ function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TV
 function ifh_fold(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
 
 function ifh_like (str1, str2: unicodestring): integer;
+function ifh_strings_mismatch(s1,s2: unicodestring): integer;
 
 implementation
 
@@ -522,6 +523,20 @@ begin
     if (PosU(str1, str2)>0) or (PosU(str2, str1)>0) then Inc(result);
     if s1=s2 then Inc(result);
     if str1=str2 then Inc(result);
+end;
+
+function ifh_strings_mismatch(s1, s2: unicodestring): integer;
+var i, mm: integer; s_long, s_short: unicodestring;
+begin
+    if Length(s1)>Length(s2)
+    then begin s_long := s1; s_short := s2; end
+    else begin s_long := s2; s_short := s1; end;
+    mm := 0;
+    for i := 1 to Length(s_short) do
+        if s_short[i]<>s_long[i] then begin mm := i; break; end;
+    if Length(s1)<>Length(s2) then mm := Length(s_short)+1;
+
+    result := mm-1;
 end;
 
 end.
