@@ -1,12 +1,19 @@
 ﻿
 (fmt nil "обработка строк ...")
 
-(block
+(block "mismatch"
     (assertion (= 2 (strings-mismatch "abc" "abd")) "mismatch 1")
     (assertion (= 3 (strings-mismatch "abc" "abcd")) "mismatch 2")
     (assertion (= NIL (strings-mismatch "abc" "abc")) "mismatch 3")
     (assertion (= 0 (strings-mismatch "abc" "")) "mismatch 4")
     (assertion (= NIL (strings-mismatch "" "")) "mismatch 5"))
+
+(block "split-string"
+    (assertion (= \("a" "b" "c") (split-string "a b c")) "split-string 1")
+    (assertion (= \("a b" " c d") (split-string "a b, c d" ",")) "split-string 2")
+    (assertion (= \("a b" "c d") (split-string "a b, c d" ", ")) "split-string 3")
+    )
+
 
 (log \успешно)
 

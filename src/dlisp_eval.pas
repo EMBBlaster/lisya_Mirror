@@ -743,13 +743,31 @@ var sa: TStringArray; var i: integer;
 begin
     case params_is(PL, result, [
         tpString, tpNIL,
-        tpString, tpCharacter]) of
+        tpString, tpString]) of
         1,2: begin
+            result := TVList.Create;
             if tpNIL(PL.look[1])
             then sa := SplitString(PL.S[0], ' ')
-            else sa := SplitString(PL.S[0], PL.S[1][1]);
+            else sa := SplitString(PL.S[0], PL.S[1]);
             for i := 0 to high(sa) do
-                (result as TVList).Add(TVString.Create(sl[i]));
+                (result as TVList).Add(TVString.Create(sa[i]));
+        end;
+    end;
+end;
+
+function if_trim                (const PL: TVList; {%H-}call: TCallProc): TValue;
+var sa: TStringArray; var i: integer;
+begin
+    case params_is(PL, result, [
+        tpString, tpNIL,
+        tpString, tpString]) of
+        1,2: begin
+            result := TVList.Create;
+            if tpNIL(PL.look[1])
+            then sa := SplitString(PL.S[0], ' ')
+            else sa := SplitString(PL.S[0], PL.S[1]);
+            for i := 0 to high(sa) do
+                (result as TVList).Add(TVString.Create(sa[i]));
         end;
     end;
 end;
@@ -2606,7 +2624,7 @@ begin
     end;
 end;
 
-const int_fun_count = 127;
+const int_fun_count = 128;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2630,6 +2648,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'IM';                        f:if_im;                    s:'(a)'),
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 (n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
+(n:'TRIM';                      f:if_trim;                  s:'(s :optional space)'),
 
 (n:'=';                         f:if_equal;                 s:'(a b)'),
 (n:'>';                         f:if_more;                  s:'(a b)'),
