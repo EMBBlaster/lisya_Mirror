@@ -506,8 +506,8 @@ var v: array of record s: unicodestring; n: array[1..2] of integer; end;
 
 var s1, s2: unicodestring;
 begin
-    s1 := UpperCaseU(str1);
-    s2 := UpperCaseU(str2);
+    s1 := UnicodeUpperCase(str1);
+    s2 := UnicodeUpperCase(str2);
     if (Length(s1)=0) or (Length(s2)=0) then begin result:=0; Exit; end;
     //построение вектора
     SetLength(v, 0);

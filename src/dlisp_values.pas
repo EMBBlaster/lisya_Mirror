@@ -1721,7 +1721,7 @@ end;
 function TVSymbolStack.index_of(name: unicodestring): integer;
 var uname: unicodestring;
 begin
-    uname := UpperCaseU(name);
+    uname := UnicodeUpperCase(name);
     for result := high(stack) downto 0 do begin
         assert(stack[result].V<>nil,
             stack[result].name+' несвязанный элемент в стэке');
@@ -2606,7 +2606,7 @@ end;
 class function TVSymbol.symbol_n(n: unicodestring): integer;
 var i: integer; uname: unicodestring;
 begin
-    uname := UpperCaseU(n);
+    uname := UnicodeUpperCase(n);
     result := -1;
 
     for i := high(symbols) downto 0 do

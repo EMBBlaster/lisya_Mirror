@@ -856,7 +856,7 @@ function if_equal_case_insensitive(const PL: TVList; {%H-}call: TCallProc): TVal
 begin
     case params_is(PL, result, [
         tpString, tpString]) of
-        1: if UpperCaseU(PL.S[0])=UpperCaseU(PL.S[1])
+        1: if UnicodeUpperCase(PL.S[0])=UnicodeUpperCase(PL.S[1])
             then result := TVT.Create
             else result := TVList.Create;
     end;
@@ -1598,7 +1598,7 @@ begin
         tpString, tpString, tpNIL,
         tpString, tpString, vpKeyword_CASE_INSENSITIVE]) of
         1: mm := ifh_strings_mismatch(PL.S[0],PL.S[1]);
-        2: mm := ifh_strings_mismatch(UpperCaseU(PL.S[0]),UpperCaseU(PL.S[1]));
+        2: mm := ifh_strings_mismatch(UnicodeUpperCase(PL.S[0]),UnicodeUpperCase(PL.S[1]));
     end;
     if mm<0
     then result := TVList.Create
@@ -2416,7 +2416,7 @@ function if_upper_case          (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpString]) of
-        1: result := TVString.Create(UpperCaseU(PL.S[0]));
+        1: result := TVString.Create(UnicodeUpperCase(PL.S[0]));
     end;
 end;
 
@@ -2424,7 +2424,7 @@ function if_lower_case          (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpString]) of
-        1: result := TVString.Create(LowerCaseU(PL.S[0]));
+        1: result := TVString.Create(UnicodeLowerCase(PL.S[0]));
     end;
 end;
 
@@ -2522,7 +2522,7 @@ begin
 
             Active := false;
             SQL.Text := ifh_format(PL.L[1]);
-            ucommand := UpperCaseU(SQL.Text);
+            ucommand := UnicodeUpperCase(SQL.Text);
             if (Pos('SELECT', ucommand)=1)
                 or (Pos('SHOW', ucommand)=1)
                 or (Pos('DESCRIBE', ucommand)=1)
@@ -2565,7 +2565,7 @@ begin
 
             Active := false;
             SQL.Text := ifh_format(PL.L[1]);
-            ucommand := UpperCaseU(SQL.Text);
+            ucommand := UnicodeUpperCase(SQL.Text);
             if (Pos('SELECT', ucommand)=1)
                 or (Pos('SHOW', ucommand)=1)
             then Active := true
@@ -2938,11 +2938,11 @@ label return;
     var ec, eh: unicodestring;
     begin
         result := false;
-        ec := UpperCaseU(exception_class);
+        ec := UnicodeUpperCase(exception_class);
         if vpListHeaded_EXCEPTION(PL.look[pc]) then
              if (PL.L[pc].Count>=2) and tpString(PL.L[pc].look[1])
              then begin
-                eh := UpperCaseU(PL.L[pc].S[1]);
+                eh := UnicodeUpperCase(PL.L[pc].S[1]);
                 if (Length(eh)<=Length(ec)) and (eh=ec[1..length(eh)])
                 then result := true;
              end
@@ -3081,7 +3081,7 @@ var pack: TPackage;
         if pack=nil then raise ELE.Create('package '+name+' not found');
         //WriteLn(pack.export_list.AsString());
         //pack.stack.Print();
-        prefix := UpperCaseU(name)+':';
+        prefix := UnicodeUpperCase(name)+':';
         for i := 0 to pack.export_list.high do
             stack.new_ref(
                 prefix+pack.export_list.uname[i],
@@ -3104,7 +3104,7 @@ var pack: TPackage;
             and ((expr as TVList).look[0] is TVSymbol)
             and (((expr as TVList).uname[0]='PACKAGE') or ((expr as TVList).uname[0]='ПАКЕТ'))
             and ((expr as TVList).look[1] is TVSymbol)
-            and ((expr as TVList).uname[1]=UpperCaseU(name))
+            and ((expr as TVList).uname[1]=UnicodeUpperCase(name))
         then eval(expr).Free
         else raise ELE.Create(fn+' is not package '+name,'package');
     finally
@@ -3123,7 +3123,7 @@ begin
     if package_file<>'' then begin load_pack(package_file); bind_pack; Exit; end;
 
 try
-    built_in_stream := GetBuiltInPackageStream(LowerCaseU(name));
+    built_in_stream := GetBuiltInPackageStream(UnicodeLowerCase(name));
     if built_in_stream<>nil then begin
         eval(read(built_in_stream, seUTF8)).Free;
         bind_pack;

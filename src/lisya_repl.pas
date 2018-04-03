@@ -31,7 +31,7 @@ begin
     Write('> ');ReadLn(input_string);
     while input_string<>'' do begin
 
-        if UpperCaseU(input_string) = 'ERROR STACK'
+        if UnicodeUpperCase(input_string) = 'ERROR STACK'
         then WriteLn(last_error_stack)
         else
 

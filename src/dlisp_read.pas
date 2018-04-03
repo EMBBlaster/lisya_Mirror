@@ -194,7 +194,7 @@ begin
     result := true;
     if s[1]=':' then exit;
 
-    us := UpperCaseU(s);
+    us := UnicodeUpperCase(s);
     for i := 1 to high(special_keywords) do
         if us = special_keywords[i] then Exit;
 
@@ -383,7 +383,7 @@ begin
     end
     else
 
-    if UpperCaseU(t[i])='#R('
+    if UnicodeUpperCase(t[i])='#R('
     then begin
         result := TVRecord.Create;
         Inc(i);
@@ -429,11 +429,11 @@ begin
     else
 
 
-    if UpperCaseU(t[i])='NIL'
+    if UnicodeUpperCase(t[i])='NIL'
     then result := TVList.Create
     else
 
-    if UpperCaseU(t[i])='T'
+    if UnicodeUpperCase(t[i])='T'
     then result := TVT.Create
     else
 
