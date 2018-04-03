@@ -23,6 +23,7 @@ begin
     RequireDerivedFormResource := True;
     {$ENDIF}
 
+    WriteLn(UpperCase('русский english'));
 
     if (ParamCount=0) or not EXEC(paramStr(1)) then REPL;
 

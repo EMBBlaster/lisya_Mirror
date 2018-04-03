@@ -14,6 +14,8 @@
     (assertion (= \("a b" "c d") (split-string "a b, c d" ", ")) "split-string 3")
     )
 
+(block "trim"
+    (assertion (= "abc" (trim " abc ")) "trim"))
 
 (log \успешно)
 
