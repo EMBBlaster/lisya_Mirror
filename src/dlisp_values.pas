@@ -217,7 +217,7 @@ type
     { TVKeyword }
 
     TVKeyword = class (TVSymbol)
-        constructor CreateEmpty;
+        constructor CreateCopy(origin: TVKeyword);
         function Copy: TValue; override;
     end;
 
@@ -1346,16 +1346,15 @@ end;
 
 { TVKeyword }
 
-constructor TVKeyword.CreateEmpty;
+constructor TVKeyword.CreateCopy(origin: TVKeyword);
 begin
-
+    fN := origin.fN;
+    fName := origin.fname;
 end;
 
 function TVKeyword.Copy: TValue;
 begin
-    result := TVKeyword.CreateEmpty;
-    (result as TVKeyword).fN := self.fN;
-    (result as TVKeyword).fname := self.fname;
+    result := TVKeyword.CreateCopy(self);
 end;
 
 

@@ -739,22 +739,17 @@ begin
 end;
 
 function if_split_string        (const PL: TVList; {%H-}call: TCallProc): TValue;
-var sl: TStringList; var i: integer;
+var sa: TStringArray; var i: integer;
 begin
     case params_is(PL, result, [
         tpString, tpNIL,
         tpString, tpCharacter]) of
-        1,2: try
-            result := TVList.Create;
-            sl := TStringList.Create;
+        1,2: begin
             if tpNIL(PL.look[1])
-            then sl.Delimiter:=' '
-            else sl.Delimiter:=PL.S[1][1];
-            sl.DelimitedText:=PL.S[0];
-            for i := 0 to sl.Count-1 do
+            then sa := SplitString(PL.S[0], ' ')
+            else sa := SplitString(PL.S[0], PL.S[1][1]);
+            for i := 0 to high(sa) do
                 (result as TVList).Add(TVString.Create(sl[i]));
-        finally
-            sl.Free;
         end;
     end;
 end;

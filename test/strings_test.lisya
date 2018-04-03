@@ -1,0 +1,12 @@
+﻿
+(fmt nil "обработка строк ...")
+
+(block
+    (assertion (= 2 (strings-mismatch "abc" "abd")) "mismatch 1")
+    (assertion (= 3 (strings-mismatch "abc" "abcd")) "mismatch 2")
+    (assertion (= NIL (strings-mismatch "abc" "abc")) "mismatch 3")
+    (assertion (= 0 (strings-mismatch "abc" "")) "mismatch 4")
+    (assertion (= NIL (strings-mismatch "" "")) "mismatch 5"))
+
+(log \успешно)
+
