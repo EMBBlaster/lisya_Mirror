@@ -2483,12 +2483,14 @@ end;
 
 function ifh_SQL_datatype(F: TField): TValue;
 begin
-    case F.DataType of
+    if VarIsNull(F.Value)
+    then result := TVList.Create
+    else case F.DataType of
         ftUnknown, ftString, ftWideString,ftFmtMemo, ftMemo, ftFixedWideChar,
         ftWideMemo,ftFixedChar:
             result := TVString.Create(F.AsString);
 
-        ftSmallint, ftInteger, ftWord:
+        ftSmallint, ftInteger, ftWord, ftLargeInt:
             result := TVInteger.Create(F.AsInteger);
 
         ftBoolean:
@@ -2502,10 +2504,12 @@ begin
 
         ftTime: result := TVTimeInterval.Create(F.AsDateTime);
 
+        else result := TVString.Create(F.AsString);
+
         //ftCurrency, ftBCD,
         //ftBytes, ftVarBytes, ftAutoInc, ftBlob, , ftGraphic, ,
         //ftParadoxOle, ftDBaseOle, ftTypedBinary, ftCursor,
-        //, ftLargeint, ftADT, ftArray, ftReference,
+        //, ftADT, ftArray, ftReference,
         //ftDataSet, ftOraBlob, ftOraClob, ftVariant, ftInterface,
         //ftIDispatch, ftGuid, ftFMTBcd, );
     end;
@@ -2542,10 +2546,7 @@ begin
             First;
             for i := 0 to RecordCount-1 do begin
                 for j := 0 to FieldCount-1 do
-                    if VarIsNull(fields[j].Value)
-                    then rec[j] := TVList.Create
-                    else rec[j] := ifh_SQL_datatype(Fields[j]);
-
+                    rec[j] := ifh_SQL_datatype(Fields[j]);
                 (result as TVList).Add(rec.Copy);
                 Next;
             end;
@@ -2561,7 +2562,7 @@ var i: integer;
 begin
     case params_is(PL, result, [
         vpSQLPointerActive, tpList]) of
-        1: with (PL.look[0] as TVSQLPointer).query do try
+        1: with (PL.look[0] as TVSQLPointer).query do begin
 
             Active := false;
             SQL.Text := ifh_format(PL.L[1]);
@@ -2578,13 +2579,9 @@ begin
             result := TVList.Create;
             First;
             for i := 0 to RecordCount-1 do begin
-                if VarIsNull(fields[0].Value)
-                then (result as TVList).Add(TVList.Create)
-                else (result as TVList).Add(ifh_SQL_datatype(Fields[0]));
+                (result as TVList).Add(ifh_SQL_datatype(Fields[0]));
                 Next;
             end;
-        finally
-
         end;
     end;
 end;
