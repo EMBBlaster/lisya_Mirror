@@ -100,6 +100,9 @@
     (procedure p (l) \(0 2))
     (delete L p)
     (assertion (= \(2) L) "delete proc")
+    (set L \(1 2))
+    (delete L :LAST)
+    (assertion (= \(1) L) "delete last")
 
     "проверка на побочные эффекты"
     (var LL \((1 1) (2 2) (3 3)))

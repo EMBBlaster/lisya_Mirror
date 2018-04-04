@@ -3590,16 +3590,12 @@ try
 
     arg := oph_eval_indices(eval(PL[2]), target);
 
-    if tpListOfIndices(arg)
+    if tpList(arg)
     then indices:=arg as TVList
-    else
-        if tpInteger(arg) or tpRange(arg)
-        then begin
-            ind := TVList.Create([arg], false);
-            indices := ind;
-        end
-        else
-            raise ELE.InvalidParameters;
+    else begin
+        ind := TVList.Create([arg], false);
+        indices := ind;
+    end;
 
     SetLength(marks, target.Count);
     for i := 0 to high(marks) do marks[i] := false;
@@ -3612,10 +3608,10 @@ try
             then for j := (indices.look[i] as TVRange).low to (indices.look[i] as TVRange).high-1
                     do marks[j] := true
             else
-                //if (vpSymbol_LAST(indices.look[i]) or vpKeyword_LAST(indices.look[i]))
-                //    and (target.Count>0)
-                //then marks[high(marks)] := true
-                //else
+                if (vpSymbol_LAST(indices.look[i]) or vpKeyword_LAST(indices.look[i]))
+                    and (target.Count>0)
+                then marks[high(marks)] := true
+                else
                     raise ELE.InvalidParameters;
     for i := target.high downto 0 do
         if marks[i] then target.delete(i);
