@@ -120,6 +120,10 @@
     (INSERT L p 6)
     (assertion (= \(9 7 6 1 2 8) L) "insert proc")
 
+    (set L \(1 2))
+    (insert L :last 3)
+    (assertion (= \(1 2 3) L) "insert last")
+
     "проверка на побочные эффекты"
     (var LL \((0 0) (1 1) (2 2)))
     (var LL2 LL)

@@ -3612,7 +3612,11 @@ try
             then for j := (indices.look[i] as TVRange).low to (indices.look[i] as TVRange).high-1
                     do marks[j] := true
             else
-                raise ELE.InvalidParameters;
+                //if (vpSymbol_LAST(indices.look[i]) or vpKeyword_LAST(indices.look[i]))
+                //    and (target.Count>0)
+                //then marks[high(marks)] := true
+                //else
+                    raise ELE.InvalidParameters;
     for i := target.high downto 0 do
         if marks[i] then target.delete(i);
 
@@ -3917,7 +3921,7 @@ begin
 end;
 
 function TEvaluationFlow.op_insert(PL: TVList): TValue;
-var CP: TVChainPointer; target: TVList; arg: TValue;
+var CP: TVChainPointer; target: TVList; arg: TValue; i: integer;
 begin
     if PL.Count<>4 then raise ELE.Malformed('INSERT');
     arg := nil;
@@ -3928,11 +3932,17 @@ try
 
     arg := oph_eval_indices(eval(PL[2]), target);
 
-    if not (tpInteger(arg)
-        and ((arg as TVInteger).fI>=0) and ((arg as TVInteger).fI<=target.Count))
-    then raise ELE.InvalidParameters;
+    if tpInteger(arg)
+    then i := (arg as TVInteger).fI
+    else
+        if vpKeyword_LAST(arg) or vpSymbol_LAST(arg)
+        then i := target.Count
+        else
+            raise ELE.InvalidParameters;
 
-    target.insert((arg as TVInteger).fI, eval(PL[3]));
+    if (i<0) or (i>target.Count) then ELE.InvalidParameters;
+
+    target.insert(i, eval(PL[3]));
 
     result := TVT.Create;
 finally

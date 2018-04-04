@@ -555,7 +555,7 @@ type
         function find_var(symbol: TVSymbol): TValue; overload;
         function find_var(N: integer): TValue; overload;
         procedure set_var(symbol: TVSymbol; V: TValue);
-        procedure clear_frame(n: integer = -1);
+        procedure clear_frame(n: integer);
         procedure bind_var(symbol, target: TVSymbol);
 //        procedure bind_var(symbol, target: TVSymbol);
         function find_ref(symbol: TVSymbol): PVariable; overload;
@@ -2908,4 +2908,4 @@ finalization
     kwKEY.Free;
     kwFLAG.Free;
     _.Free;
-end.  //3477 3361 3324 3307 2938
+end.  //3477 3361 3324 3307 2938  2911
