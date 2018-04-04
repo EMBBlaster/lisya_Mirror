@@ -66,7 +66,6 @@ type
 
 
     TStackRecord = record
-        name: unicodestring;
         V: PVariable;
         N: integer;
     end;
@@ -1719,28 +1718,19 @@ end;
 { TVSymbolStack }
 
 function TVSymbolStack.index_of(name: unicodestring): integer;
-var uname: unicodestring;
 begin
-    uname := UnicodeUpperCase(name);
-    for result := high(stack) downto 0 do begin
-        assert(stack[result].V<>nil,
-            stack[result].name+' несвязанный элемент в стэке');
-        if stack[result].name = uname then exit;
-    end;
-
-    raise ELE.Create(name, 'symbol not bound');
+    result := index_of(TVSymbol.symbol_n(name));
 end;
 
 function TVSymbolStack.index_of(n: integer): integer;
 begin
-    for result := high(stack) downto 0 do begin
-        assert(stack[result].V<>nil,
-            stack[result].name+' несвязанный элемент в стэке');
-        if stack[result].N = n then exit;
-    end;
+    for result := high(stack) downto 0 do
+        if stack[result].N = n then
+            if stack[result].V=nil
+            then raise ELE.Create(symbols[n]+' - nil bound', 'internal')
+            else exit;
 
-
-    raise ELE.Create(symbols[n]+' ('+IntToStr(n)+')', 'symbol not bound');
+    raise ELE.Create(symbols[n], 'symbol not bound');
 end;
 
 constructor TVSymbolStack.Create(parent: TVSymbolStack);
@@ -1762,7 +1752,6 @@ begin
     result := TVSymbolStack.Create(parent);
     SetLength((result as TVSymbolStack).stack, Length(stack));
     for i := 0 to high(stack) do begin
-        (result as TVSymbolStack).stack[i].name := stack[i].name;
         (result as TVSymbolStack).stack[i].N := stack[i].N;
         (result as TVSymbolStack).stack[i].V := RefVariable(stack[i].V)
     end;
@@ -1811,7 +1800,7 @@ begin
     if low_i<0 then low_i := 0;
     WriteLn('-----------------------');
     for i := low_i to high(stack) do begin
-        Write('  | ', stack[i].name);
+        Write('  | ', symbols[stack[i].N]);
         if stack[i].V<> nil
         then WriteLn('  >(', stack[i].V.ref_count,')',
                         {%H-}Cardinal(stack[i].V),'>  ', stack[i].V.V.AsString)
@@ -1834,7 +1823,6 @@ end;
 procedure TVSymbolStack.new_var(N: integer; V: TValue; c: boolean);
 begin
     SetLength(stack, Length(stack)+1);
-    stack[high(stack)].name := symbols[N];
     stack[high(stack)].N := N;
     stack[high(stack)].V := NewVariable;
     stack[high(stack)].V.V := V;
@@ -1857,27 +1845,17 @@ begin
 end;
 
 procedure TVSymbolStack.clear_frame(n: integer);
-var i, _n: integer;
+var i: integer;
 begin
     Assert((n<=high(stack)) or (n=0), 'очистка выше стека');
-    if n<0
-    then begin
-        for i := high(stack) downto 0 do
-        if stack[i].name[1]=' ' then begin
-            _n := i;
-            break;
-        end;
-    end
-    else _n := n;
 
-    for i := high(stack) downto _n do
+    for i := high(stack) downto n do
         if (stack[i].V<>nil) and (stack[i].V.ref_count>1) and (stack[i].V.V is TVProcedure)
         then (stack[i].V.V as TVProcedure).Complement;
 
+    for i := high(stack) downto n do ReleaseVariable(stack[i].V);
 
-    for i := high(stack) downto _n do ReleaseVariable(stack[i].V);
-
-    SetLength(stack, _n);
+    SetLength(stack, n);
 end;
 
 
@@ -1885,7 +1863,6 @@ procedure TVSymbolStack.bind_var(symbol, target: TVSymbol);
 begin
     SetLength(stack, Length(stack)+1);
     stack[high(stack)].V := RefVariable(stack[index_of(target.n)].V);
-    stack[high(stack)].name := symbol.uname;
     stack[high(stack)].N := symbol.N;
 end;
 
@@ -1908,7 +1885,6 @@ end;
 procedure TVSymbolStack.new_ref(name: unicodestring; P: PVariable);
 begin
     SetLength(stack, Length(stack)+1);
-    stack[high(stack)].name := name;
     stack[high(stack)].N := TVSymbol.symbol_n(name);
     stack[high(stack)].V := P;
 end;
@@ -1916,7 +1892,6 @@ end;
 procedure TVSymbolStack.new_ref(symbol: TVSymbol; P: PVariable);
 begin
     SetLength(stack, Length(stack)+1);
-    stack[high(stack)].name := symbol.uname;
     stack[high(stack)].N := symbol.N;
     stack[high(stack)].V := P;
 end;
@@ -1953,7 +1928,6 @@ begin
             result := RefVariable(stack[i].V);
             exit;
         end;
-        if stack[i].name[1]=' ' then break;
     end;
     result := nil;
 end;
