@@ -16,8 +16,6 @@ type TBindings = array of record
 
 function ifh_bind(sign, PL: TValue): TBindings;
 
-function ifh_equal(const A,B: TValue): boolean;
-
 function ifh_member(const L: TVList; const E: TValue): boolean;
 function ifh_member1(const L: TVList; const E: TValue): boolean;
 
@@ -64,7 +62,7 @@ var i: integer;
 begin
     result := true;
     for i := 0 to L.high do
-        if (hE=hL[i]) and ifh_equal(L.look[i], E) then Exit;
+        if (hE=hL[i]) and L.look[i].equal(E) {ifh_equal(L.look[i], E)} then Exit;
 
     result := false;
 end;
@@ -209,75 +207,6 @@ begin
 
 end;
 
-////////////////////////////////////////////////////////////////////////////////
-/// equal //////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-function ifh_equal(const A,B: TValue): boolean;
-var type_v: (int, num, str, sym, t, lst, struct, any, bytevec); i: integer;
-begin
-    result := A.equal(B);
-    Exit;
-    if tpInteger(A) and tpInteger(B)
-    then type_v := int
-    else
-        if tpReal(A) and tpReal(B)
-        then type_v := num
-        else
-            if tpString(A) and tpString(B)
-            then type_v := str
-            else
-                if tpSymbol(A) and tpSymbol(B)
-                then type_v := sym
-                else
-                    if tpT(A) and tpT(B)
-                    then type_v := t
-                    else
-                        if tpList(A) and tpList(B)
-                        then type_v := lst
-                        else
-                            if tpRecord(A) and tpRecord(B)
-                            then type_v := struct
-                            else
-                                if tpByteVector(A) and tpByteVector(B)
-                                then type_v := bytevec
-                                else
-                                    type_v := any;
-
-   // WriteLn('A>> ', A.AsString);
-   // WriteLn('B>> ', B.AsString);
-
-    case type_v of
-        int: result := (A as TVInteger).fI=(B as TVInteger).fI;
-        num: result := (A as TVReal).F=(B as TVReal).F;
-        str: result := (A as TVString).S=(B as TVString).S;
-        sym: result := (A as TVSymbol).N=(B as TVSymbol).N;
-          t: result := true;
-        lst: begin
-                result := (A as TVList).Count = (B as TVList).Count;
-                if result then
-                for i:= 0 to (A as TVList).Count-1 do begin
-                    result := ifh_equal((A as TVList).look[i],
-                                        (B as TVList).look[i]);
-                    if not result then break;
-                end;
-        end;
-        struct: begin
-            result := (A as TVRecord).count = (B as TVRecord).count;
-            if result then
-                for i := 0 to (A as TVRecord).count-1 do begin
-                    result :=
-                        ((A as TVRecord).name_n(i)=(B as TVRecord).name_n(i))
-                        and ifh_equal((A as TVRecord).look[i],
-                                        (B as TVRecord).look[i]);
-                    if not result then Break;
-                end;
-        end;
-        bytevec: result := (A as TVByteVector).equal_to(B as TVByteVector);
-        any: result := false;
-    end;
-
-end;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// неупорядоченные множества //////////////////////////////////////////////////
@@ -288,7 +217,7 @@ var i: integer;
 begin
     result := false;
     for i := 0 to L.High do
-        if ifh_equal(L.look[i], E) then begin
+        if L.look[i].equal(E) {ifh_equal(L.look[i], E)} then begin
             result := true;
             break;
         end;
@@ -303,7 +232,7 @@ begin
     for i := 0 to L.high do hashes[i] := L.look[i].hash;
     hash := E.hash;
     for i := 0 to L.High do
-        if (hash=hashes[i]) and ifh_equal(L.look[i], E) then begin
+        if (hash=hashes[i]) and L.look[i].equal(E) {ifh_equal(L.look[i], E)} then begin
             result := true;
             break;
         end;
@@ -364,7 +293,7 @@ var hashes: array of array of DWORD;
     var k: integer;
     begin
         for k := 0 to res_count-1 do
-            if (hashes[0][v]=res[k]) and ifh_equal(L.L[0].look[v], result.look[k])
+            if (hashes[0][v]=res[k]) and L.L[0].look[v].equal(result.look[k]) //ifh_equal(L.L[0].look[v], result.look[k])
             then exit;
         res[res_count] := hashes[0][v];
         result.Add(L.L[0][v]);
@@ -539,5 +468,5 @@ begin
     result := mm-1;
 end;
 
-end.
+end. //542
 

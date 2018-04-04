@@ -768,7 +768,8 @@ end;
 function if_equal               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [tpAny, tpAny]) of
-        1: if ifh_equal(PL.look[0], PL.look[1])
+        1: if PL.look[0].equal(PL.look[1])
+          //if ifh_equal(PL.look[0], PL.look[1])
             then result := TVT.Create
             else result := TVList.Create;
     end;
@@ -1445,7 +1446,7 @@ begin
     {1} tpList, tpAny,
     {2} tpString, tpString]) of
         1: for i := 0 to PL.L[0].high do
-            if ifh_equal(PL.L[0].look[i], PL.look[1])
+            if PL.L[0].look[i].equal(PL.look[1]) //ifh_equal(PL.L[0].look[i], PL.look[1])
             then begin p := i; break; end;
         2: p := PosU(PL.S[1], PL.S[0]) - 1;
     end;
@@ -3250,7 +3251,7 @@ begin try
         L := result.look as TVList;
         i := L.high-1;
         while i>=0 do
-            if ifh_equal(key, L.look[i])
+            if key.equal(L.look[i])// ifh_equal(key, L.look[i])
             then begin
                 result.add_index(i+1);
                 Exit;
@@ -3375,7 +3376,7 @@ try
     expr := eval(PL[1]);
 
     for i := 2 to PL.High do
-        if ifh_equal(expr, PL.L[i].look[0])
+        if expr.equal(PL.L[i].look[0]) //ifh_equal(expr, PL.L[i].look[0])
             or (tpListNotEmpty(PL.L[i].look[0]) and
                     ifh_member(PL.L[i].L[0], expr))
             or tpT(PL.L[i].look[0])
@@ -4556,8 +4557,6 @@ finally
     CP.Free;
 end;
 end;
-
-
 
 
 //{$DEFINE EVAL_DEBUG_PRINT}
