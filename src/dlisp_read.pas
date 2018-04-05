@@ -437,8 +437,8 @@ begin
     then result := TVT.Create
     else
 
-    if StrToInt64Def(t[i],0)=StrToInt64Def(t[i],1)
-    then result := TVInteger.Create(StrToInt64(t[i]))
+    if TryStrToInt64(t[i], l)
+    then result := TVInteger.Create(l)
     else
 
     if str_is_float(t[i], re)
