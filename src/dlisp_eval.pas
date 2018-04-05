@@ -764,6 +764,82 @@ begin
     end;
 end;
 
+function if_numeric_value       (const PL: TVList; {%H-}call: TCallProc): TValue;
+var s, s1, s2, k: unicodestring; i: integer;
+  i1,i2, ki: Int64;
+  f1,f2, kf: double;
+  n1_i, n1_f, n2_i, n2_f: boolean;
+  state: (b, e1, e2, mu);
+  fs: TFormatSettings;
+begin
+    case params_is(PL, result, [
+        tpString]) of
+        1: begin
+          s := trim(PL.S[0]);
+          if s='' then raise ELE.InvalidParameters;
+          state := b;
+          s1 := '';;
+          s2 := '';
+          k := '';
+          for i := 1 to Length(s) do
+              case state of
+                b: case s[i] of
+                    '+','-','0'..'9','.': begin state := e1; s1:=s1+s[i]; end;
+                    ',': begin state := e1; s1:=s+'.'; end;
+                end;
+                e1: case s[i] of
+                    '0'..'9','.': s1:=s1+s[i];
+                    ',': s1:=s1+'.';
+                    'x','х','*': state := e2;
+                    ' ', '_', #9:;
+                    else begin state:=mu; k:=k+s[i]; end;
+                end;
+                e2: case s[i] of
+                    '0'..'9','.': s2:=s2+s[i];
+                    ',': s2:=s2+'.';
+                    ' ','_', #9:;
+                    else if s2='' then break else begin state:=mu; k:=k+s[i]; end;
+                end;
+                mu: k:=k+s[i];
+              end;
+          ki := 1;
+          kf := 1;
+          if Length(k)>0 then case k[1] of
+            'k','к': ki := 1000;
+            'M','М': ki := 1000000;
+            'G','Г': ki := 1000000000;
+            'T','Т': ki := 1000000000000;
+            'm'    : kf := 0.001;
+            'м': if (Length(k)>1) and (k[2]='к') then kf:=0.000001 else kf:=0.001;
+            'u'    : kf := 0.000001;
+            'n','н': kf := 0.000000001;
+            'p','п': kf := 0.000000000001;
+          end;
+          fs.DecimalSeparator:='.';
+          n1_i := false; n1_f := false; n2_i := false; n2_f := false;
+
+          n1_i := TryStrToInt64(s1, i1);
+          n1_f := TryStrToFloat(s1,f1,fs);
+
+          n2_i := TryStrToInt64(s2, i2);
+          n2_f := TryStrToFloat(s2,f2,fs);
+
+          if n1_i and n2_i and (kf>0.5)
+          then result := TVInteger.Create(i1*i2*ki)
+          else
+            if n1_i and (kf>0.5) and not n2_f
+            then result := TVInteger.Create(i1*ki)
+            else
+              if n1_f and n2_f
+              then result := TVFloat.Create(f1*f2*ki*kf)
+              else
+                if n1_f
+                then result := TVFloat.Create(f1*ki*kf)
+                else
+                  raise ELE.Create(s,'invalid argument');
+        end;
+    end;
+end;
 
 function if_equal               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2614,7 +2690,7 @@ begin
     end;
 end;
 
-const int_fun_count = 128;
+const int_fun_count = 129;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2639,6 +2715,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 (n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
 (n:'TRIM';                      f:if_trim;                  s:'(s)'),
+(n:'NUMERIC-VALUE';             f:if_numeric_value;         s:'(s)'),
 
 (n:'=';                         f:if_equal;                 s:'(a b)'),
 (n:'>';                         f:if_more;                  s:'(a b)'),

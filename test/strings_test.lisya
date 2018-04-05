@@ -17,5 +17,20 @@
 (block "trim"
     (assertion (= "abc" (trim " abc ")) "trim"))
 
+(block "numeric-value"
+    ;(log (numeric-value "123"))
+    ;(log (numeric-value "123.4"))
+    ;(log (numeric-value "123,4"))
+    ;(log (numeric-value "-123"))
+    ;(log (numeric-value "+123"))
+    ;(log (numeric-value "3*3.3"))
+    (log (numeric-value "3х3.3 Мвар"))
+    (log (numeric-value "220 кВ"))
+    (log (numeric-value "3хТАР"))
+
+
+    )
+
+
 (log \успешно)
 
