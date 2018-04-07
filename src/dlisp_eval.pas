@@ -2719,16 +2719,18 @@ begin
 end;
 
 function if_regexp_match        (const PL: TVList; {%H-}call: TCallProc): TValue;
-var re: TRegExpr; start: integer;
+var re: TRegExpr; start: integer; s, e: unicodestring;
 begin
     case params_is(PL, result, [
         tpString, tpString, vpIntegerNotNegativeOrNIL]) of
         1: try
             re := TRegExpr.Create(PL.S[1]);
-            re.InputString:=PL.S[0];
+            e:=pl.s[1];
+            //re.InputString:=PL.S[0];
             result := TVList.Create;
-            if tpInteger(PL.look[2]) then start := PL.I[2] else start := 1;
-            if re.Exec(start) then begin
+            if tpInteger(PL.look[2]) then start := PL.I[2]+1 else start := 1;
+            s := PL.S[0][start..Length(PL.S[0])];
+            if re.Exec(s) then begin
                 (result as TVList).Add(TVString.Create(re.Match[0]));
                 while re.ExecNext do
                 begin
@@ -2801,7 +2803,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'EVERY КАЖДЫЙ';              f:if_every;                 s:'(p :rest l)'),
 (n:'SOME ЛЮБОЙ';                f:if_some;                  s:'(p :rest l)'),
-(n:'CAR ГОЛОВА';                f:if_car;                   s:'(l)'),
+(n:'CAR HEAD ГОЛОВА';           f:if_car;                   s:'(l)'),
 //(n:'LAST';                      f:if_last;                  s:'(l)'),
 (n:'SUBSEQ';                    f:if_subseq;                s:'(s b :optional e)'),
 (n:'SORT';                      f:if_sort;                  s:'(s :optional p)'),
