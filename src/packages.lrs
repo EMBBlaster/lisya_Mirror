@@ -210,7 +210,35 @@ LazarusResources.Add('xlsx','LISYA',[
   +'Strings 0)'#10'                (if f-sharedStrings (XML:WRITE f-sharedStrin'
   ,'gs sharedStrings)))))'#10#10#10#10')'#10#10#10#10
 ]);
-LazarusResources.Add('test','LISYA',[
-  #239#187#191'(package test ('#10#9'test-var)'#10#9#10#9'(var test-var "'#209
-  +#128#209#131#209#129#209#129#208#186#208#184#208#185'")'#10#9#10')'
+LazarusResources.Add('utils','LISYA',[
+  #239#187#191'(package utils ('#10'    inc'#10'    dec'#10'    parse)'#10#10'('
+  +'procedure inc (i) (set i (+ i 1)))'#10#10'(procedure dec (i) (set i (- i 1)'
+  +'))'#10#10'(procedure parse (rules s)'#10'    "'#208#160#208#176#208#183#208
+  +#177#208#184#209#128#208#176#208#181#209#130' '#208#191#208#181#209#128#208
+  +#181#208#180#208#176#208#189#208#189#209#131#209#142' '#209#129#209#130#209
+  +#128#208#190#208#186#209#131' '#208#178' '#209#129#208#190#208#190#209#130
+  +#208#178#208#181#209#130#209#129#209#130#208#178#208#184#208#184' '#209#129
+  +' '#208#183#208#176#208#180#208#176#208#189#208#189#209#139#208#188#208#184
+  +' '#208#191#209#128#208#176#208#178#208#184#208#187#208#176#208#188#208#184
+  +'"'#10'    (var tokens)'#10'    (var acc "")'#10'    (var mode (car (car rul'
+  +'es)))'#10'    (var i 0)'#10'    (while (< i (length s))'#10'        (if (fo'
+  +'r selector (associations rules mode :lazy :by-head)'#10'            (const '
+  +'expr (concatenate "^" (car selector)))'#10'            (const token (head ('
+  +'regexp:match s expr :from i)))'#10'            (when token'#10'            '
+  +'    (set i (+ i (length token)))'#10'                (for cmd (subseq selec'
+  +'tor 1)'#10'                    (cond'#10'                        ((keyword?'
+  +' cmd) (set mode cmd))'#10'                        ((string? cmd) (push toke'
+  +'ns cmd))'#10'                        ((integer? cmd) (set i (+ i cmd)))'#10
+  +'                        ((= \return cmd) (set i (- i (length token))))'#10
+  +'                        ((= \accumulate cmd) (append acc token))'#10'      '
+  +'                  ((= \token cmd) (push tokens acc) (set acc ""))'#10'     '
+  +'                   ((= \significant-token cmd) (when (not (empty? acc))'#10
+  +'                                                (push tokens acc) (set acc '
+  +'"")))'#10'                        ((= \error cmd) (error "strutils:parser" '
+  +'token))'#10'                        ((= \trim cmd) (set acc (trim acc)))'#10
+  +'                        (t (error "strutils:parser" "command " cmd " not su'
+  +'pported"))))'#10'                (break)))'#10'            nil'#10'        '
+  +'    (error "strutils:parser" "selector not found in " mode " at " (subseq s'
+  +' i))))'#10'    (if (<> "" acc) (push tokens acc))'#10'    tokens)'#10#10')'
+  +#10
 ]);

@@ -3558,6 +3558,7 @@ end;
 function TEvaluationFlow.op_const                   (PL: TVList): TValue;
 var tmp: TValue;
 begin
+  //WriteLn(PL.AsString());
     if (PL.Count<>3) or not (tpOrdinarySymbol(PL.look[1]) or tpList(PL.look[1]))
     then raise ELE.malformed('CONST');
 
