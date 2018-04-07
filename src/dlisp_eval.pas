@@ -1682,7 +1682,7 @@ begin
     else result := TVInteger.Create(mm);
 end;
 
-function if_association         (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_associations        (const PL: TVList; {%H-}call: TCallProc): TValue;
 var res, L,ll: TVList; i, j: integer; lazy,by_head: boolean; k: TValue;
 begin
     case params_is(PL, result, [
@@ -1693,7 +1693,7 @@ begin
             lazy := tpTrue(PL.look[2]);
             by_head := tpTrue(PL.look[3]);
             res := TVList.Create;
-            for i := 0 to L.high do
+            for i := L.high downto 0 do
                 for j := 0 to L.L[i].high do begin
                     if L.L[i].look[j].equal(k) then begin
                         ll := L[i] as TVList;
@@ -2830,7 +2830,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'CONCATENATE';               f:if_concatenate;           s:'(:rest a)'),
 (n:'GROUP ГРУППИРОВКА';         f:if_group;                 s:'(s :rest p)'),
 (n:'STRINGS-MISMATCH';          f:if_strings_mismatch;      s:'(a b)'),
-(n:'ASSOCIATION';               f:if_association;           s:'(al k :flag lazy by-head)'),
+(n:'ASSOCIATIONS';              f:if_associations;          s:'(al k :flag lazy by-head)'),
 
 (n:'BYTE-VECTOR BYTES';         f:if_byte_vector;           s:'(:rest b)'),
 (n:'BITWISE-AND';               f:if_bitwise_and;           s:'(a b)'),
@@ -2902,7 +2902,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 );
 
 
-const predicates: array[1..16] of record n: unicodestring; f: TTypePredicate; end = (
+const predicates: array[1..17] of record n: unicodestring; f: TTypePredicate; end = (
 (n:'T?';                    f:tpT),
 (n:'NIL?';                  f:tpNIL),
 (n:'TRUE?';                 f:tpTRUE),
@@ -2913,6 +2913,7 @@ const predicates: array[1..16] of record n: unicodestring; f: TTypePredicate; en
 (n:'ATOM?';                 f:tpAtom),
 (n:'SUBPROGRAM?';           f:tpSubprogram),
 (n:'LIST?';                 f:tpList),
+(n:'EMPTY?';                f:vpEmpty),
 (n:'SYMBOL?';               f:tpSymbol),
 (n:'KEYWORD?';              f:tpKeyword),
 (n:'STRING?';               f:tpString),

@@ -122,6 +122,9 @@ function tpZIPArchivePointer                        (V: TValue): boolean;
 function vpComplexNotZero                           (V: TValue): boolean;
 
 
+function vpEmpty                                    (V: TValue): boolean;
+
+
 function vpFlag_LAZY                                (V :TValue): boolean;
 
 function vpFlag_BY_HEAD                             (V :TValue): boolean;
@@ -627,6 +630,10 @@ begin
         (((V as TVComplex).fC.re<>0) or ((V as TVComplex).fC.im<>0));
 end;
 
+function vpEmpty(V: TValue): boolean;
+begin
+    result := (V is TVCompound) and ((V as TVCompound).Count=0);
+end;
 
 function vpFlag_LAZY(V: TValue): boolean;
 begin
