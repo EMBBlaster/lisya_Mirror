@@ -21,7 +21,8 @@ uses
     process,
     Classes, SysUtils, math, ucomplex,
     zstream,
-    fphttpclient in './fpc_backport/fphttpclient.pp'
+    fphttpclient in './fpc_backport/fphttpclient.pp',
+    regexpr in './fpc_backport/regexpr.pas'
     , dlisp_values, dlisp_read, lisya_xml, mar,
     lisya_packages
     ,lisya_predicates
@@ -756,7 +757,6 @@ begin
 end;
 
 function if_trim                (const PL: TVList; {%H-}call: TCallProc): TValue;
-var sa: TStringArray; var i: integer;
 begin
     case params_is(PL, result, [
         tpString]) of
@@ -1680,6 +1680,34 @@ begin
     if mm<0
     then result := TVList.Create
     else result := TVInteger.Create(mm);
+end;
+
+function if_association         (const PL: TVList; {%H-}call: TCallProc): TValue;
+var res, L,ll: TVList; i, j: integer; lazy,by_head: boolean; k: TValue;
+begin
+    case params_is(PL, result, [
+        tpListOfLists, tpAny, tpBoolean, tpBoolean]) of
+        1: try
+            L := PL.L[0];
+            k := PL.look[1];
+            lazy := tpTrue(PL.look[2]);
+            by_head := tpTrue(PL.look[3]);
+            res := TVList.Create;
+            for i := 0 to L.high do
+                for j := 0 to L.L[i].high do begin
+                    if L.L[i].look[j].equal(k) then begin
+                        ll := L[i] as TVList;
+                        ll.delete(j);
+                        res.Append(ll);
+                        if lazy then Exit;
+                    end;
+                    if by_head then break;
+                end;
+        finally
+            result := res;
+        end;
+    end;
+
 end;
 
 function if_byte_vector         (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -2690,7 +2718,30 @@ begin
     end;
 end;
 
-const int_fun_count = 129;
+function if_regexp_match        (const PL: TVList; {%H-}call: TCallProc): TValue;
+var re: TRegExpr; start: integer;
+begin
+    case params_is(PL, result, [
+        tpString, tpString, vpIntegerNotNegativeOrNIL]) of
+        1: try
+            re := TRegExpr.Create(PL.S[1]);
+            re.InputString:=PL.S[0];
+            result := TVList.Create;
+            if tpInteger(PL.look[2]) then start := PL.I[2] else start := 1;
+            if re.Exec(start) then begin
+                (result as TVList).Add(TVString.Create(re.Match[0]));
+                while re.ExecNext do
+                begin
+                    (result as TVList).Add(TVString.Create(re.Match[0]));
+                end;
+            end;
+        finally
+            re.Free;
+        end;
+    end;
+end;
+
+const int_fun_count = 131;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2777,6 +2828,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'CONCATENATE';               f:if_concatenate;           s:'(:rest a)'),
 (n:'GROUP ГРУППИРОВКА';         f:if_group;                 s:'(s :rest p)'),
 (n:'STRINGS-MISMATCH';          f:if_strings_mismatch;      s:'(a b)'),
+(n:'ASSOCIATION';               f:if_association;           s:'(al k :flag lazy by-head)'),
 
 (n:'BYTE-VECTOR BYTES';         f:if_byte_vector;           s:'(:rest b)'),
 (n:'BITWISE-AND';               f:if_bitwise_and;           s:'(a b)'),
@@ -2841,7 +2893,10 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SQL:QUERY';                 f:if_sql_query;             s:'(db :rest q)'),
 (n:'SQL:QUERY-LIST';            f:if_sql_query_list;        s:'(db :rest q)'),
 
-(n:'HTTP:GET';                  f:if_http_get;              s:'(url :key proxy)')
+(n:'HTTP:GET';                  f:if_http_get;              s:'(url :key proxy)'),
+
+(n:'REGEXP:MATCH';              f:if_regexp_match;          s:'(s expr :key from)')
+
 );
 
 

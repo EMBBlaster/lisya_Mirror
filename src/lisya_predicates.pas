@@ -122,6 +122,11 @@ function tpZIPArchivePointer                        (V: TValue): boolean;
 function vpComplexNotZero                           (V: TValue): boolean;
 
 
+function vpFlag_LAZY                                (V :TValue): boolean;
+
+function vpFlag_BY_HEAD                             (V :TValue): boolean;
+
+
 function vpIntegerAbsOne                            (V: TValue): boolean;
 
 function vpIntegerByte                              (V: TValue): boolean;
@@ -620,6 +625,17 @@ function vpComplexNotZero                           (V: TValue): boolean;
 begin
     result := (V is TVComplex) and
         (((V as TVComplex).fC.re<>0) or ((V as TVComplex).fC.im<>0));
+end;
+
+
+function vpFlag_LAZY(V: TValue): boolean;
+begin
+    result := tpNIL(V) or vphSymbolName(V, ':LAZY');
+end;
+
+function vpFlag_BY_HEAD(V: TValue): boolean;
+begin
+    result := tpNIL(V) or vphSymbolName(V, ':BY-HEAD');
 end;
 
 
