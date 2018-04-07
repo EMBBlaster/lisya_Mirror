@@ -167,6 +167,8 @@ function vpKeyword_CP1252                           (V: TValue): boolean;
 
 function vpKeyword_CP866                            (V: TValue): boolean;
 
+function vpKeyword_CSV                              (V: TValue): boolean;
+
 function vpKeyword_DEFLATE                          (V: TValue): boolean;
 
 function vpKeyword_EQUAL                            (V: TValue): boolean;
@@ -238,6 +240,8 @@ function vpKeywordEncodingOrNIL                     (V: TValue): boolean;
 function vpKeywordFileMode                          (V: TValue): boolean;
 
 function vpKeywordFileModeOrNIL                     (V: TValue): boolean;
+
+function vpKeywordTableModeOrNIL                    (V: TValue): boolean;
 
 
 function vpListEvenLength                           (V: TValue): boolean;
@@ -746,6 +750,11 @@ begin
     result := vphKeywordNames(V, [':CP866',':DOS']);
 end;
 
+function vpKeyword_CSV(V: TValue): boolean;
+begin
+    result := vphSymbolName(V, ':CSV');
+end;
+
 function vpKeyword_DEFLATE                          (V: TValue): boolean;
 begin
     result := (V is TVKeyword) and (
@@ -950,6 +959,11 @@ end;
 function vpKeywordFileModeOrNIL                     (V: TValue): boolean;
 begin
     result := tpNil(V) or vpKeywordFileMode(V);
+end;
+
+function vpKeywordTableModeOrNIL(V: TValue): boolean;
+begin
+    result := tpNil(V) or vphKeywordNames(V, [':CSV']);
 end;
 
 

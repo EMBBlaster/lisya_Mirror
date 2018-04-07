@@ -29,6 +29,7 @@ type
       function write_bytes(bb: TBytes): boolean;
       function read_char(out ch: unicodechar): boolean;
       function write_char(ch: unicodechar): boolean;
+      function write_string(s: unicodestring): boolean;
 
       procedure write_BOM;
     end;
@@ -308,6 +309,13 @@ function TLStream.write_char(ch: unicodechar): boolean;
 begin
     CheckState;
     lisia_charset.write_character(stream, ch, encoding);
+    result := true;
+end;
+
+function TLStream.write_string(s: unicodestring): boolean;
+begin
+    CheckState;
+    lisia_charset.write_string(stream, s, encoding);
     result := true;
 end;
 

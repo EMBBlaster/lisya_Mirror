@@ -2533,6 +2533,68 @@ begin
     end;
 end;
 
+function if_print_table         (const PL: TVList; {%H-}call: TCallProc): TValue;
+var data: array of array of unicodestring; cols: array of integer; i,j,k,w,h: integer;
+    table: TVList; stdout: boolean;
+    hs: unicodestring;
+    mode: (pseudo, csv);
+    procedure put(s: unicodestring);
+    begin
+        if stdout then Write(s)
+        else (PL.look[0] as TVStreamPointer).body.write_string(s);
+    end;
+
+begin
+    case params_is(PL, result, [
+        tpNIL,                 vpListOfListsEqualLength, tpStringOrNIL, vpKeywordTableModeOrNIL,
+        vpStreamPointerActive, vpListOfListsEqualLength, tpStringOrNIL, vpKeywordTableModeOrNIL]) of
+        1,2: begin
+            result := TVT.Create;
+            stdout := tpNIL(PL.look[0]);
+            table := PL.L[1];
+            if tpNIL(PL.look[2]) then hs:='' else hs:=PL.S[2];
+            if tpNIL(PL.look[3]) then mode:=pseudo else mode:=csv;
+            if (mode=csv) and (hs='') then hs:=';';
+            h := table.Count;
+            if h=0 then Exit;
+            w := table.L[0].Count;
+            SetLength(data, h);
+            for i := 0 to h-1 do SetLength(data[i], w);
+            SetLength(cols, w);
+            for j := 0 to w-1 do cols[j]:=0;
+            for i := 0 to h-1 do
+                for j := 0 to w-1 do begin
+                    if tpList(table.L[i].look[j])
+                    then data[i,j] := ifh_format(table.L[i].L[j])
+                    else
+                        if tpString(table.L[i].look[j])
+                        then data[i,j] := table.L[i].S[j]
+                        else data[i,j] := table.L[i].look[j].AsString;
+                    if Length(data[i,j])>cols[j] then cols[j]:=Length(data[i,j]);
+                end;
+
+            case mode of
+                pseudo: for i := 0 to h-1 do begin
+                    put(hs);
+                    for j := 0 to w-1 do begin
+                        put(data[i,j]);
+                        for k := Length(data[i,j]) to cols[j] do Put(' ');
+                        put(hs);
+                    end;
+                    put(new_line);
+                end;
+                csv: for i := 0 to h-1 do begin
+                    for j := 0 to w-1 do begin
+                        put(data[i,j]);
+                        put(hs);
+                    end;
+                    put(#13#10);
+                end;
+            end;
+        end;
+    end;
+end;
+
 
 function if_xml_read            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -2743,7 +2805,7 @@ begin
     end;
 end;
 
-const int_fun_count = 131;
+const int_fun_count = 132;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2887,6 +2949,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'LST';                       f:if_fmt_list;              s:'(l :optional s b e)'),
 (n:'UPPER-CASE';                f:if_upper_case;            s:'(s)'),
 (n:'LOWER-CASE';                f:if_lower_case;            s:'(s)'),
+(n:'PRINT-TABLE';               f:if_print_table;           s:'(stream data :key hs mode)'),
+
 
 (n:'XML:READ';                  f:if_xml_read;              s:'(stream)'),
 (n:'XML:WRITE';                 f:if_xml_write;             s:'(stream xml)'),

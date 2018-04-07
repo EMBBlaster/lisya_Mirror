@@ -1,13 +1,13 @@
 ﻿(package utils (
     inc
     dec
-    parse)
+    tokens)
 
 (procedure inc (i) (set i (+ i 1)))
 
 (procedure dec (i) (set i (- i 1)))
 
-(procedure parse (rules s)
+(procedure tokens (rules s)
     "Разбирает переданную строку в соответствии с заданными правилами"
     (var tokens)
     (var acc "")
@@ -31,6 +31,7 @@
                                                 (push tokens acc) (set acc "")))
                         ((= \error cmd) (error "strutils:parser" token))
                         ((= \trim cmd) (set acc (trim acc)))
+                        ((= \end cmd) (return tokens))
                         (t (error "strutils:parser" "command " cmd " not supported"))))
                 (break)))
             nil
