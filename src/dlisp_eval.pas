@@ -1396,26 +1396,37 @@ begin
     end;
 end;
 
-function if_filter              (const PL: TVList; call: TCallProc): TValue;
-var expr: TVList; P: TValue; i: integer;
+function ifh_filter(const PL: TVList; call: TCallProc; P: TTypePredicate): TValue; inline;
+var expr: TVList; c: TValue; i: integer;
 begin
     case params_is(PL, result, [
         tpSubprogram, tpList]) of
         1: try
-            P := nil;
+            c := nil;
             result := TVList.Create;
             expr := TVList.Create([PL[0],nil]);
             for i := 0 to PL.L[1].high do begin
                 expr[1] := PL.L[1][i];
-                P := call(expr);
-                if tpTrue(P) then (result as TVList).Add(PL.L[1][i]);
-                FreeAndNil(P);
+                c := call(expr);
+                if P(c) then (result as TVList).Add(PL.L[1][i]);
+                FreeAndNil(c);
             end;
         finally
             expr.Free;
-            P.Free;
+            c.Free;
         end;
     end;
+end;
+
+
+function if_filter              (const PL: TVList; call: TCallProc): TValue;
+begin
+    result := ifh_filter(PL, call, tpTrue);
+end;
+
+function if_reject              (const PL: TVList; call: TCallProc): TValue;
+begin
+    result := ifh_filter(PL, call, tpNIL);
 end;
 
 function if_fold                (const PL: TVList; call: TCallProc): TValue;
@@ -2533,7 +2544,7 @@ begin
     end;
 end;
 
-function if_print_table         (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_fmt_table           (const PL: TVList; {%H-}call: TCallProc): TValue;
 var data: array of array of unicodestring; cols: array of integer; i,j,k,w,h: integer;
     table: TVList; stdout: boolean;
     hs: unicodestring;
@@ -2805,7 +2816,7 @@ begin
     end;
 end;
 
-const int_fun_count = 132;
+const int_fun_count = 133;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2872,6 +2883,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SLOTS';                     f:if_slots;                 s:'(r)'),
 (n:'CURRY ШФ';                  f:if_curry;                 s:'(f :rest p)'),
 (n:'FILTER';                    f:if_filter;                s:'(p l)'),
+(n:'REJECT';                    f:if_reject;                s:'(p l)'),
 (n:'FOLD';                      f:if_fold;                  s:'(p l)'),
 (n:'MAP ОТОБРАЖЕНИЕ';           f:if_map;                   s:'(p :rest l)'),
 (n:'MAP-CONCATENATE';           f:if_map_concatenate;       s:'(p :rest l)'),
@@ -2949,7 +2961,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'LST';                       f:if_fmt_list;              s:'(l :optional s b e)'),
 (n:'UPPER-CASE';                f:if_upper_case;            s:'(s)'),
 (n:'LOWER-CASE';                f:if_lower_case;            s:'(s)'),
-(n:'PRINT-TABLE';               f:if_print_table;           s:'(stream data :key hs mode)'),
+(n:'FMT-TABLE';                 f:if_fmt_table;             s:'(stream data :key hs mode)'),
 
 
 (n:'XML:READ';                  f:if_xml_read;              s:'(stream)'),
