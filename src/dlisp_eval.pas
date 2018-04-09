@@ -3281,7 +3281,7 @@ end;
 procedure TEvaluationFlow.oph_bind_package(name: unicodestring; import: boolean);
 var pack: TPackage;
     package_file: unicodestring;
-    built_in_stream: TStream;
+    built_in_stream: TLStream;
     procedure bind_pack;
     var i: integer; prefix: unicodestring;
     begin
@@ -3331,9 +3331,9 @@ begin
     if package_file<>'' then begin load_pack(package_file); bind_pack; Exit; end;
 
 try
-    built_in_stream := GetBuiltInPackageStream(UnicodeLowerCase(name));
-    if built_in_stream<>nil then begin
-        eval(read(built_in_stream, seUTF8)).Free;
+    built_in_stream := TLStream.FindBuiltIn(UnicodeLowerCase(name));
+    if built_in_stream.active then begin
+        eval(read(built_in_stream)).Free;
         bind_pack;
         Exit;
     end;

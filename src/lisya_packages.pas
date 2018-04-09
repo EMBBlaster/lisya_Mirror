@@ -30,7 +30,6 @@ procedure AddPackage(P: TPackage);
 function FindPackage(name: unicodestring): TPackage;
 procedure FreePackages;
 
-function GetBuiltInPackageStream(name: unicodestring): TStream;
 function FindLisyaFile(name: unicodestring): unicodestring;
 //function FindPackageFile(name: unicodestring; out expr: TVList): boolean;
 
@@ -94,17 +93,6 @@ begin
     SetLength(packages, 0);
 end;
 
-function GetBuiltInPackageStream(name: unicodestring): TStream;
-var i: integer;
-begin
-    result := nil;
-
-    for i:=0 to lazarusResources.Count-1 do
-        if lazarusResources.Items[i].Name=name then begin
-            result := TLazarusResourceStream.CreateFromHandle(lazarusResources.Items[i]);
-            Exit;
-        end;
-end;
 
 function FindLisyaFile(name: unicodestring): unicodestring;
 var oname,ename,rname, sdir: unicodestring; i: integer; path: TStringList;
@@ -134,7 +122,7 @@ begin
         result := sdir+rname; if FileExists(result) then Exit;
     end;
     finally
-           path.Free;
+        path.Free;
     end;
      //поиск в папке с программой
      sdir := ExtractFilePath(paramstr(0));

@@ -14,7 +14,6 @@ uses
 
 
 function read(s: TLStream): TValue; overload;
-//function read(s: TStream; enc: TStreamEncoding): TValue; overload;
 function read(sp: TVStreamPointer): TValue; overload;
 function read_from_string(s: unicodestring): TValue;
 
@@ -494,15 +493,7 @@ finally
 end;
 end;
 
-function read(s: TStream; enc: TStreamEncoding): TValue;
-var ps: TLStream;
-begin try
-    ps := TLStream.Create(s, enc);
-    result := read(ps);
-finally
-    ps.Free;
-end;
-end;
+
 
 function read(sp: TVStreamPointer): TValue;
 begin

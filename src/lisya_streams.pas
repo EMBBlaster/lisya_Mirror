@@ -8,7 +8,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    zstream,
+    zstream, LResources,
     Classes, SysUtils, mar, lisia_charset, lisya_exceptions, lisya_zip;
 
 type
@@ -19,7 +19,6 @@ type
     private
       fencoding: TStreamEncoding;
       stream: TStream;
-      owns_stream: boolean;
       procedure CheckState;
       procedure SetEncoding(enc: TStreamEncoding);
       function GetPosition: Int64;
@@ -30,6 +29,7 @@ type
 
       constructor Create(enc: TStreamEncoding = seUTF8); overload;
       constructor Create(trg: TStream; enc: TStreamEncoding=seUTF8); overload;
+      constructor FindBuiltIn(name: unicodestring);
 
       destructor Destroy; override;
 
@@ -248,7 +248,6 @@ begin
     inherited Create;
     fencoding := enc;
     stream := nil;
-    owns_stream := true;
 end;
 
 constructor TLStream.Create(trg: TStream; enc: TStreamEncoding);
@@ -256,12 +255,25 @@ begin
     inherited Create;
     stream := trg;
     encoding := enc;
-    owns_stream := false;
+end;
+
+constructor TLStream.FindBuiltIn(name: unicodestring);
+var i: integer;
+begin
+    inherited Create;
+    stream := nil;
+    fencoding := seUTF8;
+
+    for i:=0 to lazarusResources.Count-1 do
+        if lazarusResources.Items[i].Name=name then begin
+            stream := TLazarusResourceStream.CreateFromHandle(lazarusResources.Items[i]);
+            Exit;
+        end;
 end;
 
 destructor TLStream.Destroy;
 begin
-    if owns_stream then FreeAndNil(stream);
+    FreeAndNil(stream);
     inherited Destroy;
 end;
 
