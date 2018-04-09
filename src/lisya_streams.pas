@@ -16,21 +16,39 @@ type
     { TLStream }
 
     TLStream = class(TCountingObject)
-      encoding: TStreamEncoding;
+    private
+      fencoding: TStreamEncoding;
       stream: TStream;
+      owns_stream: boolean;
       procedure CheckState;
-      constructor Create(enc: TStreamEncoding = seUTF8);
+      procedure SetEncoding(enc: TStreamEncoding);
+      function GetPosition: Int64;
+      procedure SetPosition(p: Int64);
+      function GetSize: Int64;
+      procedure SetSize(s: Int64);
+    public
+
+      constructor Create(enc: TStreamEncoding = seUTF8); overload;
+      constructor Create(trg: TStream; enc: TStreamEncoding=seUTF8); overload;
+
       destructor Destroy; override;
 
-      procedure SetEncoding(enc: TStreamEncoding);
+      property encoding: TStreamEncoding read fencoding write SetEncoding;
       function read_byte(out b: byte): boolean;
       function read_bytes(var bb: TBytes; count: integer): boolean;
+      function read_DWORD: DWORD;
       function write_byte(b: byte): boolean;
       function write_bytes(bb: TBytes): boolean;
       function read_char(out ch: unicodechar): boolean;
+      function read_character: unicodechar;
       function write_char(ch: unicodechar): boolean;
       function write_string(s: unicodestring): boolean;
 
+      property position: Int64 read GetPosition write SetPosition;
+      property size: Int64 read GetSize write SetSize;
+
+      procedure close_stream;
+      function active: boolean;
       procedure write_BOM;
     end;
 
@@ -68,6 +86,7 @@ type
       function description: unicodestring; override;
     end;
 
+
     { TLZipFile }
 
     TLZipFile = class(TLStream)
@@ -80,6 +99,7 @@ type
 
 
 implementation
+
 
 { TLZipFile }
 
@@ -195,6 +215,7 @@ begin
     inherited Create(enc);
     stream := TMemoryStream.Create;
     for i := 0 to high(b) do stream.WriteByte(b[i]);
+    stream.Position:=0;
     SetEncoding(enc);
 end;
 
@@ -203,6 +224,7 @@ begin
     inherited Create(seUTF8);
     stream := TMemoryStream.Create;
     lisia_charset.write_string(stream, s, encoding);
+    stream.Position:=0;
 end;
 
 function TLMemoryStream.description: unicodestring;
@@ -224,13 +246,22 @@ end;
 constructor TLStream.Create(enc: TStreamEncoding);
 begin
     inherited Create;
-    encoding := enc;
+    fencoding := enc;
     stream := nil;
+    owns_stream := true;
+end;
+
+constructor TLStream.Create(trg: TStream; enc: TStreamEncoding);
+begin
+    inherited Create;
+    stream := trg;
+    encoding := enc;
+    owns_stream := false;
 end;
 
 destructor TLStream.Destroy;
 begin
-    stream.Free;
+    if owns_stream then FreeAndNil(stream);
     inherited Destroy;
 end;
 
@@ -239,8 +270,32 @@ procedure TLStream.SetEncoding(enc: TStreamEncoding);
 begin
     CheckState;
     if enc = seBOM
-    then encoding := lisia_charset.read_BOM(stream)
-    else encoding := enc;
+    then fencoding := lisia_charset.read_BOM(stream)
+    else fencoding := enc;
+end;
+
+function TLStream.GetPosition: Int64;
+begin
+    CheckState;
+    result := stream.Position;
+end;
+
+procedure TLStream.SetPosition(p: Int64);
+begin
+    CheckState;
+    stream.Position:=p;
+end;
+
+function TLStream.GetSize: Int64;
+begin
+    CheckState;
+    result:=stream.Size;
+end;
+
+procedure TLStream.SetSize(s: Int64);
+begin
+    CheckState;
+    stream.Size:=s;
 end;
 
 
@@ -269,6 +324,11 @@ begin
     except
         on E:EStreamError do result := false;
     end;
+end;
+
+function TLStream.read_DWORD: DWORD;
+begin
+    result := stream.ReadDWord;
 end;
 
 function TLStream.write_byte(b: byte): boolean;
@@ -305,6 +365,11 @@ begin
     end;
 end;
 
+function TLStream.read_character: unicodechar;
+begin
+    result := lisia_charset.read_character(stream, encoding);
+end;
+
 function TLStream.write_char(ch: unicodechar): boolean;
 begin
     CheckState;
@@ -317,6 +382,16 @@ begin
     CheckState;
     lisia_charset.write_string(stream, s, encoding);
     result := true;
+end;
+
+procedure TLStream.close_stream;
+begin
+    FreeAndNil(stream);
+end;
+
+function TLStream.active: boolean;
+begin
+    result := stream <> nil;
 end;
 
 end.

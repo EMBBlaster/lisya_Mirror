@@ -1339,7 +1339,7 @@ end;
 
 procedure TVStreamPointer.close_stream;
 begin
-    FreeAndNil(body.stream);
+    body.close_stream;
 end;
 
 

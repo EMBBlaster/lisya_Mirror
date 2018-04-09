@@ -14,12 +14,13 @@ uses
     ,lisya_predicates
     ,lisia_charset
     ,lisya_exceptions
+    ,lisya_streams
     ;
 
 
 
-function xml_read(s: TStream; encoding: TStreamEncoding): TVList;
-procedure xml_write(s: TStream; xml: TVList; declaration: boolean = true);
+function xml_read(s: TLStream): TVList;
+procedure xml_write(s: TLStream; xml: TVList; declaration: boolean = true);
 
 
 function xml_from_string(s: unicodestring): TVList;
@@ -190,7 +191,7 @@ begin
 end;
 
 
-procedure read_tags(s: TStream; var tags: TStringList; enc: TStreamEncoding);
+procedure read_tags(s: TLStream; var tags: TStringList);
 var depth: integer; ch: unicodechar; acc: unicodestring;
     encoding: TStreamEncoding; BOM: DWORD; b: TBytes;
     quoted: boolean;
@@ -210,9 +211,9 @@ begin
     tags.Clear;
     quoted := false;
 
-    BOM := s.ReadDWord;
+    BOM := s.read_DWORD;
     case BOM of
-        $6D783F3C: begin acc := '<?xm';    encoding := enc;     end;
+        $6D783F3C: begin acc := '<?xm';    encoding := s.encoding; end;
         $3CBFBBEF: begin acc := '<';       encoding := seUTF8;     end;
         $003CFEFF: begin acc := '<';       encoding := seUTF16LE;  end;
         $3C00FFFE: begin acc := '<';       encoding := seUTF16BE;  end;
@@ -225,13 +226,13 @@ begin
                 b[1]:=(BOM shr 8) and $FF;
                 b[2]:=(BOM shr 16) and $FF;
                 b[3]:=(BOM shr 24) and $FF;
-                acc:=bytes_to_string(b, enc);
-                encoding := enc;
+                acc:=bytes_to_string(b, s.encoding);
+                encoding := s.encoding;
             end else raise ELE.Create('Damaged byte order mask','xml');
     end;
 
     while s.Position<s.Size do begin
-        ch := read_character(s, encoding);
+        ch := s.read_character;
         case ch of
             '<': if not quoted
                 then begin add; acc := '<'; end
@@ -277,13 +278,13 @@ begin
 end;
 
 
-function xml_read(s: TStream; encoding: TStreamEncoding): TVList;
+function xml_read(s: TLStream): TVList;
 var tags: TStringList; i: integer;
 begin try
     result := nil;
     tags := TStringList.Create;
 
-    read_tags(s, tags, encoding);
+    read_tags(s, tags);
     //for i:=0 to tags.Count-1 do WriteLn(tags[i]);
     i := 0;
     while not tag_open(tags[i]) do Inc(i);
@@ -293,53 +294,51 @@ finally
 end;
 end;
 
-procedure tag_write(s: TStream; tag: TVList);
+procedure tag_write(s: TLStream; tag: TVList);
 var i: integer;
 begin
-    write_string(s, '<'+tag.S[0]);
+    s.write_string('<'+tag.S[0]);
     for i := 0 to (tag.L[1].count div 2)-1 do
-        write_string(s,' '+tag.L[1].S[i*2]+'="'+encode(tag.L[1].S[i*2+1])+'"');
-    write_string(s, '>');
+        s.write_string(' '+tag.L[1].S[i*2]+'="'+encode(tag.L[1].S[i*2+1])+'"');
+    s.write_string('>');
 
     for i := 2 to tag.high do
         if tpString(tag.look[i])
-        then write_string(s, encode(tag.S[i]))
+        then s.write_string(encode(tag.S[i]))
         else tag_write(s, tag.L[i]);
 
-    write_string(s, '</'+tag.S[0]+'>');
+    s.write_string('</'+tag.S[0]+'>');
 end;
 
-procedure xml_write(s: TStream; xml: TVList; declaration: boolean = true);
+procedure xml_write(s: TLStream; xml: TVList; declaration: boolean);
 begin
+    s.encoding:=seUTF8;
     if declaration then begin
-        write_BOM(s, seUTF8);
-        write_string(s, '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
+        s.write_BOM;
+        s.write_string('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
     end;
     tag_write(s, xml);
 end;
 
 function xml_from_string(s: unicodestring): TVList;
-var stream: TMemoryStream;
+var stream: TLMemoryStream;
 begin try
     result := nil;
-    stream := TMemorystream.Create;
-    write_string(stream, s, seUTF8);
-    stream.Position:=0;
-    result := xml_read(stream, seUTF8);
+    stream := TLMemorystream.Create(s);
+    result := xml_read(stream);
 finally
     stream.Free;
 end;
 end;
 
 function xml_to_string(xml: TVList): unicodestring;
-var stream: TMemoryStream;
+var stream: TLMemoryStream;
 begin try
     result := '';
-    stream := TMemoryStream.Create;
+    stream := TLMemoryStream.Create;
     tag_write(stream, xml);
     stream.Position:=0;
-    while stream.Position<stream.Size do
-        result := result+read_character(stream, seUTF8);
+    while stream.Position<stream.Size do result := result+stream.read_character;
 finally
     stream.Free;
 end;

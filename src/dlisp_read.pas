@@ -8,11 +8,13 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    Classes, SysUtils, dlisp_values, mar, lisia_charset, lisya_exceptions;
+    Classes, SysUtils, dlisp_values, mar, lisia_charset, lisya_exceptions,
+    lisya_streams;
 
 
 
-function read(s: TStream; encoding: TStreamEncoding): TValue; overload;
+function read(s: TLStream): TValue; overload;
+//function read(s: TStream; enc: TStreamEncoding): TValue; overload;
 function read(sp: TVStreamPointer): TValue; overload;
 function read_from_string(s: unicodestring): TValue;
 
@@ -301,7 +303,7 @@ end;
 end;
 
 
-function read_tokens(s: TStream; encoding: TStreamEncoding): TStringList;
+function read_tokens(s: TLStream): TStringList;
 var ch: unicodechar; depth: integer; state: (sToken, sString, sQuoted, sComment);
     acc: unicodestring;
     procedure add;
@@ -320,7 +322,7 @@ begin try
     depth := 0;
     state := sToken;
     while s.Position<s.Size do begin
-        ch := read_character(s, encoding);
+        ch := s.read_character;
         case state of
             sToken: case ch of
                 ' ',#13,#10,#$FEFF,#9: begin add; end;
@@ -333,12 +335,12 @@ begin try
             end;
             sString: case ch of
                 '"': begin acc:=acc+ch; {add;} state:=sToken; end;
-                '\': begin acc:=acc+'\'+read_character(s, encoding); end;
+                '\': begin acc:=acc+'\'+s.read_character; end;
                 else acc:=acc+ch;
             end;
             sQuoted: case ch of
                 '''': begin acc:=acc+ch; add; state:=sToken; end;
-                '\': begin acc:=acc+read_character(s, encoding); end;
+                '\': begin acc:=acc+s.read_character; end;
                 else acc:=acc+ch;
             end;
             sComment: case ch of
@@ -476,11 +478,12 @@ begin
     Inc(i);
 end;
 
-function read(s: TStream; encoding: TStreamEncoding): TValue;
+
+function read(s: TLStream): TValue;
 var tokens: TStringList; i: integer;
 begin try
     tokens := nil;
-    tokens := read_tokens(s, encoding);
+    tokens := read_tokens(s);
     //for i:=0 to tokens.count-1 do WriteLn(tokens[i]);
     i := 0;
     if tokens.Count>0
@@ -491,20 +494,28 @@ finally
 end;
 end;
 
+function read(s: TStream; enc: TStreamEncoding): TValue;
+var ps: TLStream;
+begin try
+    ps := TLStream.Create(s, enc);
+    result := read(ps);
+finally
+    ps.Free;
+end;
+end;
+
 function read(sp: TVStreamPointer): TValue;
 begin
     //result := read(sp.stream.fstream, sp.stream.encoding);
-  result := read(sp.body.stream, sp.body.encoding);
+  result := read(sp.body);
 end;
 
 function read_from_string(s: unicodestring): TValue;
-var stream: TMemoryStream;
+var stream: TLMemoryStream;
 begin try
     result := nil;
-    stream := TMemoryStream.Create;
-    write_string(stream, s, seUTF8);
-    stream.Position:=0;
-    result := read(stream, seUTF8);
+    stream := TLMemoryStream.Create(s);
+    result := read(stream);
 finally
     stream.Free;
 end;

@@ -1155,8 +1155,7 @@ end;
 function vpStreamEnd(V: TValue): boolean;
 begin
     result :=
-    (V as TVStreamPointer).body.stream.Position =
-        (V as TVStreamPointer).body.stream.Size;
+    (V as TVStreamPointer).body.Position = (V as TVStreamPointer).body.Size;
 end;
 
 

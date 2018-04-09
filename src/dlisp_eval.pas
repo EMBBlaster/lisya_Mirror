@@ -2008,8 +2008,8 @@ begin
     case params_is(PL, result, [
     {1} vpStreamPointerActive, tpKeywordOrNIL]) of
         1: begin
-            (PL.look[0] as TVStreamPointer).body.SetEncoding(
-                                            ifh_keyword_to_encoding(PL.look[1]));
+            (PL.look[0] as TVStreamPointer).body.Encoding :=
+                                            ifh_keyword_to_encoding(PL.look[1]);
             result := TVT.Create;
         end;
     end;
@@ -2053,7 +2053,7 @@ begin
             zf := TLZipFile.Create(
                 (PL.look[0] as TVZIPArchivePointer).Z.Ref as TZIPArchive,
                 PL.S[1], mode, enc);
-            if zf.stream<>nil
+            if zf.active
             then result := TVStreamPointer.Create(zf)
             else begin
                 zf.Free;
@@ -2182,11 +2182,11 @@ begin
         vpStreamPointerActive, vpIntegerNotNegative,
         vpStreamPointerActive, tpNIL]) of
         1: begin
-            (PL.look[0] as TVStreamPointer).body.stream.Position := PL.I[1];
+            (PL.look[0] as TVStreamPointer).body.Position := PL.I[1];
             result := TVT.Create;
         end;
         2: result := TVInteger.Create(
-            (PL.look[0] as TVStreamPointer).body.stream.Position);
+            (PL.look[0] as TVStreamPointer).body.Position);
     end;
 end;
 
@@ -2197,9 +2197,9 @@ begin
         vpStreamPointerActive, tpNIL,
         vpStreamPointerActive, vpIntegerNotNegative]) of
         1: result := TVInteger.Create(
-            (PL.look[0] as TVStreamPointer).body.stream.Size);
+            (PL.look[0] as TVStreamPointer).body.Size);
         2: begin
-            (PL.look[0] as TVStreamPointer).body.stream.Size := PL.I[1];
+            (PL.look[0] as TVStreamPointer).body.Size := PL.I[1];
             result := TVT.Create;
         end;
     end;
@@ -2334,7 +2334,7 @@ function if_read_bom            (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         vpStreamPointerActive]) of
-        1:  (PL.look[0] as TVStreamPointer).body.SetEncoding(seBOM);
+        1:  (PL.look[0] as TVStreamPointer).body.encoding := seBOM;
     end;
     result := TVT.Create;
 end;
@@ -2612,8 +2612,7 @@ begin
     case params_is(PL, result, [
         vpStreamPointerActive,
         tpString]) of
-        1: result := xml_read((PL.look[0] as TVStreamPointer).body.stream,
-                (PL.look[0] as TVStreamPointer).body.encoding);
+        1: result := xml_read((PL.look[0] as TVStreamPointer).body);
         2: result := xml_from_string(PL.S[0]);
     end;
 end;
@@ -2625,7 +2624,7 @@ begin
         vpStreamPointerActive,  tpList,
         tpT,                    tpList]) of
         1: begin
-            xml_write((PL.look[0] as TVStreamPointer).body.stream, PL.L[1]);
+            xml_write((PL.look[0] as TVStreamPointer).body, PL.L[1]);
             result := TVT.Create;
         end;
         2: result := TVString.Create(xml_to_string(PL.L[1]));
@@ -3302,12 +3301,12 @@ var pack: TPackage;
     end;
 
     procedure load_pack(fn: unicodestring);
-    var expr: TValue; f: TFileStream;
+    var expr: TValue; f: TLFileStream;
     begin try
         expr := nil;
         f := nil;
-        f := TFileStream.Create(fn, fmOpenRead);
-        expr := read(f, read_BOM(f));
+        f := TLFileStream.Create(fn, fmOpenRead, seBOM);
+        expr := read(f);
         if (expr is TVList)
             and ((expr as TVList).Count>=3)
             and ((expr as TVList).look[0] is TVSymbol)
