@@ -494,7 +494,6 @@ end;
 end;
 
 
-
 function read(sp: TVStreamPointer): TValue;
 begin
     //result := read(sp.stream.fstream, sp.stream.encoding);
@@ -512,5 +511,4 @@ finally
 end;
 end;
 
-end.
-
+end. //514

@@ -40,8 +40,6 @@ function FindLisyaFile(name: unicodestring): unicodestring;
 
 implementation
 
-uses dlisp_read;
-
 var packages: array of TPackage;
 
 procedure AddPackage(P: TPackage);

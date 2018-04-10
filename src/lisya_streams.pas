@@ -26,9 +26,7 @@ type
       function GetSize: Int64;
       procedure SetSize(s: Int64);
     public
-
-      constructor Create(enc: TStreamEncoding = seUTF8); overload;
-      constructor Create(trg: TStream; enc: TStreamEncoding=seUTF8); overload;
+      constructor Create(trg: TStream; enc: TStreamEncoding=seUTF8);
       constructor FindBuiltIn(name: unicodestring);
 
       destructor Destroy; override;
@@ -106,11 +104,9 @@ implementation
 constructor TLZipFile.Create(Z: TZipArchive; fn: unicodestring; mode: WORD;
     enc: TStreamEncoding);
 begin
-    inherited Create(enc);
     archive := Z.Ref as TZipArchive;
     file_name := fn;
-    stream := archive.GetFileStream(fn, mode);
-    SetEncoding(enc);
+    inherited Create(archive.GetFileStream(fn, mode), enc);
 end;
 
 destructor TLZipFile.Destroy;
@@ -129,9 +125,8 @@ end;
 constructor TLInflateStream.Create(trg: TLStream; head: boolean;
     enc: TStreamEncoding);
 begin
-    inherited Create(enc);
     target := trg;
-    stream := TDecompressionStream.create(target.stream,  not head);
+    inherited Create(TDecompressionStream.create(target.stream,  not head), enc);
 end;
 
 destructor TLInflateStream.Destroy;
@@ -152,9 +147,8 @@ end;
 constructor TLDeflateStream.Create(trg: TLStream; head: boolean;
     enc: TStreamEncoding);
 begin
-    inherited Create(enc);
     target := trg;
-    stream := TCompressionStream.create(clDefault, target.stream , not head);
+    inherited Create(TCompressionStream.create(clDefault, target.stream , not head), enc);
 end;
 
 destructor TLDeflateStream.Destroy;
@@ -178,7 +172,6 @@ end;
 constructor TLFileStream.Create(fn: unicodestring; mode: WORD;
     enc: TStreamEncoding);
 begin
-    inherited Create(enc);
     case mode of
         fmOpenRead: if not FileExists(fn)
                         then ELE.Create(fn, 'file not found')
@@ -191,7 +184,7 @@ begin
             stream.Seek(stream.Size,0);
         end;
     end;
-    SetEncoding(enc);
+    inherited Create(stream, enc);
 end;
 
 function TLFileStream.description: unicodestring;
@@ -205,24 +198,21 @@ end;
 
 constructor TLMemoryStream.Create(enc: TStreamEncoding);
 begin
-    inherited Create(enc);
-    stream := TMemoryStream.Create;
+    inherited Create(TMemoryStream.Create, enc);
 end;
 
 constructor TLMemoryStream.Create(const b: TBytes; enc: TStreamEncoding);
 var i: integer;
 begin
-    inherited Create(enc);
-    stream := TMemoryStream.Create;
+    inherited Create(TMemoryStream.Create, seUTF8);
     for i := 0 to high(b) do stream.WriteByte(b[i]);
     stream.Position:=0;
-    SetEncoding(enc);
+    encoding := enc;
 end;
 
 constructor TLMemoryStream.Create(const s: unicodestring);
 begin
-    inherited Create(seUTF8);
-    stream := TMemoryStream.Create;
+    inherited Create(TMemoryStream.Create, seUTF8);
     lisia_charset.write_string(stream, s, encoding);
     stream.Position:=0;
 end;
@@ -243,12 +233,6 @@ begin
     if stream=nil then raise ELE.Create('operation on closed stream','stream');
 end;
 
-constructor TLStream.Create(enc: TStreamEncoding);
-begin
-    inherited Create;
-    fencoding := enc;
-    stream := nil;
-end;
 
 constructor TLStream.Create(trg: TStream; enc: TStreamEncoding);
 begin
