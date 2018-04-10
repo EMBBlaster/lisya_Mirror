@@ -291,6 +291,15 @@
     (var in (open-file "1.txt"))
 	(assertion (= 37 (read-byte in)) "file stream"))
 
+(log \ASSOCIATIONS)
+(block
+    (var L \((:a "a") (:b "b" :a) (:a "A")))
+    (assertion (equal-sets \("a" "A" :b "b") (associations L :a)) "assoc")
+    (assertion (equal-sets \("a" "A") (associations L :a :BY-HEAD)) "assoc by-head")
+    (assertion (equal-sets \("A") (associations L :a :LAZY)) "assoc lazy")
+    (assertion (equal-sets \(:a) (associations L "A")) "assoc 2")
+    )
+
 
 (log \XML)
 (block

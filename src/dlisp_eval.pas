@@ -3990,12 +3990,51 @@ except
     tmp.Free; raise;
 end; end;
 
+{$DEFINE FORSUBSEQ}
+
 function TEvaluationFlow.op_for                     (PL: TVList): TValue;
 var i, frame_start, high_i, low_i: integer;
     V: TValue;
     CP: TVChainPointer;
     index: TVInteger;
-    op_var : (sequence, range, times);
+    op_var : (sequence, range, times, subseq);
+    {$IFDEF FORSUBSEQ}
+    procedure ss_expr(E: TVList);
+    var l,h: TValue;
+    begin try
+        l := nil;
+        h := nil;
+        if not E.Count in [3..4] then raise ELE.Malformed('FOR subseq');
+        op_var := sequence;
+        CP := eval_link(E.look[1]);
+        if not (CP.look is TVCompoundIndexed) then raise ELE.InvalidParameters;
+        l := eval(E[2]);
+        case E.Count of
+            3: if vpIntegerNotNegative(l) then begin
+                low_i := (l as TVInteger).fI;
+                high_i := (CP.look as TVCompoundIndexed).high;
+            end
+            else
+                if tpRange(l) then begin
+                    low_i := (l as TVRange).low;
+                    high_i := (l as TVRange).high-1;
+                end
+                else raise ELE.InvalidParameters;
+            4: begin
+                h := eval(E[3]);
+                if vpIntegerNotNegative(l) and vpIntegerNotNegative(h) then begin
+                    low_i := (l as TVInteger).fI;
+                    high_i := (h as TVInteger).fI-1;
+                end;
+            end;
+        end;
+    finally
+        l.Free;
+        h.Free;
+    end;
+    end;
+    {$ENDIF}
+
 begin
     //оператор цикла возвращает NIL в случае завершения и последнее значение
     //итерируемой переменной в случае досрочного прерывания оператором (BREAK)
@@ -4004,6 +4043,32 @@ begin
     if (PL.count<3) or not tpOrdinarySymbol(PL.look[1])
     then raise ELE.malformed('FOR');
 
+    {$IFDEF FORSUBSEQ}
+    if vpListHeaded_SUBSEQ(PL.look[2])
+    then ss_expr(PL.L[2])
+    else begin
+        CP := eval_link(PL.look[2]);
+        if tpCompoundIndexed(CP.look) then begin
+            op_var := sequence;
+            low_i := 0;
+            high_i := (CP.look as TVCompoundIndexed).high;
+        end
+        else
+            if tpRange(CP.look) then begin
+                op_var := range;
+                low_i := (CP.look as TVRange).low;
+                high_i := (CP.look as TVRange).high-1;
+            end
+            else
+                if vpIntegerNotNegative(CP.look) then begin
+                    op_var := range;
+                    low_i := 0;
+                    high_i := (CP.look as TVInteger).fI-1;
+                end
+                else
+                    raise ELE.InvalidParameters;
+    end;
+    {$ELSE}
     CP := eval_link(PL.look[2]);
 
     if tpCompoundIndexed(CP.look) then op_var := sequence
@@ -4013,12 +4078,53 @@ begin
             if vpIntegerNotNegative(CP.look) then op_var := times
             else
                 raise ELE.InvalidParameters;
+    {$ENDIF}
 
 try
     V := nil;
     result := nil;
     frame_start := stack.Count;
 
+    {$IFDEF FORSUBSEQ}
+        case op_var of
+        sequence: begin
+            CP.add_index(0);
+            stack.new_var(PL.SYM[1], CP, true);
+            for i := low_i to high_i do begin
+                CP.set_last_index(i);
+                FreeAndNil(V);
+                V := oph_block(PL, 3, true);
+                if tpBreak(V) then begin
+                    result := CP.value;
+                    break;
+                end;
+                if tpReturn(V) then begin
+                    result := V.Copy;
+                    break;
+                end;
+            end;
+        end;
+
+        range: begin
+            CP.Free;
+            index := TVInteger.Create(0);
+            stack.new_var(PL.SYM[1], index, true);
+            for i := low_i to high_i do begin
+                index.fI := i;
+                FreeAndNil(V);
+                V := oph_block(PL, 3, true);
+                if tpBreak(V) then begin
+                    result := TVInteger.Create(i);
+                    break;
+                end;
+                if tpReturn(V) then begin
+                    result := V.Copy;
+                    break;
+                end;
+            end;
+        end;
+    end;
+    {$ELSE}
     case op_var of
         sequence: begin
             high_i := (CP.look as TVCompoundIndexed).high;
@@ -4068,6 +4174,7 @@ try
             end;
         end;
     end;
+    {$ENDIF}
 
     if result=nil then result:= TVList.create;
 finally
@@ -4874,6 +4981,7 @@ return:
    Dec(eval_indent);
    indent; writeLn('=  ',result.asString);
    {$ENDIF}
+   //WriteLn(V.AsString);
    FreeAndNil(V);
 
 except

@@ -256,6 +256,8 @@ function vpListHeaded_INS                           (V: TValue): boolean;
 
 function vpListHeaded_INSET                         (V: TValue): boolean;
 
+function vpListHeaded_SUBSEQ                        (V: TValue): boolean;
+
 function vpListHeaded_THEN                          (V: TValue): boolean;
 
 function vpListHeaded_VALUE                         (V: TValue): boolean;
@@ -995,6 +997,11 @@ end;
 function vpListHeaded_INSET(V: TValue): boolean;
 begin
     result := vphListHeaded(V, 'INSET');
+end;
+
+function vpListHeaded_SUBSEQ(V: TValue): boolean;
+begin
+    result := vphListHeaded(V, 'SUBSEQ');
 end;
 
 function vpListHeaded_THEN                          (V: TValue): boolean;

@@ -28,6 +28,15 @@
     (for b (byte-vector 1 2 3) (set a (+ a b)))
     (assertion (= 6 a) "for byte-vector"))
 
+(block "FOR subseq"
+    (var L \(0 0 0 0))
+    (for e (subseq L 1..4) (set e 1))
+    (assertion (= L \(0 1 1 1)) "for subseq range")
+    (for e (subseq L 2) (set e 2))
+    (assertion (= L \(0 1 2 2)) "for subseq a")
+    (for e (subseq L 3 4) (set e 3))
+    (assertion (= L \(0 1 2 3)) "for subseq a b"))
+
 
 (block "WHILE"
     (var a 5)
