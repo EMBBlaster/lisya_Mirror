@@ -5,22 +5,21 @@ object module_mysql: Tmodule_mysql
   VerticalOffset = 318
   Width = 436
   object MySQL55: TMySQL55Connection
-    Connected = True
+    Connected = False
     LoginPrompt = False
-    DatabaseName = 'graph'
     KeepConnection = True
-    Password = '1'
     Transaction = SQLTransaction55
-    UserName = 'lisya'
     CharSet = 'utf8'
     HostName = 'localhost'
     LogEvents = []
+    Options = []
     left = 344
     top = 56
   end
   object SQLTransaction55: TSQLTransaction
-    Active = True
+    Active = False
     Database = MySQL55
+    Options = []
     left = 264
     top = 56
   end
@@ -28,6 +27,7 @@ object module_mysql: Tmodule_mysql
     FieldDefs = <>
     Database = MySQL55
     Transaction = SQLTransaction55
+    Options = []
     Params = <>
     left = 184
     top = 56

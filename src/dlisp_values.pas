@@ -522,7 +522,7 @@ type
         procedure print;
 
         procedure CopyOnWrite;
-        procedure AddPair(key, value: TValue);
+
         function Get(key: TValue): TValue;
         function GetIndex(key: TValue): integer;
         function GetKeys: TVList;
@@ -1050,12 +1050,16 @@ begin
         then begin
             result := index[li].k;
             Exit;
-        end;
-        if index[li].k=-1 then begin
-            AddPair(key.Copy, TVList.Create);
-            result := data.high;
-            Exit;
-        end;
+        end
+        else
+            if index[li].k=-1 then begin
+                keys.Add(key.Copy);
+                data.Add(TVList.Create);
+                index[li].h:=h;
+                index[li].k:=data.high;
+                result := data.high;
+                Exit;
+            end;
     end;
 end;
 
@@ -1100,8 +1104,6 @@ begin
     SetLength(index, 2);
     index[0].k:=-1;
     index[1].k:=-1;
-    //index[2].k:=-1;
-    //index[3].k:=-1;
 end;
 
 constructor TVHashTable.CreateEmpty;
@@ -1162,16 +1164,16 @@ begin
     //поскольку они изменяются только при добавлении новых значений
 end;
 
-procedure TVHashTable.AddPair(key, value: TValue);
-var h: DWORD; i: integer;
-begin
-    h := key.hash;
-    keys.Add(key);
-    data.Add(value);
-    i := FindEmpty(h);
-    index[i].h := h;
-    index[i].k := data.high;
-end;
+//procedure TVHashTable.AddPair(key, value: TValue);
+//var h: DWORD; i: integer;
+//begin
+//    h := key.hash;
+//    keys.Add(key);
+//    data.Add(value);
+//    i := FindEmpty(h);
+//    index[i].h := h;
+//    index[i].k := data.high;
+//end;
 
 
 function TVHashTable.Get(key: TValue): TValue;
