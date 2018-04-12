@@ -310,17 +310,17 @@ type
     end;
 
 
-    { TVCompoundIndexed }
+    { TVSequence }
 
-    TVCompoundIndexed = class (TVCompound)
+    TVSequence = class (TVCompound)
         function high: integer;
         function subseq(istart: integer; iend: integer = -1): TValue; virtual; abstract;
-        //function append(ss: TVCompoundIndexed): TValue; virtual; abstract;
+        //function append(ss: TVSequence): TValue; virtual; abstract;
     end;
 
     { TVCompoundOfPrimitive }
 
-    TVCompoundOfPrimitive = class (TVCompoundIndexed)
+    TVCompoundOfPrimitive = class (TVSequence)
         function LookItem({%H-}index: integer): TValue; override;
     end;
 
@@ -357,7 +357,7 @@ type
         constructor Create(free_objects: boolean);
     end;
 
-    TVList = class (TVCompoundIndexed)
+    TVList = class (TVSequence)
     private
         fL: TListBody;
         function GetItem(index: integer): TValue; override;
@@ -525,6 +525,7 @@ type
         procedure AddPair(key, value: TValue);
         function Get(key: TValue): TValue;
         function GetIndex(key: TValue): integer;
+        function GetKeys: TVList;
 
         function Count: integer; override;
     end;
@@ -1041,6 +1042,7 @@ end;
 function TVHashTable.GetIndex(key: TValue): integer;
 var h: DWORD; i, li: integer;
 begin
+    Expand;
     h := key.hash;
     for i := h mod Length(index) to (h mod Length(index)) + Length(index) do begin
         li := i mod Length(index);
@@ -1055,6 +1057,14 @@ begin
             Exit;
         end;
     end;
+end;
+
+function TVHashTable.GetKeys: TVList;
+var i: integer;
+begin
+    result := TVList.Create;
+    for i := 0 to Count-1 do
+        if tpTrue(data.look[i]) then result.Add(keys[i]);
 end;
 
 procedure TVHashTable.Expand;
@@ -1072,12 +1082,13 @@ end;
 function TVHashTable.FindEmpty(h: DWORD): integer;
 var i, li: integer;
 begin
-    for i := h mod Length(index) to h mod Length(index) + Length(index) do
+    for i := h mod Length(index) to h mod Length(index) + Length(index) do begin
         li := i mod Length(index);
         if index[li].k=-1 then begin
             result := li;
             Exit;
         end;
+    end;
     raise ELE.Create('filfull hash-table', 'internal');
 end;
 
@@ -1089,6 +1100,8 @@ begin
     SetLength(index, 2);
     index[0].k:=-1;
     index[1].k:=-1;
+    //index[2].k:=-1;
+    //index[3].k:=-1;
 end;
 
 constructor TVHashTable.CreateEmpty;
@@ -1152,8 +1165,6 @@ end;
 procedure TVHashTable.AddPair(key, value: TValue);
 var h: DWORD; i: integer;
 begin
-    Expand;
-
     h := key.hash;
     keys.Add(key);
     data.Add(value);
@@ -1357,9 +1368,9 @@ begin
 end;
 
 
-{ TVCompoundIndexed }
+{ TVSequence }
 
-function TVCompoundIndexed.high: integer;
+function TVSequence.high: integer;
 begin
     result := self.Count-1;
 end;

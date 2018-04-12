@@ -59,6 +59,7 @@ type
         function oph_execute_file(fn: unicodestring): boolean;
         procedure oph_bind_package(name: unicodestring; import: boolean = false);
         function oph_eval_indices(V, target: TValue): TValue;
+        function oph_index(target: TVSequence; i: TValue): integer;
         procedure oph_eval_link_for_modification(out CP: TVChainPointer; P: TValue);
 
         function opl_elt(PL: TVList): TVChainPointer;
@@ -673,13 +674,13 @@ function if_range               (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpInteger,            tpInteger,
-        tpCompoundIndexed,    tpNIL,
+        tpSequence,           tpNIL,
         vpIntegerNotNegative, tpNIL,
-        vpIntegerNotNegative, tpCompoundIndexed]) of
+        vpIntegerNotNegative, tpSequence]) of
         1: result := TVRange.Create(PL.I[0], PL.I[1]);
-        2: result := TVRange.Create(0, (PL.Look[0] as TVCompound).Count);
+        2: result := TVRange.Create(0, (PL.Look[0] as TVSequence).Count);
         3: result := TVRange.Create(0, PL.I[0]);
-        4: result := TVRange.Create(PL.I[0], (PL.Look[1] as TVCompound).Count);
+        4: result := TVRange.Create(PL.I[0], (PL.Look[1] as TVSequence).Count);
     end;
 end;
 
@@ -1210,10 +1211,10 @@ end;
 function if_subseq              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpCompoundIndexed, vpIntegerNotNegative, tpNIL,
-        tpCompoundIndexed, vpIntegerNotNegative, vpIntegerNotNegative]) of
-        1: result := (PL.look[0] as TVCompoundIndexed).subseq(PL.I[1]);
-        2: result := (PL.look[0] as TVCompoundIndexed).subseq(PL.I[1], PL.I[2]);
+        tpSequence, vpIntegerNotNegative, tpNIL,
+        tpSequence, vpIntegerNotNegative, vpIntegerNotNegative]) of
+        1: result := (PL.look[0] as TVSequence).subseq(PL.I[1]);
+        2: result := (PL.look[0] as TVSequence).subseq(PL.I[1], PL.I[2]);
     end;
 end;
 
@@ -1348,13 +1349,15 @@ function if_slots               (const PL: TVList; {%H-}call: TCallProc): TValue
 var i: integer;
 begin
     case params_is(PL, result, [
-        tpRecord]) of
+        tpRecord,
+        tpHashTable]) of
         1: begin
             result := TVList.Create;
             for i := 0 to (PL.look[0] as TVRecord).count-1 do
                 (result as TVList).Add(
                     TVSymbol.Create((PL.look[0] as TVRecord).name_n(i)));
         end;
+        2: result := (PL.look[0] as TVHashTable).GetKeys;
     end;
 end;
 
@@ -1543,8 +1546,8 @@ end;
 function if_length              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpCompoundIndexed]) of
-        1: result := TVInteger.Create((PL.look[0] as TVCompound).Count);
+        tpSequence]) of
+        1: result := TVInteger.Create((PL.look[0] as TVSequence).Count);
     end;
 end;
 
@@ -3363,6 +3366,22 @@ begin
     else result := V;
 end;
 
+function TEvaluationFlow.oph_index(target: TVSequence; i: TValue): integer;
+begin
+    if (vpKeyword_LAST(i) or vpSymbol_LAST(i)) and (target.Count>0)
+    then result := -1
+    else
+        if tpInteger(i) then result := (i as TVInteger).fI
+        else
+            raise ELE.Create(i.AsString+' invalid index','invalid parameters');
+
+    if result in [0..target.high] then result := result
+    else
+        if (result<0) and (result>=-target.Count) then result := target.Count+result
+        else
+            raise ELE.Create(i.AsString+' out of range 0..'+IntToStr(target.high));
+end;
+
 procedure TEvaluationFlow.oph_eval_link_for_modification(
     out CP: TVChainPointer; P: TValue);
 begin
@@ -3424,11 +3443,13 @@ begin
         end
         else
 
-        if tpCompoundIndexed(tmp) and vpIntegerNotNegative(ind)
-        then result.add_index((ind as TVInteger).fI)
+        //if tpSequence(tmp) and vpIntegerNotNegative(ind)
+        //then result.add_index((ind as TVInteger).fI)
+        if tpSequence(tmp) and tpInteger(ind)
+        then result.add_index(oph_index(tmp as TVSequence, ind))
         else
 
-        if tpCompoundIndexed(tmp) and (vpSymbol_LAST(ind) or vpKeyword_LAST(ind))
+        if tpSequence(tmp) and (vpSymbol_LAST(ind) or vpKeyword_LAST(ind))
         then result.add_index((tmp as TVCompound).Count-1)
         else
 
@@ -3497,10 +3518,10 @@ begin
     result := nil;
     result := eval_link(PL.look[1]);
 
-    if not tpCompoundIndexed(result.look)
+    if not tpSequence(result.look)
     then raise ELE.Create(result.look.AsString + ' is not indexed compound');
 
-    result.add_index((result.look as TVCompoundIndexed).Count-1);
+    result.add_index((result.look as TVSequence).Count-1);
 end;
 
 
@@ -4007,12 +4028,12 @@ var i, frame_start, high_i, low_i: integer;
         if not E.Count in [3..4] then raise ELE.Malformed('FOR subseq');
         op_var := sequence;
         CP := eval_link(E.look[1]);
-        if not (CP.look is TVCompoundIndexed) then raise ELE.InvalidParameters;
+        if not (CP.look is TVSequence) then raise ELE.InvalidParameters;
         l := eval(E[2]);
         case E.Count of
             3: if vpIntegerNotNegative(l) then begin
                 low_i := (l as TVInteger).fI;
-                high_i := (CP.look as TVCompoundIndexed).high;
+                high_i := (CP.look as TVSequence).high;
             end
             else
                 if tpRange(l) then begin
@@ -4048,10 +4069,10 @@ begin
     then ss_expr(PL.L[2])
     else begin
         CP := eval_link(PL.look[2]);
-        if tpCompoundIndexed(CP.look) then begin
+        if tpSequence(CP.look) then begin
             op_var := sequence;
             low_i := 0;
-            high_i := (CP.look as TVCompoundIndexed).high;
+            high_i := (CP.look as TVSequence).high;
         end
         else
             if tpRange(CP.look) then begin

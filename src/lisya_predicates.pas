@@ -31,7 +31,7 @@ function tpCharacter                                (V: TValue): boolean;
 
 function tpComplex                                  (V: TValue): boolean;
 
-function tpCompoundIndexed                          (V: TValue): boolean;
+function tpSequence                                 (V: TValue): boolean;
 
 function tpContinue                                 (V: TValue): boolean;
 
@@ -371,9 +371,9 @@ begin
     result := V is TVComplex;
 end;
 
-function tpCompoundIndexed(V: TValue): boolean;
+function tpSequence(V: TValue): boolean;
 begin
-    result := (V is TVCompoundIndexed);
+    result := (V is TVSequence);
 end;
 
 function tpContinue(V: TValue): boolean;
