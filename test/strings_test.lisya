@@ -6,7 +6,8 @@
     (assertion (= 3 (strings-mismatch "abc" "abcd")) "mismatch 2")
     (assertion (= NIL (strings-mismatch "abc" "abc")) "mismatch 3")
     (assertion (= 0 (strings-mismatch "abc" "")) "mismatch 4")
-    (assertion (= NIL (strings-mismatch "" "")) "mismatch 5"))
+    (assertion (= NIL (strings-mismatch "" "")) "mismatch 5")
+    (assertion (= 2 (strings-mismatch "abc" "abde")) "mismatch 6"))
 
 (block "split-string"
     (assertion (= \("a" "b" "c") (split-string "a b c")) "split-string 1")

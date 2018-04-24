@@ -463,7 +463,7 @@ begin
     mm := 0;
     for i := 1 to Length(s_short) do
         if s_short[i]<>s_long[i] then begin mm := i; break; end;
-    if Length(s1)<>Length(s2) then mm := Length(s_short)+1;
+    if (mm=0) and (Length(s1)<>Length(s2)) then mm := Length(s_short)+1;
 
     result := mm-1;
 end;
