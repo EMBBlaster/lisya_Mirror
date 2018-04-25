@@ -4391,6 +4391,9 @@ begin
         or (not tpListOfOrdinarySymbols(PL.look[2]))
     then raise ELE.Malformed('PACKAGE');
 
+    if FindPackage(PL.uname[1])<>nil
+    then raise ELE.Create('package redefinition: '+PL.name[1], 'syntax');
+
     package_stack := base_stack.Copy as TVSymbolStack;
     external_stack := stack;
     stack := package_stack;
