@@ -60,7 +60,7 @@ function FindPackage(name: unicodestring): TPackage;
 var i: integer; uname: unicodestring;
 begin
     uname := UnicodeUpperCase(name);
-    for i := 0 to high(packages) do begin
+    for i := high(packages) downto 0 do begin
         if packages[i].uname = uname then begin
             result := packages[i];
             exit;
