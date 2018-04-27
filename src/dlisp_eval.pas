@@ -920,6 +920,64 @@ begin
     end;
 end;
 
+function if_and                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer;
+begin
+    case params_is(PL, result, [
+        tpNIL,
+        tpList]) of
+        1: result := TVT.Create;
+        2: begin
+            for i := 0 to PL.L[0].high do
+                if tpNIL(PL.L[0].look[i]) then begin
+                    result := TVList.Create;
+                    Exit;
+                end;
+            result := PL.L[0][PL.L[0].high];
+        end;
+    end;
+end;
+
+function if_or                  (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer;
+begin
+    case params_is(PL, result, [
+        tpNIL,
+        tpList]) of
+        1: result := TVList.Create;
+        2: begin
+            for i := 0 to PL.L[0].high do
+                if tpTrue(PL.L[0].look[i]) then begin
+                    result := PL.L[0][i];
+                    Exit;
+                end;
+            result := TVList.Create;
+        end;
+    end;
+end;
+
+function if_xor                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+var res, a: boolean; i, n: integer;
+begin
+    case params_is(PL, result, [
+        tpNIL,
+        tpList]) of
+        1: result := TVList.Create;
+        2: begin
+            res := tpTrue(PL.L[0].look[0]);
+            n := 0;
+            for i:=1 to PL.L[0].high do begin
+                a := tpTrue(PL.L[0].look[i]);
+                res := res xor a;
+                if a then n := i; //положение последнего значащего аргумента
+            end;
+            if res
+            then result := PL.L[0][n]
+            else result := TVList.Create;
+        end;
+    end;
+end;
+
 function if_not                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2818,7 +2876,28 @@ begin
     end;
 end;
 
-const int_fun_count = 133;
+
+function if_if                  (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpAny, tpAny, tpAny]) of
+        1: if tpTrue(PL.look[0])
+            then result := PL[1]
+            else result := PL[2];
+    end;
+end;
+
+function if_if_nil              (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpAny, tpAny]) of
+        1: if tpTrue(PL.look[0])
+            then result := PL[0]
+            else result := PL[1];
+    end;
+end;
+
+const int_fun_count = 138;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2851,6 +2930,9 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'>=';                        f:if_more_or_equal;         s:'(a b)'),
 (n:'<=';                        f:if_less_or_equal;         s:'(a b)'),
 (n:'<>';                        f:if_not_equal;             s:'(a b)'),
+(n:'AND И';                     f:if_and;                   s:'(:rest a)'),
+(n:'OR ИЛИ';                    f:if_or;                    s:'(:rest a)'),
+(n:'XOR';                       f:if_xor;                   s:'(:rest a)'),
 (n:'NOT НЕ';                    f:if_not;                   s:'(a)'),
 (n:'EQUAL-CASE-INSENSITIVE';    f:if_equal_case_insensitive;s:'(s s)'),
 (n:'EQUAL-SETS';                f:if_equal_sets;            s:'(a b)'),
@@ -2975,7 +3057,10 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'HTTP:GET';                  f:if_http_get;              s:'(url :key proxy)'),
 
-(n:'REGEXP:MATCH';              f:if_regexp_match;          s:'(s expr :key from)')
+(n:'REGEXP:MATCH';              f:if_regexp_match;          s:'(s expr :key from)'),
+
+(n:'?';                         f:if_if;                    s:'(cnd a :optional b)'),
+(n:'F-IF-NIL';                  f:if_if_nil;                s:'(cnd a)')
 
 );
 
@@ -3015,7 +3100,7 @@ var o: TOperatorEnum;
 begin
     for o := low(ops) to high(ops) do
         case o of
-            oeAND       : op('AND');
+            oeAND_THEN  : op('AND-THEN');
             oeAPPEND    : op('APPEND');
             oeASSEMBLE  : op('ASSEMBLE');
             oeBLOCK     : op('BLOCK');
@@ -3040,7 +3125,7 @@ begin
             oeLET       : op('LET');
             oeMACRO     : op('MACRO');
             oeMACRO_SYMBOL: op('MACRO-SYMBOL');
-            oeOR        : op('OR');
+            oeOR_THEN   : op('OR-THEN');
             oePACKAGE   : op('PACKAGE');
             oePOP       : op('POP');
             oePROCEDURE : op('PROCEDURE');
@@ -4772,7 +4857,7 @@ end;
 function TEvaluationFlow.call_operator(PL: TVList): TValue;
 begin
     case (PL.look[0] as TVOperator).op_enum of
-        oeAND       : result := op_and(PL);
+        oeAND_THEN  : result := op_and(PL);
         oeAPPEND    : result := op_append(PL);
         oeASSEMBLE  : result := op_assemble(PL);
         oeBLOCK     : result := op_block(PL);
@@ -4797,7 +4882,7 @@ begin
         oeLET       : result := op_let(PL);
         oeMACRO     : result := op_procedure(PL);
         oeMACRO_SYMBOL: result := op_macro_symbol(PL);
-        oeOR        : result := op_or(PL);
+        oeOR_THEN   : result := op_or(PL);
         oePACKAGE   : result := op_package(PL);
         oePOP       : result := op_pop(PL);
         oePROCEDURE : result := op_procedure(PL);

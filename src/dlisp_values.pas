@@ -671,7 +671,7 @@ type
     { TVOperator }
 
     type TOperatorEnum = (
-            oeAND,
+            oeAND_THEN,
             oeAPPEND,      //mod
             oeASSEMBLE,
             oeBLOCK,
@@ -696,7 +696,7 @@ type
             oeLET,
             oeMACRO,
             oeMACRO_SYMBOL,
-            oeOR,
+            oeOR_THEN,
             oePACKAGE,
             oePOP,          //mod
             oePROCEDURE,
