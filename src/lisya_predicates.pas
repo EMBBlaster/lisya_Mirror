@@ -179,6 +179,8 @@ function vpKeyword_FIRST                            (V: TValue): boolean;
 
 function vpKeyword_FLAG                             (V: TValue): boolean;
 
+function vpKeyword_HTML                             (V: TValue): boolean;
+
 function vpKeyword_KEY                              (V: TValue): boolean;
 
 function vpKeyword_KOI8R                            (V: TValue): boolean;
@@ -785,6 +787,11 @@ begin
     result := V.equal(kwFLAG);
 end;
 
+function vpKeyword_HTML(V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':HTML');
+end;
+
 function vpKeyword_KEY                              (V: TValue): boolean;
 begin
     result := V.equal(kwKEY);
@@ -972,7 +979,7 @@ end;
 
 function vpKeywordTableModeOrNIL(V: TValue): boolean;
 begin
-    result := tpNil(V) or vphKeywordNames(V, [':CSV']);
+    result := tpNil(V) or vphKeywordNames(V, [':CSV', ':HTML']);
 end;
 
 

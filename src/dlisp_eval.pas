@@ -544,7 +544,6 @@ begin
 end;
 
 function if_div_int             (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i,l: integer;
 begin
     case params_is(PL, result, [
         tpInteger, vpIntegerNotZero,
@@ -555,16 +554,10 @@ begin
 end;
 
 function if_mod                 (const PL: TVList; {%H-}call: TCallProc): TValue;
-var l: integer;
 begin
     case params_is(PL, result, [
-        tpInteger, vpIntegerNotZero,
-        tpList, vpIntegerPositive]) of
+        tpInteger, vpIntegerNotZero]) of
         1: result := TVInteger.Create(PL.I[0] mod PL.I[1]);
-        2: begin
-            l := PL.L[0].Count mod PL.I[1];
-            result := PL.L[0].subseq(PL.L[0].count-l, PL.L[0].count);
-        end;
     end;
 end;
 
@@ -1803,6 +1796,22 @@ begin
 
 end;
 
+function if_subrange            (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer;
+begin
+    case params_is(PL, result, [
+        tpListOfReals, tpReal]) of
+        1: begin
+            for i := 0 to PL.L[0].high do
+                if PL.F[1]<=PL.L[0].F[i] then begin
+                    result := TVInteger.Create(i);
+                    Exit;
+                end;
+            result := TVInteger.Create(PL.L[0].Count);
+        end;
+    end;
+end;
+
 function if_byte_vector         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
@@ -2630,7 +2639,7 @@ function if_fmt_table           (const PL: TVList; {%H-}call: TCallProc): TValue
 var data: array of array of unicodestring; cols: array of integer; i,j,k,w,h: integer;
     table: TVList; stdout: boolean;
     hs: unicodestring;
-    mode: (pseudo, csv);
+    mode: (pseudo, csv, html);
     procedure put(s: unicodestring);
     begin
         if stdout then Write(s)
@@ -2646,7 +2655,8 @@ begin
             stdout := tpNIL(PL.look[0]);
             table := PL.L[1];
             if tpNIL(PL.look[2]) then hs:='' else hs:=PL.S[2];
-            if tpNIL(PL.look[3]) then mode:=pseudo else mode:=csv;
+            if tpNIL(PL.look[3]) then mode:=pseudo else
+            if vpKeyword_HTML(PL.look[3]) then mode := html else mode:=csv;
             if (mode=csv) and (hs='') then hs:=';';
             h := table.Count;
             if h=0 then Exit;
@@ -2682,6 +2692,19 @@ begin
                         put(hs);
                     end;
                     put(#13#10);
+                end;
+                html: begin
+                    put('<table>'); put(#13#10);
+                    for i := 0 to h-1 do begin
+                        put('<tr>');
+                        for j := 0 to w-1 do begin
+                            put('<td>');
+                            put(data[i,j]);
+                            put('</td>');
+                        end;
+                        put('</tr>'); put(#13#10);
+                    end;
+                    put('</table>'); put(#13#10);
                 end;
             end;
         end;
@@ -2918,7 +2941,7 @@ begin
     end;
 end;
 
-const int_fun_count = 138;
+const int_fun_count = 139;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3010,6 +3033,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'GROUP ГРУППИРОВКА';         f:if_group;                 s:'(s :rest p)'),
 (n:'STRINGS-MISMATCH';          f:if_strings_mismatch;      s:'(a b)'),
 (n:'ASSOCIATIONS';              f:if_associations;          s:'(al k :flag lazy by-head)'),
+(n:'SUBRANGE';                  f:if_subrange;              s:'(r v)'),
 
 (n:'BYTE-VECTOR BYTES';         f:if_byte_vector;           s:'(:rest b)'),
 (n:'BITWISE-AND';               f:if_bitwise_and;           s:'(a b)'),
