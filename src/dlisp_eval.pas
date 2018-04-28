@@ -388,6 +388,16 @@ begin
     raise ELE.Create('invalid file mode '+V.AsString, 'invalid parameters');
 end;
 
+function ifh_div_sequence(s: TVSequence; d: integer; tail: boolean): TVList;
+var l,tl,i: integer;
+begin
+  result := TVList.Create;
+  l := s.Count div d;
+  tl := s.Count mod d;
+  for i := 0 to d-1 do result.Add(s.subseq(i*l, i*l+l));
+  if (tl>0) and tail then result.Add(s.subseq(s.Count-tl,s.Count));
+end;
+
 function if_structure_p         (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -514,12 +524,13 @@ end;
 function if_div                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        vpIntegerAbsOne,    tpNIL,
-        vpRealNotZero,      tpNIL,
-        vpComplexNotZero,   tpNIL,
-        tpInteger,          vpIntegerNotZero,
-        tpReal,             vpRealNotZero,
-        tpNumber,           vpNumberNotZero]) of
+    {1} vpIntegerAbsOne,    tpNIL,
+    {2} vpRealNotZero,      tpNIL,
+    {3} vpComplexNotZero,   tpNIL,
+    {4} tpInteger,          vpIntegerNotZero,
+    {5} tpReal,             vpRealNotZero,
+    {6} tpNumber,           vpNumberNotZero,
+    {7} tpSequence,         vpIntegerPositive]) of
         1: result := TVInteger.Create(1 div PL.I[0]);
         2: result := TVFloat.Create(1 / PL.F[0]);
         3: result := TVComplex.Create(cinv(PL.C[0]));
@@ -528,22 +539,32 @@ begin
             else result := TVFloat.Create(PL.I[0] / PL.I[1]);
         5: result := TVFloat.Create(PL.F[0] / PL.F[1]);
         6: result := TVComplex.Create(PL.C[0] / PL.C[1]);
+        7: result := ifh_div_sequence(PL.look[0] as TVSequence, PL.I[1], true);
     end;
 end;
 
 function if_div_int             (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i,l: integer;
 begin
     case params_is(PL, result, [
-        tpInteger, vpIntegerNotZero]) of
+        tpInteger, vpIntegerNotZero,
+        tpSequence, vpIntegerPositive]) of
         1: result := TVInteger.Create(PL.I[0] div PL.I[1]);
+        2: result := ifh_div_sequence(PL.look[0] as TVSequence, PL.I[1], false);
     end;
 end;
 
 function if_mod                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+var l: integer;
 begin
     case params_is(PL, result, [
-        tpInteger, vpIntegerNotZero]) of
+        tpInteger, vpIntegerNotZero,
+        tpList, vpIntegerPositive]) of
         1: result := TVInteger.Create(PL.I[0] mod PL.I[1]);
+        2: begin
+            l := PL.L[0].Count mod PL.I[1];
+            result := PL.L[0].subseq(PL.L[0].count-l, PL.L[0].count);
+        end;
     end;
 end;
 

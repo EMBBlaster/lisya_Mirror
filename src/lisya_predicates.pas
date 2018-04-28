@@ -140,6 +140,8 @@ function vpIntegerNotNegativeOrNIL                  (V: TValue): boolean;
 
 function vpIntegerNotZero                           (V: TValue): boolean;
 
+function vpIntegerPositive                          (V: TValue): boolean;
+
 function vpIntegerRoundToRange                      (V: TValue): boolean;
 
 
@@ -677,6 +679,11 @@ end;
 function vpIntegerNotZero                           (V: TValue): boolean;
 begin
     result := (V is TVInteger) and ((V as TVInteger).fI <> 0);
+end;
+
+function vpIntegerPositive(V: TValue): boolean;
+begin
+    result := (V is TVInteger) and ((V as TVInteger).fI > 0);
 end;
 
 function vpIntegerRoundToRange                      (V: TValue): boolean;
