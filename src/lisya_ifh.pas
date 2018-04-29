@@ -61,7 +61,7 @@ var i: integer;
 begin
     result := true;
     for i := 0 to L.high do
-        if (hE=hL[i]) and L.look[i].equal(E) then Exit;
+        if (hE=hL[i]) and equal(L.look[i], E) then Exit;
 
     result := false;
 end;
@@ -216,7 +216,7 @@ var i: integer;
 begin
     result := false;
     for i := 0 to L.High do
-        if L.look[i].equal(E) then begin
+        if equal(L.look[i], E) then begin
             result := true;
             break;
         end;
@@ -231,7 +231,7 @@ begin
     for i := 0 to L.high do hashes[i] := L.look[i].hash;
     hash := E.hash;
     for i := 0 to L.High do
-        if (hash=hashes[i]) and L.look[i].equal(E) then begin
+        if (hash=hashes[i]) and equal(L.look[i], E) then begin
             result := true;
             break;
         end;
@@ -282,7 +282,7 @@ var hashes: array of array of DWORD;
     var k: integer;
     begin
         for k := 0 to res_count-1 do
-            if (hashes[0][v]=res[k]) and L.L[0].look[v].equal(result.look[k])
+            if (hashes[0][v]=res[k]) and equal(L.L[0].look[v],result.look[k])
             then exit;
         res[res_count] := hashes[0][v];
         result.Add(L.L[0][v]);

@@ -782,7 +782,7 @@ end;
 function if_equal               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [tpAny, tpAny]) of
-        1: if PL.look[0].equal(PL.look[1])
+        1: if equal(PL.look[0], PL.look[1])
             then result := TVT.Create
             else result := TVList.Create;
     end;
@@ -850,9 +850,7 @@ begin
         1: bool_to_TV( PL.I[0]<>PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<>PL.F[1] , result);
         3: bool_to_TV( PL.S[0]<>PL.S[1] , result);
-        4: bool_to_TV(not
-            (PL.look[0] as TVByteVector).equal_to(PL.look[1] as TVByteVector),
-            result);
+        4: bool_to_TV(not equal(PL.look[0], PL.look[1]), result);
     end;
 end;
 
@@ -1530,7 +1528,7 @@ begin
     {1} tpList, tpAny,
     {2} tpString, tpString]) of
         1: for i := 0 to PL.L[0].high do
-            if PL.L[0].look[i].equal(PL.look[1]) //ifh_equal(PL.L[0].look[i], PL.look[1])
+            if equal(PL.L[0].look[i], PL.look[1])
             then begin p := i; break; end;
         2: p := PosU(PL.S[1], PL.S[0]) - 1;
     end;
@@ -1703,7 +1701,7 @@ begin
             res := TVList.Create;
             for i := L.high downto 0 do
                 for j := 0 to L.L[i].high do begin
-                    if L.L[i].look[j].equal(k) then begin
+                    if equal(L.L[i].look[j], k) then begin
                         ll := L[i] as TVList;
                         ll.delete(j);
                         res.Append(ll);
@@ -3457,7 +3455,7 @@ var i: integer; tmp: TValue; ind: TValue;
         k := eval(PL[i]);
         j := (ind as TVList).high-1;
         while j>=0 do begin
-            if (ind as TVList).look[j].equal(k) then begin
+            if equal((ind as TVList).look[j], k) then begin
                 replace_value(ind, (ind as TVList)[j+1]);
                 Exit;
             end;
@@ -3534,7 +3532,7 @@ begin try
         L := result.look as TVList;
         i := L.high-1;
         while i>=0 do
-            if key.equal(L.look[i])// ifh_equal(key, L.look[i])
+            if equal(key, L.look[i])
             then begin
                 result.add_index(i+1);
                 Exit;
@@ -3659,7 +3657,7 @@ try
     expr := eval(PL[1]);
 
     for i := 2 to PL.High do
-        if expr.equal(PL.L[i].look[0]) //ifh_equal(expr, PL.L[i].look[0])
+        if equal(expr, PL.L[i].look[0])
             or (tpListNotEmpty(PL.L[i].look[0]) and
                     ifh_member(PL.L[i].L[0], expr))
             or tpT(PL.L[i].look[0])

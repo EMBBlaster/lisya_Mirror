@@ -26,8 +26,6 @@ const
 
 type
 
-
-
     { TValue }
 
     TValue = class
@@ -438,7 +436,6 @@ type
         procedure SetCount(l: integer);
         procedure Add(b: Int64);
 
-        function equal_to(BV: TVByteVector): boolean;
         function crc32: DWORD;
 
         function count: integer; override;
@@ -759,6 +756,7 @@ type
 
 
 procedure Assign(var v1, v2: TValue);
+function equal(v1, v2: TValue): boolean; inline;
 
 function op_null(V: TValue): boolean;
 
@@ -903,6 +901,11 @@ begin
   v1.Free;
   v1 := v2;
   FreeAndNil(v2);
+end;
+
+function equal(v1, v2: TValue): boolean;
+begin
+    result := v1.equal(v2);
 end;
 
 function op_null(V: TValue): boolean;
@@ -1694,19 +1697,6 @@ begin
         fBytes[i+offset] := BV.fBytes[i];
 
     BV.Free;
-end;
-
-
-function TVByteVector.equal_to(BV: TVByteVector): boolean;
-var i: integer;
-begin
-    result := Length(fBytes) = Length(BV.fBytes);
-    if result then
-        for i := 0 to Length(fBytes)-1 do
-            if fBytes[i]<>BV.fBytes[i] then begin
-                result := false;
-                Exit;
-            end;
 end;
 
 function TVByteVector.crc32: DWORD;
