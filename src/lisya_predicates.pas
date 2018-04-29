@@ -302,6 +302,9 @@ function vpRealPositive                             (V: TValue): boolean;
 function vpRealZero                                 (V: TValue): boolean;
 
 
+function vpSequenceNotEmpty                         (V: TValue): boolean;
+
+
 function vpSQLPointerActive                         (V: TValue): boolean;
 
 
@@ -1146,6 +1149,10 @@ begin
     result := (V is TVReal) and ((V as TVReal).F = 0);
 end;
 
+function vpSequenceNotEmpty(V: TValue): boolean;
+begin
+    result := (V is TVSequence) and ((V as TVSequence).Count>0);
+end;
 
 function vpSQLPointerActive                         (V: TValue): boolean;
 begin

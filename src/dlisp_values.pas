@@ -685,7 +685,6 @@ type
             oeIF_NIL,
             oeINSERT,      //mod
             oeKEY,
-            oeLAST,
             oeLET,
             oeMACRO,
             oeMACRO_SYMBOL,

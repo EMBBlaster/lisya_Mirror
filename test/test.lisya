@@ -218,8 +218,9 @@
     (log \LAST)
     (var L (list 1 2 3))
     (assertion (= (last L) 3) "last")
-    (set (last L) 9)
-    (assertion (= L \(1 2 9)) "set last"))
+    ;(set (last L) 9)
+    ;(assertion (= L \(1 2 9)) "set last")
+    )
 
 (log \RECORD)
 (block "record"

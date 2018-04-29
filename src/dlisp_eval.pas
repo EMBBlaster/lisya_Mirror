@@ -64,7 +64,6 @@ type
 
         function opl_elt(PL: TVList): TVChainPointer;
         function opl_key(PL: TVList): TVChainPointer;
-        function opl_last(PL: TVList): TVChainPointer;
 
         function op_and(PL: TVList): TValue;
     {m} function op_append(PL: TVList): TValue;
@@ -85,7 +84,6 @@ type
         function op_if_nil(PL: TVList): TValue;
     {m} function op_insert(PL: TVList): TValue;
         function op_key(PL: TVList): TValue;
-        function op_last(PL: TVList): TValue;
         function op_let(PL: TVList): TValue;
         function op_macro_symbol(PL: TVList): TValue;
         function op_or(PL: TVList): TValue;
@@ -1197,6 +1195,14 @@ begin
         1: result := TVList.Create;
         2: result := PL.L[0][0];
         3: result := PL[0];
+    end;
+end;
+
+function if_last                (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+    {1} vpSequenceNotEmpty]) of
+        1: result := (PL.look[0] as TVSequence)[(PL.look[0] as TVSequence).high];
     end;
 end;
 
@@ -2882,7 +2888,7 @@ begin
 end;
 
 
-const int_fun_count = 139;
+const int_fun_count = 140;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2945,7 +2951,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'EVERY КАЖДЫЙ';              f:if_every;                 s:'(p :rest l)'),
 (n:'SOME ЛЮБОЙ';                f:if_some;                  s:'(p :rest l)'),
 (n:'CAR HEAD ГОЛОВА';           f:if_car;                   s:'(l)'),
-//(n:'LAST';                      f:if_last;                  s:'(l)'),
+(n:'LAST';                      f:if_last;                  s:'(l)'),
 (n:'SUBSEQ';                    f:if_subseq;                s:'(s b :optional e)'),
 (n:'SORT';                      f:if_sort;                  s:'(s :optional p)'),
 (n:'SLOTS';                     f:if_slots;                 s:'(r)'),
@@ -3108,7 +3114,6 @@ begin
             oeIF_NIL    : op('IF-NIL');
             oeINSERT    : op('INSERT');
             oeKEY       : op('KEY');
-            oeLAST      : op('LAST');
             oeLET       : op('LET');
             oeMACRO     : op('MACRO');
             oeMACRO_SYMBOL: op('MACRO-SYMBOL');
@@ -3647,18 +3652,6 @@ finally
 end;
 end;
 
-function TEvaluationFlow.opl_last(PL: TVList): TVChainPointer;
-begin
-    result := nil;
-    result := eval_link(PL.look[1]);
-
-    if not tpSequence(result.look)
-    then raise ELE.Create(result.look.AsString + ' is not indexed compound');
-
-    result.add_index((result.look as TVSequence).Count-1);
-end;
-
-
 function TEvaluationFlow.eval_link(P: TValue): TVChainPointer;
 var i: integer; head: TValue;
 begin try
@@ -3688,8 +3681,7 @@ begin try
             if tpOperator(head) then begin
                 case (head as TVOperator).op_enum of
                     oeELT: result := opl_elt(P as TVList);
-                    oeLAST: result := opl_last(P as TVList);
-                    oeKEY: result := opl_KEY(P as TVList);
+                    oeKEY: result := opl_key(P as TVList);
                     else result := TVChainPointer.Create(NewVariable(eval(P.Copy), true));
                 end;
                 exit;
@@ -4431,16 +4423,6 @@ begin
     CP.Free;
 end;
 
-function TEvaluationFlow.op_last                    (PL: TVList): TValue;
-var CP: TVChainPointer;
-begin
-    if PL.Count<>2 then raise ELE.malformed('LAST');
-
-    CP := opl_last(PL);
-    result := CP.value;
-    CP.Free;
-end;
-
 function TEvaluationFlow.op_let(PL: TVList): TValue;
 var old_v, VPL: TVList; i, j, count: integer;
 begin
@@ -4927,7 +4909,6 @@ begin
         oeIF_NIL    : result := op_if_nil(PL);
         oeINSERT    : result := op_insert(PL);
         oeKEY       : result := op_key(PL);
-        oeLAST      : result := op_last(PL);
         oeLET       : result := op_let(PL);
         oeMACRO     : result := op_procedure(PL);
         oeMACRO_SYMBOL: result := op_macro_symbol(PL);
