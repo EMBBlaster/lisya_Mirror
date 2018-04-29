@@ -18,14 +18,6 @@
 (block "trim"
     (assertion (= "abc" (trim " abc ")) "trim"))
 
-(block "numeric-value"
-    (assertion (= -123 (numeric-value "-123")) "numeric-value")
-    (assertion (= 220000 (numeric-value "220 кВ")) "numeric-value int")
-    (const nv99 (numeric-value "3х3.3 Мвар"))
-    (assertion (and (< nv99 9900001) (> nv99 9899999)) "numric-value float")
-
-    (assertion (= 3 (numeric-value "3хТАР")) "numeric-value 3"))
-
 (block "regexp"
     (assertion (= \("3x") (regexp:match "3xФОЛ" "[0-9][*xх]")) "regexp"))
 
