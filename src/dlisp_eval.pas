@@ -439,7 +439,7 @@ begin
                     cres := cres + PL.L[0].C[i];
                 result := TVComplex.Create(cres);
             end;
-            4: result := ifh_union1(PL.L[0]);
+            4: result := ifh_union(PL.L[0]);
         end;
 end;
 
@@ -1480,7 +1480,7 @@ end;
 function if_union               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [tpListOfLists]) of
-        1: result := ifh_union1(PL.L[0]);
+        1: result := ifh_union(PL.L[0]);
     end;
 end;
 
@@ -4729,7 +4729,7 @@ begin
     try
         //здесь ifh_union используется для удаления дубликатов
         tmp := TVList.Create([result]);
-        result := ifh_union1(tmp);
+        result := ifh_union(tmp);
     finally
         FreeAndNil(tmp);
     end;

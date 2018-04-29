@@ -22,7 +22,6 @@ function ifh_member1(const L: TVList; const E: TValue): boolean;
 function ifh_difference         (const A, B: TVList): TVList;
 
 function ifh_union              (const L: TVList): TVList;
-function ifh_union1             (const L: TVList): TVList;
 
 function ifh_intersection       (const L: TVList): TVList;
 function ifh_set_include        (const A, B: TVList): boolean;
@@ -62,7 +61,7 @@ var i: integer;
 begin
     result := true;
     for i := 0 to L.high do
-        if (hE=hL[i]) and L.look[i].equal(E) {ifh_equal(L.look[i], E)} then Exit;
+        if (hE=hL[i]) and L.look[i].equal(E) then Exit;
 
     result := false;
 end;
@@ -217,7 +216,7 @@ var i: integer;
 begin
     result := false;
     for i := 0 to L.High do
-        if L.look[i].equal(E) {ifh_equal(L.look[i], E)} then begin
+        if L.look[i].equal(E) then begin
             result := true;
             break;
         end;
@@ -232,7 +231,7 @@ begin
     for i := 0 to L.high do hashes[i] := L.look[i].hash;
     hash := E.hash;
     for i := 0 to L.High do
-        if (hash=hashes[i]) and L.look[i].equal(E) {ifh_equal(L.look[i], E)} then begin
+        if (hash=hashes[i]) and L.look[i].equal(E) then begin
             result := true;
             break;
         end;
@@ -248,20 +247,10 @@ begin
         then result.add(A[i]);
 end;
 //------------------------------------------------------------------------------
-function ifh_union              (const L: TVList): TVList;
-var i, j: integer;
-begin
-    result := TVList.Create;
-    for i := 0 to L.high do
-        for j := 0 to L.L[i].high do
-            if not ifh_member(result, L.L[i].look[j])
-            then result.Add(L.L[i][j]);
-end;
-function ifh_union1             (const L: TVList): TVList;
+function ifh_union             (const L: TVList): TVList;
 var i, j: integer;
     hashes: THashesList;
     res: THashes;
-
 begin
     result := TVList.Create;
     if L.Count=0 then exit;
@@ -293,7 +282,7 @@ var hashes: array of array of DWORD;
     var k: integer;
     begin
         for k := 0 to res_count-1 do
-            if (hashes[0][v]=res[k]) and L.L[0].look[v].equal(result.look[k]) //ifh_equal(L.L[0].look[v], result.look[k])
+            if (hashes[0][v]=res[k]) and L.L[0].look[v].equal(result.look[k])
             then exit;
         res[res_count] := hashes[0][v];
         result.Add(L.L[0][v]);
@@ -470,5 +459,5 @@ end;
 
 
 
-end. //542 471
+end. //542 471 462
 
