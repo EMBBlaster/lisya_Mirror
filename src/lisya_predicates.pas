@@ -303,12 +303,13 @@ function vpRealZero                                 (V: TValue): boolean;
 function vpSQLPointerActive                         (V: TValue): boolean;
 
 
-function vpStringEmpty                              (V: TValue): boolean;
-
+function vpStreamEnd                                (V: TValue): boolean;
 
 function vpStreamPointerActive                      (V: TValue): boolean;
 
-function vpStreamEnd                                (V: TValue): boolean;
+
+function vpStringEmpty                              (V: TValue): boolean;
+
 
 function vpSymbol__                                 (V: TValue): boolean;
 
@@ -589,11 +590,6 @@ end;
 /////////////////////////////////////
 /// Value Predicates ////////////////
 /////////////////////////////////////
-
-//бесполезная оптимизация?
-//type Tkw =                                   (kwFlag, kwKey, kwOptional, kwRest, kw_);
-//const kwNames: array[Tkw] of unicodestring = (':FLAG',':KEY',':OPTIONAL',':REST','_');
-//var kwN: array[Tkw] of integer;
 
 function vphKeywordName(V: TValue; const n: unicodestring): boolean;
 begin
@@ -1151,11 +1147,12 @@ begin
 end;
 
 
-//function vpStreamPointerActive                      (V: TValue): boolean;
-//begin
-//    result := (V is TVStreamPointer) and
-//        ((V as TVStreamPointer).body.V <> nil);
-//end;
+function vpStreamEnd(V: TValue): boolean;
+begin
+    result :=
+    (V as TVStreamPointer).body.Position = (V as TVStreamPointer).body.Size;
+end;
+
 function vpStreamPointerActive                      (V: TValue): boolean;
 begin
     result := (V is TVStreamPointer) and ((V as TVStreamPointer).body<>nil);
@@ -1165,18 +1162,6 @@ end;
 function vpStringEmpty                              (V: TValue): boolean;
 begin
     result := (V is TVString) and ((V as TVString).S = '');
-end;
-
-//function vpStreamEnd(V: TValue): boolean;
-//begin
-//    result :=
-//    (V as TVStreamPointer).stream.fstream.Position =
-//        (V as TVStreamPointer).stream.fstream.Size;
-//end;
-function vpStreamEnd(V: TValue): boolean;
-begin
-    result :=
-    (V as TVStreamPointer).body.Position = (V as TVStreamPointer).body.Size;
 end;
 
 

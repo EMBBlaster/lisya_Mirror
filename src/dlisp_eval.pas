@@ -1061,7 +1061,7 @@ begin
     end;
 end;
 
-function if_val                   (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_identity              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpAny]) of
@@ -2941,6 +2941,7 @@ begin
     end;
 end;
 
+
 const int_fun_count = 139;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
@@ -2982,7 +2983,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'EQUAL-SETS';                f:if_equal_sets;            s:'(a b)'),
 (n:'LENGTH-MORE';               f:if_length_more;           s:'(a b)'),
 (n:'LENGTH-LESS';               f:if_length_less;           s:'(a b)'),
-(n:'VAL';                       f:if_val;                   s:'(v)'),
+(n:'IDENTITY';                  f:if_identity;              s:'(v)'),
 
 (n:'TEST-DYN';                  f:if_test_dyn;              s:'(:rest msgs)'),
 (n:'LIKENESS СХОДСТВО';         f:if_likeness;              s:'(s1 s2)'),
