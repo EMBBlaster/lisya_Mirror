@@ -457,8 +457,6 @@ type
         function GetItem(index: integer): TValue; override;
         procedure SetItem(index: integer; _V: TValue); override;
         function LookItem(index: integer): TValue; override;
-
-        function index_of(nN: integer): integer;
     public
         constructor Create(names: array of unicodestring); overload;
 
@@ -481,12 +479,10 @@ type
         procedure AddSlot(name: unicodestring; V: TValue); overload;
         procedure AddSlot(name: TVSymbol; V: TValue); overload;
 
-
-
-
         function count: integer; override;
         function name_n(n: integer): unicodestring;
         //TODO: сравнение записей должно быть независимым от порядка слотов
+        function index_of(nN: integer): integer;
         function get_n_of(index: unicodestring): integer;
     end;
 
@@ -835,7 +831,6 @@ begin
 
         if c>vars[i].ref_count then WriteLn('WARNING: нарушение ссылочной целостности');
     end;
-
 
     if clear then begin
         for i := 0 to high(vars) do vars[i].ref_count:=-1;

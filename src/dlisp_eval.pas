@@ -121,6 +121,7 @@ type
         function eval(V: TValue): TValue;
     end;
 
+procedure ifh_elt(var C: TVCompound; ind: TValue; call: TCallProc; var indices: TIntegers);
 
 implementation
 
@@ -1732,6 +1733,25 @@ begin
     end;
 end;
 
+function if_element             (const PL: TVList; {%H-}call: TCallProc): TValue;
+var C: TVCompound; i: TIntegers;
+begin
+    case params_is(PL, result, [
+        tpCompound, tpNIL,
+        tpCompound, tpList]) of
+        1: result := PL[0];
+        2: begin
+            C := PL.look[0] as TVCompound;
+            i := nil;
+            ifh_elt(C, PL.look[1], call, i);
+            if i=nil
+            then result := TVList.Create
+            else result := C[i[high(i)]];
+        end;
+    end;
+end;
+
+
 function if_bytes               (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
@@ -2862,7 +2882,7 @@ begin
 end;
 
 
-const int_fun_count = 138;
+const int_fun_count = 139;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2954,6 +2974,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'STRINGS-MISMATCH';          f:if_strings_mismatch;      s:'(a b)'),
 (n:'ASSOCIATIONS';              f:if_associations;          s:'(al k :flag lazy by-head)'),
 (n:'SUBRANGE';                  f:if_subrange;              s:'(r v)'),
+(n:'ELEMENT ЭЛЕМЕНТ';           f:if_element;               s:'(c :rest k)'),
 
 (n:'BYTES';                     f:if_bytes;                 s:'(:rest b)'),
 (n:'BITWISE-AND';               f:if_bitwise_and;           s:'(a b)'),
@@ -3445,6 +3466,69 @@ begin
     CP.CopyOnWrite;
 end;
 
+procedure ifh_elt(var C: TVCompound; ind: TValue; call: TCallProc; var indices: TIntegers);
+var index, f_ind: TValue; expr, il: TVList; i,j: integer;
+begin try
+    index := nil;
+    f_ind := nil;
+    if tpSubprogram(ind)
+    then try
+        expr := TVList.Create([ind, C], false);
+        f_ind := call(expr);
+        index := f_ind;
+    finally
+        expr.free;
+    end
+    else index := ind;
+
+    if tpListNotEmpty(index) then begin
+        il := index as TVList;
+        ifh_elt(C, il.look[0], call, indices);
+        if indices=nil then Exit;
+        for i := 1 to il.high do begin
+            C := C.look[indices[high(indices)]] as TVCompound;
+            ifh_elt(C, il.look[i], call, indices);
+            if indices=nil then Exit;
+        end;
+    end
+    else
+
+    if tpNIL(index) then begin
+        indices := nil;
+        Exit;
+    end
+    else
+
+    if tpSequence(C) and tpInteger(index) then begin
+        i := (index as TVInteger).fI;
+        if i in [0..(C as TVSequence).high]
+        then append_integer(indices, i)
+        else
+            if (i<0) and (i>=-C.Count)
+            then append_integer(indices, C.Count+i)
+            else
+                raise ELE.Create('index out of bounds', 'out of bounds');
+    end
+    else
+
+    if tpSequence(C) and (C.Count>0) and (vpSymbol_LAST(index) or vpKeyword_LAST(index))
+    then  append_integer(indices, C.Count-1)
+    else
+
+    if tpRecord(C) and tpSymbol(index)
+    then append_integer(indices, (C as TVRecord).index_of((index as TVSymbol).N))
+    else
+
+    if tpHashTable(C)
+    then append_integer(indices, (C as TVHashTable).GetIndex(index))
+    else
+
+    raise ELE.InvalidParameters;
+
+finally
+    f_ind.Free;
+end; end;
+
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
 var i: integer; tmp: TValue; ind: TValue;
     procedure key;
@@ -3494,8 +3578,7 @@ begin
         end
         else
 
-        //if tpSequence(tmp) and vpIntegerNotNegative(ind)
-        //then result.add_index((ind as TVInteger).fI)
+
         if tpSequence(tmp) and tpInteger(ind)
         then result.add_index(oph_index(tmp as TVSequence, ind))
         else

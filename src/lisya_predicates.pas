@@ -35,6 +35,8 @@ function tpSequence                                 (V: TValue): boolean;
 
 function tpContinue                                 (V: TValue): boolean;
 
+function tpCompound                                 (V: TValue): boolean;
+
 function tpDateTime                                 (V: TValue): boolean;
 
 function tpFloat                                    (V: TValue): boolean;
@@ -384,6 +386,11 @@ end;
 function tpContinue(V: TValue): boolean;
 begin
     result := V is TVContinue;
+end;
+
+function tpCompound(V: TValue): boolean;
+begin
+    result := V is TVCompound;
 end;
 
 function tpDateTime(V: TValue): boolean;
