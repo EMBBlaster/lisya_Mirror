@@ -846,7 +846,7 @@ begin
         tpInteger, tpInteger,
         tpReal,    tpReal,
         tpString,  tpString,
-        tpByteVector, tpByteVector]) of
+        tpBytes,   tpBytes]) of
         1: bool_to_TV( PL.I[0]<>PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<>PL.F[1] , result);
         3: bool_to_TV( PL.S[0]<>PL.S[1] , result);
@@ -1608,7 +1608,7 @@ begin
     case params_is(PL, result, [
         tpListOfLists,
         tpListOfStrings,
-        tpListOfByteVectors]) of
+        tpListOfByteses]) of
         1: begin
             result := TVList.Create;
             for i := 0 to PL.L[0].high do
@@ -1621,12 +1621,12 @@ begin
             result := TVString.Create(sres);
         end;
         3: begin
-            result := TVByteVector.Create;
+            result := TVBytes.Create;
             //TODO: неэффективная конкатенация TVByteVector
             for i := 0 to PL.L[0].high do begin
-                for j := 0 to (PL.L[0].look[i] as TVByteVector).High do
-                    (result as TVByteVector).Add(
-                        (PL.L[0].look[i] as TVByteVector).bytes[j]);
+                for j := 0 to (PL.L[0].look[i] as TVBytes).High do
+                    (result as TVBytes).Add(
+                        (PL.L[0].look[i] as TVBytes).bytes[j]);
             end;
         end;
     end;
@@ -1732,91 +1732,91 @@ begin
     end;
 end;
 
-function if_byte_vector         (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_bytes               (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer;
 begin
     case params_is(PL, result, [
         vpListOfByte]) of
         1: begin
-            result := TVByteVector.Create;
-            (result as TVByteVector).SetCount(PL.L[0].Count);
-            (result as TVByteVector).SetCount(0);
+            result := TVBytes.Create;
+            (result as TVBytes).SetCount(PL.L[0].Count);
+            (result as TVBytes).SetCount(0);
             for i:= 0 to PL.L[0].High do
-                (result as TVByteVector).Add(PL.L[0].I[i]);
+                (result as TVBytes).Add(PL.L[0].I[i]);
         end;
     end;
 end;
 
 function if_bitwise_or          (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; a, b: TVByteVector;
+var i: integer; a, b: TVBytes;
 begin
     //TODO: побитовые операторы имеют много общего кода нужно разделить
     case params_is(PL, result, [
-        tpByteVector, tpByteVector,
-        tpInteger,      tpInteger]) of
+        tpBytes,   tpBytes,
+        tpInteger, tpInteger]) of
         1: begin
-            a := PL.look[0] as TVByteVector;
-            b := PL.look[1] as TVByteVector;
+            a := PL.look[0] as TVBytes;
+            b := PL.look[1] as TVBytes;
             if a.Count<>b.Count then raise ELE.Create('inequal length', 'invalid parameters');
-            result := TVByteVector.Create;
-            (result as TVByteVector).SetCount(a.Count);
+            result := TVBytes.Create;
+            (result as TVBytes).SetCount(a.Count);
             for i := 0 to a.High do
-                (result as TVByteVector).fBytes[i] := a.fBytes[i] or b.fBytes[i];
+                (result as TVBytes).fBytes[i] := a.fBytes[i] or b.fBytes[i];
         end;
         2: result := TVInteger.Create(PL.I[0] or PL.I[1]);
     end;
 end;
 
 function if_bitwise_not         (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; a: TVByteVector;
+var i: integer; a: TVBytes;
 begin
     case params_is(PL, result, [
-        tpByteVector,
+        tpBytes,
         tpInteger]) of
         1: begin
-            a := PL.look[0] as TVByteVector;
-            result := TVByteVector.Create;
-            (result as TVByteVector).SetCount(a.Count);
+            a := PL.look[0] as TVBytes;
+            result := TVBytes.Create;
+            (result as TVBytes).SetCount(a.Count);
             for i := 0 to a.High do
-                (result as TVByteVector).fBytes[i] := not a.fBytes[i];
+                (result as TVBytes).fBytes[i] := not a.fBytes[i];
         end;
         2: result := TVInteger.Create(not PL.I[0]);
     end;
 end;
 
 function if_bitwise_and         (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; a, b: TVByteVector;
+var i: integer; a, b: TVBytes;
 begin
     case params_is(PL, result, [
-        tpByteVector, tpByteVector,
-        tpInteger,      tpInteger]) of
+        tpBytes,   tpBytes,
+        tpInteger, tpInteger]) of
         1: begin
-            a := PL.look[0] as TVByteVector;
-            b := PL.look[1] as TVByteVector;
+            a := PL.look[0] as TVBytes;
+            b := PL.look[1] as TVBytes;
             if a.Count<>b.Count then raise ELE.Create('inequal length', 'invalid parameters');
-            result := TVByteVector.Create;
-            (result as TVByteVector).SetCount(a.Count);
+            result := TVBytes.Create;
+            (result as TVBytes).SetCount(a.Count);
             for i := 0 to a.High do
-                (result as TVByteVector).fBytes[i] := a.fBytes[i] and b.fBytes[i];
+                (result as TVBytes).fBytes[i] := a.fBytes[i] and b.fBytes[i];
         end;
         2: result := TVInteger.Create(PL.I[0] and PL.I[1]);
     end;
 end;
 
 function if_bitwise_xor         (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; a, b: TVByteVector;
+var i: integer; a, b: TVBytes;
 begin
     case params_is(PL, result, [
-        tpByteVector, tpByteVector,
-        tpInteger,      tpInteger]) of
+        tpBytes,   tpBytes,
+        tpInteger, tpInteger]) of
         1: begin
-            a := PL.look[0] as TVByteVector;
-            b := PL.look[1] as TVByteVector;
+            a := PL.look[0] as TVBytes;
+            b := PL.look[1] as TVBytes;
             if a.Count<>b.Count then raise ELE.Create('inequal length', 'invalid parameters');
-            result := TVByteVector.Create;
-            (result as TVByteVector).SetCount(a.Count);
+            result := TVBytes.Create;
+            (result as TVBytes).SetCount(a.Count);
             for i := 0 to a.High do
-                (result as TVByteVector).fBytes[i] := a.fBytes[i] xor b.fBytes[i];
+                (result as TVBytes).fBytes[i] := a.fBytes[i] xor b.fBytes[i];
         end;
         2: result := TVInteger.Create(PL.I[0] xor PL.I[1]);
     end;
@@ -1825,9 +1825,9 @@ end;
 function if_crc32               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpByteVector,
+        tpBytes,
         tpString]) of
-        1: result := TVInteger.Create((PL.look[0] as TVByteVector).crc32);
+        1: result := TVInteger.Create((PL.look[0] as TVBytes).crc32);
         2: result := TVInteger.Create((PL.look[0] as TVString).crc32);
     end;
 end;
@@ -1843,10 +1843,10 @@ end;
 function if_byte_vector_to_string(const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpByteVector, vpKeywordEncodingOrNIL]) of
+        tpBytes, vpKeywordEncodingOrNIL]) of
         1: result := TVString.Create(
                 lisia_charset.bytes_to_string(
-                    (PL.look[0] as TVByteVector).fBytes,
+                    (PL.look[0] as TVBytes).fBytes,
                     ifh_keyword_to_encoding(PL.look[1])));
     end;
 end;
@@ -2098,11 +2098,11 @@ end;
 
 
 function if_deflate             (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; bv: TVByteVector; cs: TCompressionStream; ms: TMemoryStream;
+var i: integer; bv: TVBytes; cs: TCompressionStream; ms: TMemoryStream;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpKeywordOrNIL, tpAny,
-        tpByteVector,           tpKeywordOrNil, tpAny,
+        tpBytes,               tpKeywordOrNil, tpAny,
         tpStreamPointer, tpKeywordOrNIL, tpAny]) of
         1:  begin
             result := TVStreamPointer.Create(
@@ -2112,15 +2112,15 @@ begin
                         ifh_keyword_to_encoding(PL.look[1])));
         end;
         2: begin
-            bv := PL.look[0] as TVByteVector;
+            bv := PL.look[0] as TVBytes;
             ms := TMemoryStream.Create;
             ms.Position :=0 ;
             cs := TCompressionStream.create(clDefault, ms, not tpTrue(PL.look[2]));
             for i := 0 to high(bv.fBytes) do cs.WriteByte(bv.fBytes[i]);
             cs.Free;
             ms.Position := 0;
-            result := TVByteVector.Create;
-            bv := result as TVByteVector;
+            result := TVBytes.Create;
+            bv := result as TVBytes;
             bv.SetCount(ms.Size);
             for i := 0 to high(bv.fBytes) do bv.fBytes[i] := ms.ReadByte;
             ms.Free;
@@ -2130,11 +2130,11 @@ begin
 end;
 
 function if_inflate             (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; bv: TVByteVector; ds: TDecompressionStream; ms: TMemoryStream;
+var i: integer; bv: TVBytes; ds: TDecompressionStream; ms: TMemoryStream;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpKeywordOrNIL, tpAny,
-        tpByteVector,           tpKeywordOrNil, tpAny,
+        tpBytes,               tpKeywordOrNil, tpAny,
         tpStreamPointer, tpKeywordOrNIL, tpAny]) of
         1:  begin
             result := TVStreamPointer.Create(
@@ -2144,7 +2144,7 @@ begin
                         ifh_keyword_to_encoding(PL.look[1])));
         end;
         2: begin
-            bv := PL.look[0] as TVByteVector;
+            bv := PL.look[0] as TVBytes;
             ms := TMemoryStream.Create;
             ms.SetSize(Length(bv.fBytes));
             ms.Position :=0 ;
@@ -2152,8 +2152,8 @@ begin
             try
                 ms.Position := 0;
                 ds := TDecompressionStream.create(ms, not tpTrue(PL.look[2]));
-                result := TVByteVector.Create;
-                bv := result as TVByteVector;
+                result := TVBytes.Create;
+                bv := result as TVBytes;
                 try
                     while true do bv.Add(ds.ReadByte);
                 except
@@ -2172,12 +2172,12 @@ end;
 function if_memory_stream       (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpByteVector,
+        tpBytes,
         tpString,
         tpNIL]) of
         1: result := TVStreamPointer.Create(
                     TLMemoryStream.Create(
-                        (PL.look[0] as TVByteVector).fBytes,
+                        (PL.look[0] as TVBytes).fBytes,
                         seUTF8));
         2: result := TVStreamPointer.Create(
                     TLMemoryStream.Create(
@@ -2227,14 +2227,14 @@ begin
             then result := TVInteger.Create(b)
             else result := TVList.Create;
         2: begin
-            result := TVByteVector.Create;
+            result := TVBytes.Create;
             (PL.look[0] as TVStreamPointer).body.read_bytes(
-                (result as TVByteVector).fBytes, PL.I[1]);
+                (result as TVBytes).fBytes, PL.I[1]);
         end;
         3: begin
-            result := TVByteVector.Create;
+            result := TVBytes.Create;
             (PL.look[0] as TVStreamPointer).body.read_bytes(
-                (result as TVByteVector).fBytes, -1);
+                (result as TVBytes).fBytes, -1);
         end;
     end;
 end;
@@ -2244,14 +2244,14 @@ function if_write_byte          (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, vpIntegerByte,
-        vpStreamPointerActive, tpByteVector]) of
+        vpStreamPointerActive, tpBytes]) of
         1: begin
             (PL.look[0] as TVStreamPointer).body.write_byte(PL.I[1]);
             result := TVT.Create
         end;
         2: begin
             (PL.look[0] as TVStreamPointer).body.write_bytes(
-                (PL.look[1] as TVByteVector).fBytes);
+                (PL.look[1] as TVBytes).fBytes);
             result := TVT.Create;
         end;
     end;
@@ -2955,14 +2955,14 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'ASSOCIATIONS';              f:if_associations;          s:'(al k :flag lazy by-head)'),
 (n:'SUBRANGE';                  f:if_subrange;              s:'(r v)'),
 
-(n:'BYTE-VECTOR BYTES';         f:if_byte_vector;           s:'(:rest b)'),
+(n:'BYTES';                     f:if_bytes;                 s:'(:rest b)'),
 (n:'BITWISE-AND';               f:if_bitwise_and;           s:'(a b)'),
 (n:'BITWISE-NOT';               f:if_bitwise_not;           s:'(a)'),
 (n:'BITWISE-OR';                f:if_bitwise_or;            s:'(a b)'),
 (n:'BITWISE-XOR';               f:if_bitwise_xor;           s:'(a b)'),
 (n:'CRC32';                     f:if_crc32;                 s:'(b)'),
 (n:'CHARACTER';                 f:if_character;             s:'(n)'),
-(n:'BYTE-VECTOR-TO-STRING';     f:if_byte_vector_to_string; s:'(bv :optional encoding)'),
+(n:'BYTES-TO-STRING';           f:if_byte_vector_to_string; s:'(bv :optional encoding)'),
 
 (n:'ASSERTION';                 f:if_assertion;             s:'(c :rest m)'),
 (n:'DOCUMENTATION';             f:if_documentation;         s:'(a)'),
@@ -3030,7 +3030,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 );
 
 
-const predicates: array[1..17] of record n: unicodestring; f: TTypePredicate; end = (
+const predicates: array[1..18] of record n: unicodestring; f: TTypePredicate; end = (
 (n:'T?';                    f:tpT),
 (n:'NIL?';                  f:tpNIL),
 (n:'TRUE?';                 f:tpTRUE),
@@ -3047,6 +3047,7 @@ const predicates: array[1..17] of record n: unicodestring; f: TTypePredicate; en
 (n:'STRING?';               f:tpString),
 (n:'POSITIVE?';             f:vpRealPositive),
 (n:'NEGATIVE?';             f:vpRealNegative),
+(n:'BYTES?';                f:tpBytes),
 (n:'END-OF-STREAM?';        f:vpStreamEnd),
 (n:'END-OF-FILE?';          f:vpStreamEnd)
 
@@ -4494,10 +4495,10 @@ try
         for i := 0 to PLI.high do (CP.look as TVList).Append(PLI[i] as TVList)
 
 
-    else if CP.look is TVByteVector
+    else if CP.look is TVBytes
     then
         for i := 0 to PLI.high do
-            (CP.look as TVByteVector).append(PLI[i] as TVByteVector)
+            (CP.look as TVBytes).append(PLI[i] as TVBytes)
 
 
     else raise ELE.InvalidParameters;

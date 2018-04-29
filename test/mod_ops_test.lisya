@@ -4,18 +4,18 @@
     (var l (list 1 2 3))
     (var su (record \slot1 1 \slot2 2))
     (var si "abcd")
-    (var b (byte-vector 1 2 3))
+    (var b (bytes 1 2 3))
 
     (assertion (= 2 l\1) "elt list")
     (assertion (= 1 su\slot1) "elt struct")
     (assertion (= "b" si\1) "elt string")
-    (assertion (= 2 b\1) "elt byte-vector")
+    (assertion (= 2 b\1) "elt bytes")
     (assertion (not (elt l NIL)) "elt nil")
 
     (assertion (= 2 (elt (list 1 2 3) 1)) "elt list val")
     (assertion (= 1 (elt (record \slot1 1) \slot1)) "elt struct val")
     (assertion (= "b" (elt "abcd" 1)) "elt string val")
-    (assertion (= 2 (elt (byte-vector 1 2 3) 1)) "elt byte-vector val")
+    (assertion (= 2 (elt (bytes 1 2 3) 1)) "elt bytes val")
 
 
     (set l\1 9)
@@ -25,15 +25,15 @@
     (set si\1 "Q")
     (assertion (= "aQcd" si) "set elt string")
     (set b\1 9)
-    (assertion (= 9 b\1) "set elt byte-vector")
+    (assertion (= 9 b\1) "set elt bytes")
 
     (assertion (= 3 l\last) "elt last list")
     (assertion (= "d" si\last) "elt last string")
-    (assertion (= 3 b\last) "elt last byte-vector")
+    (assertion (= 3 b\last) "elt last bytes")
 
     (assertion (= 3 (last l)) "last list")
     (assertion (= "d" (last si)) "last string")
-    (assertion (= 3 (last b)) "last byte-vector")
+    (assertion (= 3 (last b)) "last bytes")
 
     (push l 4 5)
     (assertion (= 5 l\last) "push")
@@ -75,14 +75,14 @@
 (block "FOR sequence modifucation"
     (var l (list 1 2 3))
     (var s "string")
-    (var b (byte-vector 1 2 3))
+    (var b (bytes 1 2 3))
 
     (assertion (= nil (for e l (set e (+ 1 e)))) "for full")
     (assertion (= (list 2 3 4) l) "for list modification")
     (assertion (= 3 (for e l (if (= 3 e) (break)))) "for break")
 
     (for b b (set b (+ 1 b)))
-    (assertion (= (byte-vector 2 3 4) b) "for byte-vector modification")
+    (assertion (= (bytes 2 3 4) b) "for bytes modification")
 
     (for c s (set c "-"))
     (assertion (= "------" s) "for string modification"))
@@ -150,11 +150,11 @@
         (append b\1\s1 \(6 7))
         (assertion (= a \(1 #R(S0 2 S1 (3 4)))) "append side")
 
-        (var L1 (list (byte-vector 1)))
+        (var L1 (list (bytes 1)))
         (var L2 L1)
-        (append L1/0 (byte-vector 2))
-        (assertion (= (list (byte-vector 1 2)) L1) "append side bv")
-        (assertion (= (list (byte-vector 1)) L2) "append side bv 2")
+        (append L1/0 (bytes 2))
+        (assertion (= (list (bytes 1 2)) L1) "append side bv")
+        (assertion (= (list (bytes 1)) L2) "append side bv 2")
 
         (var L3 (list "a"))
         (var L4 L3)

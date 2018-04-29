@@ -412,9 +412,9 @@ type
     end;
 
 
-    { TVByteVector }
+    { TVBytes }
 
-    TVByteVector = class (TVCompoundOfPrimitive)
+    TVBytes = class (TVCompoundOfPrimitive)
     private
         function GetByte(Index: Integer): Int64;
         procedure SetByte(Index: Integer; V: Int64);
@@ -440,7 +440,7 @@ type
 
         function count: integer; override;
         function subseq(istart: integer; iend: integer = -1): TValue; override;
-        procedure append(BV: TVByteVector);
+        procedure append(BV: TVBytes);
     end;
 
 
@@ -1592,52 +1592,52 @@ begin
         ' '+dd(hour)+':'+dd(minute)+':'+dd(second)+'.'+ddd(ms)+'''';
 end;
 
-{ TVByteVector }
+{ TVBytes }
 
-function TVByteVector.GetByte(Index: Integer): Int64;
+function TVBytes.GetByte(Index: Integer): Int64;
 begin
     result := fBytes[index];
 end;
 
-procedure TVByteVector.SetByte(Index: Integer; V: Int64);
+procedure TVBytes.SetByte(Index: Integer; V: Int64);
 begin
     if (V<0) or (V>255) then raise ELE.Create('byte', 'out of range');
     fBytes[Index] := V;
 end;
 
-function TVByteVector.GetItem(index: integer): TValue;
+function TVBytes.GetItem(index: integer): TValue;
 begin
     result := TVInteger.Create(fBytes[index]);
 end;
 
-procedure TVByteVector.SetItem(index: integer; _V: TValue);
+procedure TVBytes.SetItem(index: integer; _V: TValue);
 begin
     fBytes[index] := (_V as TVInteger).fI;
     _V.Free;
 end;
 
-constructor TVByteVector.Create;
+constructor TVBytes.Create;
 begin
     SetLength(fBytes,0);
 end;
 
-destructor TVByteVector.Destroy;
+destructor TVBytes.Destroy;
 begin
     SetLength(fBytes,0);
     inherited Destroy;
 end;
 
 
-function TVByteVector.Copy: TValue;
-var i: integer; res: TVByteVector;
+function TVBytes.Copy: TValue;
+var i: integer; res: TVBytes;
 begin
-    res := TVByteVector.Create;
+    res := TVBytes.Create;
     Setlength(res.fBytes, Length(fBytes));
     for i := 0 to Length(fBytes)-1 do res.fBytes[i] := fBytes[i];
     result := res;
 end;
 
-function TVByteVector.AsString: unicodestring;
+function TVBytes.AsString: unicodestring;
 var i: integer;
 begin
     result := '#B(';
@@ -1645,17 +1645,17 @@ begin
     result := result + ')';
 end;
 
-function TVByteVector.hash: DWORD;
+function TVBytes.hash: DWORD;
 begin
     result := crc32;
 end;
 
-function TVByteVector.equal(V: TValue): boolean;
-var i: integer; BV: TVByteVector;
+function TVBytes.equal(V: TValue): boolean;
+var i: integer; BV: TVBytes;
 begin
-    result := V is TVByteVector;
+    result := V is TVBytes;
     if not result then Exit;
-    BV := V as TVByteVector;
+    BV := V as TVBytes;
 
     result := Length(fBytes) = Length(BV.fBytes);
     if not result then Exit;
@@ -1666,29 +1666,29 @@ begin
     end;
 end;
 
-procedure TVByteVector.SetCount(l: integer);
+procedure TVBytes.SetCount(l: integer);
 begin
     SetLength(fBytes, l);
 end;
 
-procedure TVByteVector.Add(b: Int64);
+procedure TVBytes.Add(b: Int64);
 begin
     if (b<0) or (b>255) then raise ELE.Create('byte', 'out of range');
     SetLength(fBytes, Length(fBytes)+1);
     fBytes[Length(fBytes)-1] := b;
 end;
 
-function TVByteVector.subseq(istart: integer; iend: integer): TValue;
+function TVBytes.subseq(istart: integer; iend: integer): TValue;
 var i, high_i: integer;
 begin
     if iend<0 then high_i := length(fBytes)-1 else high_i := iend-1;
-    result := TVByteVector.Create;
-    SetLength((result as TVByteVector).fBytes, high_i-istart+1);
+    result := TVBytes.Create;
+    SetLength((result as TVBytes).fBytes, high_i-istart+1);
     for i := istart to high_i do
-        (result as TVByteVector).fBytes[i-istart] := fBytes[i];
+        (result as TVBytes).fBytes[i-istart] := fBytes[i];
 end;
 
-procedure TVByteVector.append(BV: TVByteVector);
+procedure TVBytes.append(BV: TVBytes);
 var i, offset: integer;
 begin
     offset := Length(fBytes);
@@ -1699,12 +1699,12 @@ begin
     BV.Free;
 end;
 
-function TVByteVector.crc32: DWORD;
+function TVBytes.crc32: DWORD;
 begin
     result := crc.crc32(0, @fBytes[0], Length(fBytes));
 end;
 
-function TVByteVector.count: integer;
+function TVBytes.count: integer;
 begin
     result := Length(fBytes);
 end;

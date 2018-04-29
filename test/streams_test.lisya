@@ -12,13 +12,13 @@
 
     (block
         (var app (open-file "test.bin" :mode :append))
-        (write-byte app (byte-vector 3 4 5)))
+        (write-byte app (bytes 3 4 5)))
 
     (block
         (var in (open-file "test.bin" :mode :read))
-        (assertion (= (byte-vector 1 2) (read-byte in 2)) "file read bytes")
+        (assertion (= (bytes 1 2) (read-byte in 2)) "file read bytes")
         (assertion (= 2 (stream-position in)) "stream-position")
-        (assertion (= (byte-vector 3 4 5) (read-byte in :ALL)) "file read all"))
+        (assertion (= (bytes 3 4 5) (read-byte in :ALL)) "file read all"))
 
     (delete-file "test.bin")
 

@@ -25,7 +25,7 @@ function tpBoolean                                  (V: TValue): boolean;
 
 function tpBreak                                    (V: TValue): boolean;
 
-function tpByteVector                               (V: TValue): boolean;
+function tpBytes                                    (V: TValue): boolean;
 
 function tpCharacter                                (V: TValue): boolean;
 
@@ -55,7 +55,7 @@ function tpList                                     (V: TValue): boolean;
 
 function tpListNotEmpty                             (V: TValue): boolean;
 
-function tpListOfByteVectors                        (V: TValue): boolean;
+function tpListOfByteses                            (V: TValue): boolean;
 
 function tpListOfIntegers                           (V: TValue): boolean;
 
@@ -361,9 +361,9 @@ begin
     result := V is TVBreak;
 end;
 
-function tpByteVector(V: TValue): boolean;
+function tpBytes(V: TValue): boolean;
 begin
-    result := V is TVByteVector;
+    result := V is TVBytes;
 end;
 
 function tpCharacter(V: TValue): boolean;
@@ -436,9 +436,9 @@ begin
     result := (V is TVList) and ((V as TVList).Count>0);
 end;
 
-function tpListOfByteVectors(V: TValue): boolean;
+function tpListOfByteses(V: TValue): boolean;
 begin
-    result := tphListOf(V, tpByteVector);
+    result := tphListOf(V, tpBytes);
 end;
 
 function tpListOfIntegers(V: TValue): boolean;

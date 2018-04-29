@@ -23,10 +23,10 @@
     (for c "строка" (set a (+ 1 a)))
     (assertion (= 6 a) "for string"))
 
-(block "FOR byte-vector"
+(block "FOR bytes"
     (var a 0)
-    (for b (byte-vector 1 2 3) (set a (+ a b)))
-    (assertion (= 6 a) "for byte-vector"))
+    (for b (bytes 1 2 3) (set a (+ a b)))
+    (assertion (= 6 a) "for bytes"))
 
 (block "FOR subseq"
     (var L \(0 0 0 0))
