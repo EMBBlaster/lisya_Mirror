@@ -10,7 +10,7 @@
     (assertion (= 1 su\slot1) "elt struct")
     (assertion (= "b" si\1) "elt string")
     (assertion (= 2 b\1) "elt bytes")
-    (assertion (not (elt l NIL)) "elt nil")
+    ;(assertion (not (elt l NIL)) "elt nil")
 
     (assertion (= 2 (elt (list 1 2 3) 1)) "elt list val")
     (assertion (= 1 (elt (record \slot1 1) \slot1)) "elt struct val")

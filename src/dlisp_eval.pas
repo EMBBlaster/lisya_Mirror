@@ -119,8 +119,6 @@ type
         function eval(V: TValue): TValue;
     end;
 
-procedure ifh_elt(var C: TVCompound; ind: TValue; call: TCallProc; var indices: TIntegers);
-
 implementation
 
 
@@ -386,6 +384,61 @@ begin
     if vpKeyword_APPEND(V)  then result := fmOpenReadWrite else
     raise ELE.Create('invalid file mode '+V.AsString, 'invalid parameters');
 end;
+
+procedure ifh_elt(var C: TVCompound; ind: TValue; call: TCallProc; var indices: TIntegers);
+var index, f_ind: TValue; expr, il: TVList; i,j: integer;
+begin try
+    index := nil;
+    f_ind := nil;
+    if tpSubprogram(ind)
+    then try
+        expr := TVList.Create([ind, C], false);
+        f_ind := call(expr);
+        index := f_ind;
+    finally
+        expr.free;
+    end
+    else index := ind;
+
+    if tpListNotEmpty(index) then begin
+        il := index as TVList;
+        ifh_elt(C, il.look[0], call, indices);
+        for i := 1 to il.high do begin
+            C := C.look[indices[high(indices)]] as TVCompound;
+            ifh_elt(C, il.look[i], call, indices);
+        end;
+    end
+    else
+
+    if tpSequence(C) and tpInteger(index) then begin
+        i := (index as TVInteger).fI;
+        if i in [0..(C as TVSequence).high]
+        then append_integer(indices, i)
+        else
+            if (i<0) and (i>=-C.Count)
+            then append_integer(indices, C.Count+i)
+            else
+                raise ELE.Create('index out of bounds', 'out of bounds');
+    end
+    else
+
+    if tpSequence(C) and (C.Count>0) and (vpSymbol_LAST(index) or vpKeyword_LAST(index))
+    then  append_integer(indices, C.Count-1)
+    else
+
+    if tpRecord(C) and tpSymbol(index)
+    then append_integer(indices, (C as TVRecord).index_of((index as TVSymbol).N))
+    else
+
+    if tpHashTable(C)
+    then append_integer(indices, (C as TVHashTable).GetIndex(index))
+    else
+
+    raise ELE.InvalidParameters;
+
+finally
+    f_ind.Free;
+end; end;
 
 function ifh_div_sequence(s: TVSequence; d: integer; tail: boolean): TVList;
 var l,tl,i: integer;
@@ -3471,142 +3524,30 @@ begin
     CP.CopyOnWrite;
 end;
 
-procedure ifh_elt(var C: TVCompound; ind: TValue; call: TCallProc; var indices: TIntegers);
-var index, f_ind: TValue; expr, il: TVList; i,j: integer;
-begin try
-    index := nil;
-    f_ind := nil;
-    if tpSubprogram(ind)
-    then try
-        expr := TVList.Create([ind, C], false);
-        f_ind := call(expr);
-        index := f_ind;
-    finally
-        expr.free;
-    end
-    else index := ind;
-
-    if tpListNotEmpty(index) then begin
-        il := index as TVList;
-        ifh_elt(C, il.look[0], call, indices);
-        if indices=nil then Exit;
-        for i := 1 to il.high do begin
-            C := C.look[indices[high(indices)]] as TVCompound;
-            ifh_elt(C, il.look[i], call, indices);
-            if indices=nil then Exit;
-        end;
-    end
-    else
-
-    if tpNIL(index) then begin
-        indices := nil;
-        Exit;
-    end
-    else
-
-    if tpSequence(C) and tpInteger(index) then begin
-        i := (index as TVInteger).fI;
-        if i in [0..(C as TVSequence).high]
-        then append_integer(indices, i)
-        else
-            if (i<0) and (i>=-C.Count)
-            then append_integer(indices, C.Count+i)
-            else
-                raise ELE.Create('index out of bounds', 'out of bounds');
-    end
-    else
-
-    if tpSequence(C) and (C.Count>0) and (vpSymbol_LAST(index) or vpKeyword_LAST(index))
-    then  append_integer(indices, C.Count-1)
-    else
-
-    if tpRecord(C) and tpSymbol(index)
-    then append_integer(indices, (C as TVRecord).index_of((index as TVSymbol).N))
-    else
-
-    if tpHashTable(C)
-    then append_integer(indices, (C as TVHashTable).GetIndex(index))
-    else
-
-    raise ELE.InvalidParameters;
-
-finally
-    f_ind.Free;
-end; end;
 
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
-var i: integer; tmp: TValue; ind: TValue;
-    procedure key;
-    var j: integer; k: TValue;
-    begin try
-        Inc(i);
-        k := nil;
-        if i>PL.high then raise ELE.InvalidParameters;
-        k := eval(PL[i]);
-        j := (ind as TVList).high-1;
-        while j>=0 do begin
-            if equal((ind as TVList).look[j], k) then begin
-                replace_value(ind, (ind as TVList)[j+1]);
-                Exit;
-            end;
-            Dec(j, 2);
-        end;
-        replace_value(ind, TVList.Create);
-    finally
-        k.Free;
-    end;end;
-
+var i: integer; ind: TVList; C: TVCompound;
 begin
     //  Эта процедура должна вернуть указатель на компонент составного типа
     //для дальнейшего извлечения или перезаписи значения.
-
     result := nil;
-    tmp := nil;
     ind := nil;
-
-    if PL.Count<2 then raise ELE.Create('недостаточно параметров');
+try
+    if PL.Count<2 then raise ELE.Malformed('ELT');
 
     result := eval_link(PL.look[1]);
     //TODO: result не освобождается при возникновении исключения
 
-    i := 2;
-    while i<PL.Count do try
-        tmp := result.look;
-        ind := oph_eval_indices(eval(PL[i]), tmp);
-        if tpListNotEmpty(ind) then key;
+    C := result.look as TVCompound;
+    ind := PL.subseq(2) as TVList;
+    for i := 0 to ind.high do ind[i]:=eval(ind[i]);
 
-        if tpNIL(ind)
-        then begin
-            result.Free;
-            result := TVChainPointer.Create(NewVariable(TVList.Create, true));
-            Exit;
-        end
-        else
-
-
-        if tpSequence(tmp) and tpInteger(ind)
-        then result.add_index(oph_index(tmp as TVSequence, ind))
-        else
-
-        if tpSequence(tmp) and (vpSymbol_LAST(ind) or vpKeyword_LAST(ind))
-        then result.add_index((tmp as TVCompound).Count-1)
-        else
-
-        if tpHashTable(tmp)
-        then result.add_index((tmp as TVHashTable).GetIndex(ind))
-        else
-
-        if tpRecord(tmp) and tpSymbol(ind)
-        then result.add_index((tmp as TVRecord).get_n_of((ind as TVSymbol).uname))
-        else
-
-        raise ELE.InvalidParameters;
-
-    finally
-        Inc(i);
-        FreeAndNil(ind);
-    end;
+    ifh_elt(C, ind, call, result.index);
+finally
+    ind.Free;
 end;
+end;
+
 
 function TEvaluationFlow.opl_key(PL: TVList): TVChainPointer;
 var i: integer; L: TVList; HT: TVHashTable; key: TValue;
@@ -5098,7 +5039,7 @@ begin try
             else
 
             if tpOperator((V as TVList).look[0])
-            then   result := call_operator(V as TVList)
+            then result := call_operator(V as TVList)
 
             else
                 if (V as TVList).look[0] is TVProcedure
@@ -5163,4 +5104,4 @@ finalization
     base_stack.Free;
     free_int_fun_signs;
 end.
-//4576 4431 4488 4643 4499 4701
+//4576 4431 4488 4643 4499 4701 5166 5107

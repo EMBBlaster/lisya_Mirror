@@ -275,8 +275,9 @@ type
     private
         primitive: TVPrimitive;
         V: PVariable;
-        index: array of integer;
     public
+        index: TIntegers;
+
         constructor Create(P: PVariable); overload;
         constructor Create(P: PVariable; indices: array of integer); overload;
         destructor Destroy; override;
@@ -526,7 +527,6 @@ type
     { TVSymbolStack }
 
     TVSymbolStack = class (TValue)
-    //TODO: требуется упорядочить и защитить от многопоточности работу со стеком
         parent: TVSymbolStack;
         stack: array of TStackRecord;
 
