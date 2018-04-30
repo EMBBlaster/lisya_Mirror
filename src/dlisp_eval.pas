@@ -4894,7 +4894,6 @@ end;
 
 function TEvaluationFlow.procedure_call(PL: TVList): TValue;
 var proc: TVProcedure; params: TVList;
-    error_message: unicodestring;
     i: integer;
     linkable: boolean;
 begin

@@ -9,7 +9,7 @@ uses
     cwstring,
     {$ENDIF}
     Classes, SysUtils, dlisp_values, mar, lisia_charset, lisya_exceptions,
-    lisya_streams;
+    lisya_streams, lisya_string_predicates;
 
 
 
@@ -149,6 +149,25 @@ except
 end;
 end;
 
+function str_is_integer(s: unicodestring; out i: Int64): boolean;
+var ss: unicodestring; j: integer; m: integer;
+begin
+    result := sp_integer(s);
+    if not result then exit;
+
+    ss := '';
+    m := 1;
+    for j:=1 to length(s) do case s[j] of
+        '_':;
+        'k','к': m := 1000;
+        'M','М': m := 1000000;
+        'G','Г': m := 1000000000;
+        'T','Т': m := 1000000000000;
+        else ss := ss+s[j];
+    end;
+    i := StrToInt64(ss)*m;
+end;
+
 function str_is_float(s: unicodestring; out f: double): boolean;
 var fs: TFormatSettings;
 begin
@@ -158,6 +177,32 @@ begin
 
     fs.DecimalSeparator:=',';
     result :=  TryStrToFloat(s, f, fs);
+end;
+
+function str_is_float2(s: unicodestring; out f: double): boolean;
+var i: integer; fs: TFormatSettings; m: double; ss: unicodestring;
+begin
+    result := sp_float(s);
+    if not result then Exit;
+
+    fs.DecimalSeparator:='.';
+    m := 1;
+    ss := '';
+    for i:=1 to length(s) do case s[i] of
+        '_':;
+        ',': ss := ss+'.';
+        'п','p': m := 10e-12;
+        'н','n': m := 10e-9;
+        'м': if i=length(s) then m := 10e-3 else m := 10e-6;
+        'u': m := 10e-6;
+        'm': m := 10e-3;
+        'к','k': m := 10e3;
+        'М','M': m := 10e6;
+        'Г','G': m := 10e9;
+        'Т','T': m := 10e12;
+        else ss := ss+s[i];
+    end;
+    f := StrToFloat(ss,fs)*m;
 end;
 
 function str_is_complex(s: unicodestring; out re, im: double): boolean;
@@ -438,11 +483,12 @@ begin
     then result := TVT.Create
     else
 
-    if TryStrToInt64(t[i], l)
+    //if TryStrToInt64(t[i], l)
+    if str_is_integer(t[i], l)
     then result := TVInteger.Create(l)
     else
 
-    if str_is_float(t[i], re)
+    if str_is_float2(t[i], re)
     then result := TVFloat.Create(re)
     else
 

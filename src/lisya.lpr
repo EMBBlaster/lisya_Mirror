@@ -11,7 +11,8 @@ uses
     {$ENDIF}
     sysutils,
     lisya_repl,
-    dlisp_eval, lisya_zip, lisya_streams, lisya_exceptions;
+    dlisp_eval, lisya_zip, lisya_streams, lisya_exceptions,
+lisya_string_predicates;
 
 begin
     {$if declared(UseHeapTrace)}
