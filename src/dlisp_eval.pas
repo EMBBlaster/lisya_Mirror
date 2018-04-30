@@ -4893,23 +4893,14 @@ end;
 
 
 function TEvaluationFlow.procedure_call(PL: TVList): TValue;
-var first: TValue; proc: TVProcedure; params: TVList;
+var proc: TVProcedure; params: TVList;
     error_message: unicodestring;
     i: integer;
     linkable: boolean;
 begin
     //TODO: при вызове процедуры с несуществующими переменными не возникает ошибка
 
-    first := PL.look[0];
-
-    if not tpProcedure(first)
-    then begin
-        error_message := first.AsString + ' is not procedure';
-        first.Free;
-        raise ELE.Create(error_message, 'syntax');
-    end;
-
-    proc := first as TVProcedure;
+    proc := PL.look[0] as TVProcedure;
 
     params := TVList.Create([PL[0]]);
     params.SetCapacity(PL.Count);
@@ -5102,4 +5093,4 @@ finalization
     base_stack.Free;
     free_int_fun_signs;
 end.
-//4576 4431 4488 4643 4499 4701 5166 5107
+//4576 4431 4488 4643 4499 4701 5166 5096
