@@ -110,9 +110,7 @@ type
         function call_predicate(PL: TVList): TValue;
 
         function procedure_call(PL: TVList): TValue;
-        function internal_function_call(PL: TVList): TValue;
-        function internal_predicate_call(PL: TVList): TValue;
-
+        function eval_parameters(call: TCallProc; PL: TVList): TValue;
 
         function eval_link(P: TValue): TVChainPointer;
 
@@ -3111,25 +3109,25 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 
 const predicates: array[1..18] of record n: unicodestring; f: TTypePredicate; end = (
-(n:'T?';                    f:tpT),
-(n:'NIL?';                  f:tpNIL),
-(n:'TRUE?';                 f:tpTRUE),
+(n:'T';                    f:tpT),
+(n:'NIL';                  f:tpNIL),
+(n:'TRUE';                 f:tpTRUE),
 //(n:'NUMBER?';               f:tpNumber),
-(n:'REAL?';                 f:tpReal),
-(n:'INTEGER?';              f:tpInteger),
-(n:'FLOAT?';                f:tpFloat),
-(n:'ATOM?';                 f:tpAtom),
-(n:'SUBPROGRAM?';           f:tpSubprogram),
-(n:'LIST?';                 f:tpList),
-(n:'EMPTY?';                f:vpEmpty),
-(n:'SYMBOL?';               f:tpSymbol),
-(n:'KEYWORD?';              f:tpKeyword),
-(n:'STRING?';               f:tpString),
-(n:'POSITIVE?';             f:vpRealPositive),
-(n:'NEGATIVE?';             f:vpRealNegative),
-(n:'BYTES?';                f:tpBytes),
-(n:'END-OF-STREAM?';        f:vpStreamEnd),
-(n:'END-OF-FILE?';          f:vpStreamEnd)
+(n:'REAL';                 f:tpReal),
+(n:'INTEGER';              f:tpInteger),
+(n:'FLOAT';                f:tpFloat),
+(n:'ATOM';                 f:tpAtom),
+(n:'SUBPROGRAM';           f:tpSubprogram),
+(n:'LIST';                 f:tpList),
+(n:'EMPTY';                f:vpEmpty),
+(n:'SYMBOL';               f:tpSymbol),
+(n:'KEYWORD';              f:tpKeyword),
+(n:'STRING';               f:tpString),
+(n:'POSITIVE';             f:vpRealPositive),
+(n:'NEGATIVE';             f:vpRealNegative),
+(n:'BYTES';                f:tpBytes),
+(n:'END-OF-STREAM';        f:vpStreamEnd),
+(n:'END-OF-FILE';          f:vpStreamEnd)
 
 );
 
@@ -3219,11 +3217,16 @@ begin
     end;
 
     //загрузка предикатов
-    for i := low(predicates) to high(predicates) do
+    for i := low(predicates) to high(predicates) do begin
         base_stack.new_var(
-            predicates[i].n,
-            TVPredicate.Create(predicates[i].n, predicates[i].f),
+            predicates[i].n+'?',
+            TVPredicate.Create(predicates[i].n, predicates[i].f, false),
             true);
+        base_stack.new_var(
+            predicates[i].n+'!',
+            TVPredicate.Create(predicates[i].n, predicates[i].f, true),
+            true);
+    end;
 
     //загрузка констант
     base_stack.new_var('NL', TVString.Create(new_line), true);
@@ -4872,11 +4875,20 @@ begin
 end;
 
 function TEvaluationFlow.call_predicate(PL: TVList): TValue;
+var res: boolean; P: TVPredicate;
 begin
+    result := nil;
     if PL.Count<>2 then ELE.Malformed(PL.AsString);
-    if (PL.look[0] as TVPredicate).body(PL.look[1])
-    then result := TVT.Create
-    else result := TVList.Create;
+    P :=  PL.look[0] as TVPredicate;
+
+    res := P.body(PL.look[1]);
+    if P.fAssert
+    then begin
+        if res
+        then result := PL[1]
+        else raise ELE.Create(PL.look[1].AsString+' is not '+TVSymbol.symbol_uname(P.nN), 'assertion');
+    end
+    else bool_to_TV(res, result);
 end;
 
 
@@ -4928,33 +4940,19 @@ end;
 
 end;
 
-function TEvaluationFlow.internal_function_call(PL: TVList): TValue;
-var i: integer; PLI: TVList;
+
+function TEvaluationFlow.eval_parameters(call: TCallProc; PL: TVList): TValue;
+var PLI: TVList; i: integer;
 begin try
+    //TODO: много лишних копирований при вызове внутренних функций
     PLI := TVList.Create([PL[0]]);
     PLI.SetCapacity(PL.Count);
     for i := 1 to PL.high do PLI.Add(eval(PL[i]));
-    //WriteLn('==2',PLI.AsString());
-    result := call_internal(PLI);
-    //WriteLn('==3',PLI.AsString());
+    result := call(PLI);
 finally
     PLI.Free;
-end; end;
+end;end;
 
-function TEvaluationFlow.internal_predicate_call(PL: TVList): TValue;
-var CP: TVChainPointer;
-begin
-    if PL.Count<>2 then ELE.InvalidParameters;
-try
-    CP := nil;
-    CP := eval_link(PL.look[1]);
-    if (PL.look[0] as TVPredicate).body(CP.look)
-    then result := TVT.Create
-    else result := TVList.Create;
-finally
-    CP.Free;
-end;
-end;
 
 
 //{$DEFINE EVAL_DEBUG_PRINT}
@@ -5031,11 +5029,11 @@ begin try
             (V as TVList)[0] := eval((V as TVList)[0]);
 
             if tpInternalFunction((V as TVList).look[0])
-            then result := internal_function_call(V as TVList)
+            then result := eval_parameters(call_internal, V as TVList)
             else
 
             if tpPredicate((V as TVList).look[0])
-            then result := internal_predicate_call(V as TVList)
+            then result := eval_parameters(call_predicate, V as TVList)
             else
 
             if tpOperator((V as TVList).look[0])

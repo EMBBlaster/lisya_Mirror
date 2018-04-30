@@ -653,8 +653,9 @@ type
 
     TVPredicate = class (TVInternalSubprogram)
         body: TTypePredicate;
-        constructor Create(name: unicodestring; _body: TTypePredicate); overload;
-        constructor Create(_nN: integer; _body: TTypePredicate); overload;
+        fAssert: boolean;
+        constructor Create(name: unicodestring; _body: TTypePredicate; a: boolean); overload;
+        constructor Create(_nN: integer; _body: TTypePredicate; a: boolean); overload;
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function hash: DWORD; override;
@@ -1244,36 +1245,45 @@ end;
 
 { TVPredicate }
 
-constructor TVPredicate.Create(name: unicodestring; _body: TTypePredicate);
+constructor TVPredicate.Create(name: unicodestring; _body: TTypePredicate; a: boolean);
 begin
     nN := TVSymbol.symbol_n(name);
     body := _body;
+    fAssert := a;
 end;
 
-constructor TVPredicate.Create(_nN: integer; _body: TTypePredicate);
+constructor TVPredicate.Create(_nN: integer; _body: TTypePredicate; a: boolean);
 begin
     nN := _nN;
     body := _body;
+    fAssert := a;
 end;
+
 
 function TVPredicate.Copy: TValue;
 begin
-    result := TVPredicate.Create(nN, body);
+    result := TVPredicate.Create(nN, body, fAssert);
 end;
 
 function TVPredicate.AsString: unicodestring;
+var a: unicodestring;
 begin
-    result := '#<PREDICATE '+symbols[nN]+'>';
+    if fAssert then a := '!' else a := '?';
+    result := '#<PREDICATE '+symbols[nN]+a+'>';
 end;
 
 function TVPredicate.hash: DWORD;
 begin
-    result := crc32(0, @body, SizeOf(body));
+    if fAssert
+    then result := crc32(1, @body, SizeOf(body))
+    else result := crc32(0, @body, SizeOf(body));
 end;
 
 function TVPredicate.equal(V: TValue): boolean;
 begin
-    result := (V is TVPredicate) and (@body=@((V as TVPredicate).body));
+    result := (V is TVPredicate)
+        and (@body=@((V as TVPredicate).body))
+        and (fAssert=(V as TVPredicate).fAssert);
 end;
 
 { TVReturn }
