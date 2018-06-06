@@ -13,6 +13,7 @@ type
 
 function PosU(const ss, s: unicodestring; offset: integer = 1): integer;
 function SplitString(S: unicodestring; separator: unicodestring = ' '): TStringArray;
+function StringSubstitute(const src, a, b: unicodestring): unicodestring;
 
 function PointerToStr(ptr: Pointer): unicodestring;
 function DirSep(s: unicodestring): unicodestring;
@@ -70,6 +71,20 @@ begin
     end;
     SetLength(result, Length(result)+1);
     result[high(result)] := S[p1..Length(s)];
+end;
+
+function StringSubstitute(const src, a, b: unicodestring): unicodestring;
+var p1, p2: integer;
+begin
+    result := '';
+    p1 := 1;
+    p2 := PosU(a, src);
+    while p2>0 do begin
+        result := result + src[p1..p2-1] + b;
+        p1 := p2 + Length(a);
+        p2 := PosU(a,src, p1);
+    end;
+    result := result + src[p1..Length(src)];
 end;
 
 function PointerToStr(ptr: Pointer): unicodestring;
