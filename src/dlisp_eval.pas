@@ -1747,10 +1747,18 @@ begin
 end;
 
 function if_substitute          (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer;
 begin
     case params_is(PL, result, [
-        tpString, tpString, tpString]) of
+        tpString, tpString, tpString,
+        tpList, tpAny, tpAny]) of
         1: result := TVString.Create(StringSubstitute(PL.S[0], PL.S[1], PL.S[2]));
+        2: begin
+            result := PL[0];
+            for i := 0 to PL.L[0].high do
+                if equal(PL.L[0].look[i], PL.look[1])
+                then (result as TVList)[i] := PL[2];
+        end;
     end;
 end;
 
