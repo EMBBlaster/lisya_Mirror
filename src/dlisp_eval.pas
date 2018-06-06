@@ -1768,6 +1768,21 @@ begin
     end;
 end;
 
+function if_remove              (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer;
+begin
+    case params_is(PL, result, [
+        tpList, tpAny]) of
+        1: begin
+            result := TVList.Create;
+            (result as TVList).SetCapacity(PL.L[0].Count);
+            for i := 0 to PL.L[0].high do
+                if not equal(PL.L[0].look[i], PL.look[1])
+                then (result as TVList).Add(PL.L[0][i]);
+        end;
+    end;
+end;
+
 function if_associations        (const PL: TVList; {%H-}call: TCallProc): TValue;
 var res, L,ll: TVList; i, j: integer; lazy,by_head: boolean; k: TValue;
 begin
@@ -2961,7 +2976,7 @@ begin
 end;
 
 
-const int_fun_count = 141;
+const int_fun_count = 142;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3051,7 +3066,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'CONCATENATE';               f:if_concatenate;           s:'(:rest a)'),
 (n:'GROUP ГРУППИРОВКА';         f:if_group;                 s:'(s :rest p)'),
 (n:'STRINGS-MISMATCH';          f:if_strings_mismatch;      s:'(a b)'),
-(n:'SUBSTITUTE';                f:if_substitute;            s:'(src template to)'),
+(n:'SUBSTITUTE ЗАМЕНА';         f:if_substitute;            s:'(src old new)'),
+(n:'REMOVE ИСКЛЮЧИТЬ';          f:if_remove;                s:'(src v)'),
 (n:'ASSOCIATIONS';              f:if_associations;          s:'(al k :flag lazy by-head)'),
 (n:'SUBRANGE';                  f:if_subrange;              s:'(r v)'),
 (n:'ELEMENT ЭЛЕМЕНТ';           f:if_element;               s:'(c :rest k)'),
