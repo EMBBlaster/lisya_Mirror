@@ -1400,7 +1400,8 @@ var i: integer;
 begin
     case params_is(PL, result, [
         tpRecord,
-        tpHashTable]) of
+        tpHashTable,
+        tpList]) of
         1: begin
             result := TVList.Create;
             for i := 0 to (PL.look[0] as TVRecord).count-1 do
@@ -1408,6 +1409,11 @@ begin
                     TVSymbol.Create((PL.look[0] as TVRecord).name_n(i)));
         end;
         2: result := (PL.look[0] as TVHashTable).GetKeys;
+        3: begin
+            result := TVList.Create;
+            (result as TVList).SetCapacity(PL.L[0].Count);
+            for i := 0 to PL.L[0].high do (result as TVList).Add(TVInteger.Create(i));
+        end;
     end;
 end;
 
