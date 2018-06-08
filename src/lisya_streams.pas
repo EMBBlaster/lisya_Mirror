@@ -25,6 +25,7 @@ type
       procedure SetPosition(p: Int64);
       function GetSize: Int64;
       procedure SetSize(s: Int64);
+      function ReadBytes(var Buffer; count: integer; EoID: boolean = false): integer; inline;
     public
       constructor Create(trg: TStream; enc: TStreamEncoding=seUTF8);
       constructor FindBuiltIn(name: unicodestring);
@@ -47,7 +48,7 @@ type
 
       procedure close_stream;
       function active: boolean;
-      procedure write_BOM;
+      //procedure write_BOM;
     end;
 
     { TLMemoryStream }
@@ -105,6 +106,7 @@ type
 
         //procedure close_stream; override;
     end;
+
 
 implementation
 
@@ -330,16 +332,17 @@ begin
     stream.Size:=s;
 end;
 
+function TLStream.ReadBytes(var Buffer; count: integer; EoID: boolean): integer;
+begin
+    if stream=nil then raise ELE.Create('operation on closed stream','stream');
+    result := stream.Read(Buffer, count);
+    if EoID and (result<count) then raise ELE.Create('not enought data in stream', 'stream');
+end;
+
 
 function TLStream.read_byte(out b: byte): boolean;
 begin
-    CheckState;
-    try
-        b := stream.ReadByte;
-        result := true;
-    except
-        on E:EStreamError do result := false;
-    end;
+    result := ReadBytes(b,1) = 1;
 end;
 
 
@@ -347,26 +350,26 @@ function TLStream.read_bytes(var bb: TBytes; count: integer): boolean;
 const bs = 4096;
 var bc: integer; buf: array of byte;
 begin
-    CheckState;
     if count>=0
     then begin
         SetLength(bb, count);
-        if stream.Read(bb[0], count) < count then raise ELE.Create('not enought data in stream', 'stream');
+        ReadBytes(bb[0], count, true);
     end
     else begin
         SetLength(bb, 0);
-        bc := stream.Read(bb[0], 0);
         repeat
             SetLength(bb, Length(bb)+bs);
-            bc := stream.Read(bb[Length(bb)-bs], bs);
+            bc := ReadBytes(bb[Length(bb)-bs], bs);
         until bc<bs;
         SetLength(bb, Length(bb)-bs+bc);
     end;
 end;
 
 function TLStream.read_DWORD: DWORD;
+var bb: array[1..4] of byte;
 begin
-    result := stream.ReadDWord;
+    ReadBytes(bb, 4, true);
+    result := bb[1]+bb[2]*256+bb[3]*256*256+bb[4]*256*256*256;
 end;
 
 function TLStream.write_byte(b: byte): boolean;
@@ -386,11 +389,11 @@ begin
 end;
 
 
-procedure TLStream.write_BOM;
-begin
-    CheckState;
-    lisia_charset.write_BOM(stream, encoding);
-end;
+//procedure TLStream.write_BOM;
+//begin
+//    CheckState;
+//    lisia_charset.write_BOM(stream, encoding);
+//end;
 
 function TLStream.read_char(out ch: unicodechar): boolean;
 begin

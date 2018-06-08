@@ -97,12 +97,13 @@ const KOI8_R_cp: TCodePage = (
 #$041F, #$042F, #$0420, #$0421, #$0422, #$0423, #$0416, #$0412, #$042C, #$042B, #$0417, #$0428, #$042D, #$0429, #$0427, #$042A);
 
 
+const BOM: unicodechar = #$FEFF;
+
 function read_character(stream: TStream; encoding: TStreamEncoding): unicodechar;
 procedure write_character(stream: TStream; ch: unicodechar;
                             encoding: TStreamEncoding = seUTF8);
 procedure write_string(stream: TStream; s: unicodestring; encoding: TStreamEncoding = seUTF8);
 function read_BOM(stream: TStream; default: TStreamEncoding = seUTF8): TStreamEncoding;
-procedure write_BOM(stream: TStream; encoding: TStreamEncoding = seUTF8);
 
 function bytes_to_string(const bytes: TBytes; encoding: TStreamEncoding = seUTF8): unicodestring;
 
@@ -287,19 +288,6 @@ begin
 end;
 
 
-
-procedure write_BOM(stream: TStream; encoding: TStreamEncoding);
-    procedure b(b: byte); inline; begin stream.WriteByte(b); end;
-begin
-    case encoding of
-        seUTF8:    begin b($EF); b($BB); b($BF); end;
-        seUTF16BE: begin b($FE); b($FF); end;
-        seUTF16LE: begin b($FF); b($FE); end;
-        seUTF32BE: begin b($00); b($00); b($FE); b($FF); end;
-        seUTF32LE: begin b($FF); b($FE); b($00); b($00); end;
-    end;
-end;
-
 function bytes_to_string(const bytes: TBytes; encoding: TStreamEncoding
     ): unicodestring;
 var stream: TBytesStream;
@@ -314,5 +302,5 @@ end;
 end;
 
 
-end.
+end. //319
 

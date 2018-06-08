@@ -2489,16 +2489,6 @@ begin
     result := TVT.Create;
 end;
 
-function if_write_bom           (const PL: TVList; {%H-}call: TCallProc): TValue;
-begin
-    case params_is(PL, result, [
-        vpStreamPointerActive]) of
-        1: (PL.look[0] as TVStreamPointer).body.write_BOM;
-    end;
-    result := TVT.Create;
-end;
-
-
 function if_read                (const PL: TVList; {%H-}call: TCallProc): TValue;
 var s: unicodestring;
 begin
@@ -3001,7 +2991,7 @@ begin
 end;
 
 
-const int_fun_count = 144;
+const int_fun_count = 143;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3139,7 +3129,6 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'READ-LINE';                 f:if_read_line;             s:'(:optional s)'),
 (n:'WRITE-LINE';                f:if_write_line;            s:'(s l)'),
 (n:'READ-BOM';                  f:if_read_bom;              s:'(s)'),
-(n:'WRITE-BOM';                 f:if_write_bom;             s:'(s)'),
 
 (n:'READ';                      f:if_read;                  s:'(:optional s)'),
 (n:'WRITE';                     f:if_write;                 s:'(s a)'),
@@ -3299,6 +3288,7 @@ begin
     base_stack.new_var('CR', TVString.Create(#10), true);
     base_stack.new_var('LF', TVString.Create(#13), true);
     base_stack.new_var('TAB', TVString.Create(#09), true);
+    base_stack.new_var('BOM', TVString.Create(BOM), true);
     base_stack.new_var('_', TVSymbol.Create('_'));
 end;
 

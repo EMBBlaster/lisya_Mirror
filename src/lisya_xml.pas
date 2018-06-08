@@ -314,7 +314,8 @@ procedure xml_write(s: TLStream; xml: TVList; declaration: boolean);
 begin
     s.encoding:=seUTF8;
     if declaration then begin
-        s.write_BOM;
+        //s.write_BOM;
+        s.write_char(BOM);
         s.write_string('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
     end;
     tag_write(s, xml);
