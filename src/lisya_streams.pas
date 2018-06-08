@@ -8,8 +8,8 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    zstream, LResources,
-    Classes, SysUtils, mar, lisia_charset, lisya_exceptions, lisya_zip;
+    zstream, LResources, Pipes,
+    Classes, SysUtils, mar, lisia_charset, lisya_exceptions, lisya_zip, lisya_process;
 
 type
 
@@ -95,8 +95,41 @@ type
         function description: unicodestring; override;
     end;
 
+    { TLPipeStream }
+
+    TLPipeStream = class(TLStream)
+        proc: TLProcess;
+        constructor Create(P: TLProcess; mode: WORD; enc: TStreamEncoding);
+        destructor Destroy; override;
+        function description: unicodestring; override;
+
+        //procedure close_stream; override;
+    end;
 
 implementation
+
+{ TLPipeStream }
+
+
+constructor TLPipeStream.Create(P: TLProcess; mode: WORD; enc: TStreamEncoding);
+begin
+    proc := P.Ref as TLProcess;
+    case mode of
+        fmOpenRead: inherited Create(P.Out_pipe, enc);
+        fmOpenReadWrite, fmOpenWrite, fmCreate: inherited Create(P.In_pipe, enc);
+    end;
+end;
+
+destructor TLPipeStream.Destroy;
+begin
+    proc.Release;
+    stream := nil;
+end;
+
+function TLPipeStream.description: unicodestring;
+begin
+    result := '<PIPE '+proc.description+'>';
+end;
 
 
 { TLZipFile }
@@ -285,6 +318,9 @@ end;
 function TLStream.GetSize: Int64;
 begin
     CheckState;
+    //if stream is TInputPipeStream
+    //then result := (stream as TInputPipeStream).NumBytesAvailable
+    //else
     result:=stream.Size;
 end;
 
@@ -306,19 +342,25 @@ begin
     end;
 end;
 
+
 function TLStream.read_bytes(var bb: TBytes; count: integer): boolean;
-var i: integer; _count: integer;
+const bs = 4096;
+var bc: integer; buf: array of byte;
 begin
     CheckState;
-    if count>=0 then _count := count else _count := stream.Size - stream.Position;
-    SetLength(bb, _count);
-    try
-        result := true;
-        for i := 0 to _count-1 do bb[i] := stream.ReadByte;
-        //TODO: по загадочным причинам readbuffer вызывает разрушение памяти
-        //при освобождении буфера
-    except
-        on E:EStreamError do result := false;
+    if count>=0
+    then begin
+        SetLength(bb, count);
+        if stream.Read(bb[0], count) < count then raise ELE.Create('not enought data in stream', 'stream');
+    end
+    else begin
+        SetLength(bb, 0);
+        bc := stream.Read(bb[0], 0);
+        repeat
+            SetLength(bb, Length(bb)+bs);
+            bc := stream.Read(bb[Length(bb)-bs], bs);
+        until bc<bs;
+        SetLength(bb, Length(bb)-bs+bc);
     end;
 end;
 
@@ -390,5 +432,5 @@ begin
     result := stream <> nil;
 end;
 
-end.
+end.   //426
 

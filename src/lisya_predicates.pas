@@ -87,6 +87,8 @@ function tpPredicate                                (V: TValue): boolean;
 
 function tpProcedure                                (V: TValue): boolean;
 
+function tpProcessPointer                           (V: TValue): boolean;
+
 function tpRange                                    (V: TValue): boolean;
 
 function tpReal                                     (V: TValue): boolean;
@@ -519,6 +521,11 @@ end;
 function tpProcedure(V: TValue): boolean;
 begin
     result := V is TVProcedure;
+end;
+
+function tpProcessPointer(V: TValue): boolean;
+begin
+    result := V is TVProcessPointer;
 end;
 
 function tpRange(V: TValue): boolean;

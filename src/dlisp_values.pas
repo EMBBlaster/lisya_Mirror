@@ -11,7 +11,8 @@ uses
     cwstring,
     {$ENDIF}
     SysUtils, Classes, Contnrs, ucomplex, crc,
-    lisia_charset, zstream, mar, lisya_zip, lisya_exceptions, lisya_streams;
+    lisia_charset, zstream, mar, lisya_zip, lisya_exceptions, lisya_streams,
+    lisya_process;
 
 
 const
@@ -749,6 +750,23 @@ type
         procedure close_zip;
     end;
 
+    { TVProcessPointer }
+
+    TVProcessPointer = class (TValue)
+        P: TLProcess;
+
+        constructor Create(_P: TLProcess);
+        destructor Destroy; override;
+
+        function Copy: TValue; override;
+        function AsString: unicodestring; override;
+        function hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
+
+        procedure close_process;
+    end;
+
+
 
 
 procedure Assign(var v1, v2: TValue);
@@ -906,6 +924,44 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVProcessPointer }
+
+constructor TVProcessPointer.Create(_P: TLProcess);
+begin
+    P := _P;
+end;
+
+destructor TVProcessPointer.Destroy;
+begin
+    P.Release;
+    inherited Destroy;
+end;
+
+function TVProcessPointer.Copy: TValue;
+begin
+    result := TVProcessPointer.Create(P.Ref as TLProcess);
+end;
+
+function TVProcessPointer.AsString: unicodestring;
+begin
+    Result:= '<PROCESS '+P.description+'>';
+end;
+
+function TVProcessPointer.hash: DWORD;
+begin
+    Result:= 0;
+end;
+
+function TVProcessPointer.equal(V: TValue): boolean;
+begin
+    Result := (V is TVProcessPointer) and ((V as TVProcessPointer).P=P);
+end;
+
+procedure TVProcessPointer.close_process;
+begin
+    P.term;
 end;
 
 

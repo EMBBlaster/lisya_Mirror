@@ -31,6 +31,7 @@ uses
     ,lisia_charset
     ,lisya_exceptions
     ,lisya_streams
+    ,lisya_process
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -2108,6 +2109,30 @@ begin
     result := TVString.Create(output);
 end;
 
+function if_process             (const PL: TVList; {%H-}call: TCallProc): TValue;
+var dir: unicodestring;
+begin
+    case params_is(PL, result, [
+        tpString, tpStringOrNIL]) of
+        1: begin
+            if tpString(PL.look[1]) then dir := PL.S[1] else dir := '.';
+            result := TVProcessPointer.Create(TLProcess.Run(PL.S[0],dir));
+        end;
+    end;
+end;
+
+function if_process_pipe        (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpProcessPointer, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
+        1: result := TVStreamPointer.Create(
+            TLPipeStream.Create(
+                (PL.look[0] as TVProcessPointer).P,
+                ifh_keyword_to_file_mode(PL.look[1]),
+                ifh_keyword_to_encoding(PL.look[2])));
+    end;
+end;
+
 function if_now                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     Assert(PL.Count=0, 'NOW не нуждается в параметрах');
@@ -2976,7 +3001,7 @@ begin
 end;
 
 
-const int_fun_count = 142;
+const int_fun_count = 144;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3087,6 +3112,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SLEEP';                     f:if_sleep;                 s:'(m)'),
 
 (n:'RUN-COMMAND';               f:if_run_command;           s:'(c :optional d)'),
+(n:'PROCESS';                   f:if_process;               s:'(cmd :key directory)'),
+(n:'PROCESS-PIPE';              f:if_process_pipe;          s:'(proc :optional mode encoding)'),
 (n:'NOW';                       f:if_now;                   s:'()'),
 
 
@@ -4718,7 +4745,7 @@ end;
 end;
 
 function TEvaluationFlow.op_with(PL: TVList; export_symbols: boolean): TValue;
-var i, p: integer;
+var i: integer;
 begin
     if (PL.Count<2) then raise ELE.Malformed('WITH/USE');
     for i := 1 to PL.high do
