@@ -257,8 +257,7 @@ var  i: integer; sn: unicodestring;
     var i: integer;
     begin
         if stream<>nil
-        //then for i := 1 to Length(s) do stream.stream.write_char(s[i])
-        then for i := 1 to Length(s) do stream.body.write_char(s[i])
+        then stream.body.write_string(s[i])
         else System.Write(s);
     end;
     procedure indent;
@@ -365,8 +364,7 @@ begin try
     acc := '';
     depth := 0;
     state := sToken;
-    while s.Position<s.Size do begin
-        ch := s.read_character;
+    while s.read_character(ch) do begin
         case state of
             sToken: case ch of
                 ' ',#13,#10,#$FEFF,#9: begin add; end;

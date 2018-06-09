@@ -23,6 +23,7 @@ type
     ELE                      = ELisyaError;
     EObjectNotCompound       = class (ELisyaError) end;
     EInvalidParameters       = class (ELisyaError) end;
+    ELEmptyStream            = class (ELisyaError) end;
 
 implementation
 

@@ -1,9 +1,8 @@
 ﻿(fmt nil "потоки... ")
 
-(assertion (not (file-exists "test.bin")) "мешает файл test.bin")
-
 
 (block "бинарные файлы"
+    (if (file-exists "test.bin") (delete-file "test.bin"))
 
     (block
         (var out (open-file "test.bin" :mode :write))
@@ -16,15 +15,10 @@
 
     (block
         (var in (open-file "test.bin" :mode :read))
-        (assertion (= (bytes 1 2) (read-byte in 2)) "file read bytes")
+        (assertion (= (bytes 1 2) (read-bytes in 2)) "file read bytes")
         (assertion (= 2 (stream-position in)) "stream-position")
-        (assertion (= (bytes 3 4 5) (read-byte in :ALL)) "file read all"))
+        (assertion (= (bytes 3 4 5) (read-bytes in :ALL)) "file read all")))
 
-    (delete-file "test.bin")
-
-    (exception ""
-        (delete-file "test.bin")
-        (error exception-class exception-message)))
 
 
 (assertion (not (file-exists "test.txt")) "мешает файл test.txt")
@@ -33,7 +27,7 @@
 
     (block
         (var out (open-file "test.txt" :mode :write :encoding :utf32BE))
-        (write-BOM out)
+        (write-string out BOM)
         (fmt out "10 строка" NL))
 
     (block
@@ -47,9 +41,9 @@
     (block
         (var in (open-file "test.txt" :mode :read :encoding :BOM))
         (assertion (= "10 строка" (read-line in)) "read line 1")
-        (set-encoding in :utf8)
+        (stream-encoding in :utf8)
         (assertion (= "20 string" (read-line in)) "read line 2")
-        (set-encoding in :cp1251)
+        (stream-encoding in :cp1251)
         (assertion (= "30 строка" (read-line in)) "read line 3"))
 
 

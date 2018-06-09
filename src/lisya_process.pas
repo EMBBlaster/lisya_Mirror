@@ -35,6 +35,7 @@ type
 
 implementation
 
+
 function TLProcess.GetInputPipe: TStream;
 begin
     result := P.Input;

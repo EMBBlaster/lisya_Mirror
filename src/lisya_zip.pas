@@ -110,6 +110,8 @@ type
 
 implementation
 
+uses lisya_streams;
+
 const lfh_sign  = $04034B50;
 const aed_sign  = $08064B50;
 const cdfh_sign = $02014B50;
@@ -121,16 +123,16 @@ var i: integer; bb: TBytes;
 begin
     SetLength(bb, count);
     for i := 0 to count-1 do bb[i] := f.ReadByte;
-    result := lisia_charset.bytes_to_string(bb, encoding);
-    //SetLength(bb,0);
+    result := bytes_to_string(bb, encoding);
+    SetLength(bb, 0);
 end;
 
 procedure write_string(f: TFileStream; s: unicodestring);
-var i: integer;
+var bb: TBytes;
 begin
-    for i := 1 to length(s) do begin
-        lisia_charset.write_character(f, s[i], seUTF8);
-    end;
+    bb := string_to_bytes(s, seUTF8);
+    f.Write(bb,Length(bb));
+    SetLength(bb, 0);
 end;
 
 function read_bytes(f: TStream; count: integer): TBytes;

@@ -12,7 +12,16 @@ uses
 
 type
     TStreamEncoding = (seCP1251, seCP1252, seCP866, seKOI8R,
-                       seBOM, seUTF8,  seUTF16BE, seUTF16LE, seUTF32BE, seUTF32LE );
+                       seBOM, seUTF8,  seUTF16BE, seUTF16LE, seUTF32BE, seUTF32LE);
+
+const
+    EncodingNames: array[TStreamEncoding] of unicodestring = (
+                    'cp1251', 'cp1252', 'cp866', 'KOI8R',
+                    'BOM', 'UTF8', 'UTF16BE', 'UTF16LE', 'UTF32BE', 'UTF32LE');
+
+    default_encoding = {$IFDEF WINDOWS}seCP1251{$ELSE}seUTF8{$ENDIF};
+    BOM: unicodechar = #$FEFF;
+
 
 type
     ECharsetError = class(Exception);
@@ -97,210 +106,7 @@ const KOI8_R_cp: TCodePage = (
 #$041F, #$042F, #$0420, #$0421, #$0422, #$0423, #$0416, #$0412, #$042C, #$042B, #$0417, #$0428, #$042D, #$0429, #$0427, #$042A);
 
 
-const BOM: unicodechar = #$FEFF;
-
-function read_character(stream: TStream; encoding: TStreamEncoding): unicodechar;
-procedure write_character(stream: TStream; ch: unicodechar;
-                            encoding: TStreamEncoding = seUTF8);
-procedure write_string(stream: TStream; s: unicodestring; encoding: TStreamEncoding = seUTF8);
-function read_BOM(stream: TStream; default: TStreamEncoding = seUTF8): TStreamEncoding;
-
-function bytes_to_string(const bytes: TBytes; encoding: TStreamEncoding = seUTF8): unicodestring;
-
-
 implementation
 
-
-function read_character(stream: TStream; encoding: TStreamEncoding): unicodechar;
-    function read: byte; inline; begin result := stream.ReadByte; end;
-var b1, b2, b3, b4: byte;
-begin
-    case encoding of
-        seUTF8: begin
-            b1 := read;
-            case b1 of
-                {0xxxxxxx}$00..$7F: begin
-                    result := unicodechar(b1);
-                end;
-                {110xxxxx}$C0..$DF: begin
-                    b2 := read;
-                    result := unicodechar(64*(b1 and 31)
-                                           + (b2 and 63));
-                end;
-                {1110xxxx}$E0..$EF: begin
-                    b2 := read;
-                    b3 := read;
-                    result := unicodechar(64*64*(b1 and 15)
-                                           + 64*(b2 and 63)
-                                              + (b3 and 63));
-                end;
-                {11110xxx}$F0..$F7: begin
-                    b2 := read;
-                    b3 := read;
-                    b4 := read;
-                    result := unicodechar(64*64*64*(b1 and 7)
-                                           + 64*64*(b2 and 63)
-                                              + 64*(b3 and 63)
-                                                 + (b4 and 63));
-                end;
-                else result := '?';
-            end;
-        end;
-        seUTF16LE: begin
-            b1 := read;
-            b2 := read;
-            result := unicodechar(b1+b2*256);
-            //TODO: суррогатные пары не поддерживаются
-        end;
-        seUTF16BE: begin
-            b1 := read;
-            b2 := read;
-            result := unicodechar(256*b1+b2);
-            //TODO: суррогатные пары не поддерживаются
-        end;
-        seUTF32LE: begin
-            b1 := read;
-            b2 := read;
-            b3 := read;
-            b4 := read;
-            result := unicodechar(b1+b2*256+b3*256*256+b4*256*256*256);
-        end;
-        seUTF32BE: begin
-            b1 := read;
-            b2 := read;
-            b3 := read;
-            b4 := read;
-            result := unicodechar(256*256*256*b1+256*256*b2+256*b3+b4);
-        end;
-        seCP1251: result := cp1251_cp[read];
-        seCP1252: result := cp1252_cp[read];
-        seCP866:  result := cp866_cp[read];
-        seKOI8R:  result := KOI8_R_cp[read];
-        else raise ECharsetError.Create('');
-    end;
-end;
-
-procedure write_character(stream: TStream; ch: unicodechar;
-    encoding: TStreamEncoding);
-    procedure write(b: byte); inline; begin stream.WriteByte(b); end;
-    procedure write8bit(const codepage: TCodePage);
-    var i: byte;
-    begin
-        for i := 0 to 255 do
-            if codepage[i]=ch then begin
-                write(i);
-                exit;
-            end;
-        write(ord('?'));
-    end;
-var cp: cardinal;
-begin
-    cp := ord(ch);
-    case encoding of
-        seUTF8: case cp of
-                0..127: begin
-                    write(cp);
-                end;
-                128..2047: begin
-                    write((cp shr 6) or 192);
-                    write((cp and 63) or 128);
-                end;
-                2048..65535: begin
-                    write((cp shr 12) or 224);
-                    write(((cp shr 6) and 63) or 128);
-                    write((cp and 63) or 128);
-                end;
-                65536..2097152: begin
-                    write((cp shr 18) or 240);
-                    write(((cp shr 12) and 63) or 128);
-                    write(((cp shr 6) and 63) or 128);
-                    write((cp and 63) or 128);
-                end
-                else raise ECharsetError.Create('Символ вне диапазона');
-            end;
-        seUTF16LE: begin
-            write(cp and $FF);
-            write(cp shr 8);
-        end;
-        seUTF16BE: begin
-            write(cp shr 8);
-            write(cp and $FF);
-        end;
-        seUTF32LE: begin
-            write(cp and $FF);
-            write((cp shr 8) and $FF);
-            write((cp shr 16) and $FF);
-            write((cp shr 24) and $FF);
-        end;
-        seUTF32BE: begin
-            write((cp shr 24) and $FF);
-            write((cp shr 16) and $FF);
-            write((cp shr 8) and $FF);
-            write(cp and $FF);
-        end;
-        seCP1251: write8bit(cp1251_cp);
-        seCP1252: write8bit(cp1252_cp);
-        seCP866:  write8bit(cp866_cp);
-        seKOI8R:  write8bit(KOI8_R_cp);
-        else raise ECharsetError.Create('неизвестная кодировка');
-    end
-end;
-
-procedure write_string(stream: TStream; s: unicodestring;
-    encoding: TStreamEncoding);
-var i: integer;
-begin
-    for i := 1 to Length(s) do write_character(stream, s[i], encoding);
-end;
-
-function read_BOM(stream: TStream; default: TStreamEncoding): TStreamEncoding;
-    function b: byte; inline; begin result := stream.ReadByte; end;
-var p: integer;
-begin
-    p := stream.Position;
-    //UTF-8
-    if (b=$EF) and (b=$BB) and (b=$BF) then begin
-        result := seUTF8;
-        exit;
-    end else stream.Seek(p,0);
-    //UTF16BE
-    if (b=$FE) and (b=$FF) then begin
-        result := seUTF16BE;
-        exit;
-    end else stream.Seek(p,0);
-    //UTF32BE
-    if (b=$00) and (b=$00) and (b=$FE) and (b=$FF) then begin
-        result := seUTF32BE;
-        exit;
-    end else stream.Seek(p,0);
-    //UTF32LE
-    if (b=$FF) and (b=$FE) and (b=$00) and (b=$00) then begin
-        result := seUTF32LE;
-        exit;
-    end else stream.Seek(p,0);
-    //UTF16LE
-    if (b=$FF) and (b=$FE) then begin
-        result := seUTF16LE;
-        exit;
-    end else stream.Seek(p,0);
-
-    result := default;
-end;
-
-
-function bytes_to_string(const bytes: TBytes; encoding: TStreamEncoding
-    ): unicodestring;
-var stream: TBytesStream;
-begin try
-    stream := TBytesStream.Create(bytes);
-    result := '';
-    while stream.Position<Length(bytes) do
-        result := result + read_character(stream, encoding);
-finally
-    stream.Free;
-end;
-end;
-
-
-end. //319
+end. //319 //111
 
