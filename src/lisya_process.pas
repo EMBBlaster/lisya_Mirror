@@ -31,6 +31,7 @@ type
         function description: unicodestring; override;
 
         procedure term;
+        procedure CloseInput;
     end;
 
 implementation
@@ -74,6 +75,11 @@ procedure TLProcess.term;
 begin
     P.Terminate(0);
     FreeAndNil(P);
+end;
+
+procedure TLProcess.CloseInput;
+begin
+    P.CloseInput;
 end;
 
 

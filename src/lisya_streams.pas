@@ -25,8 +25,8 @@ type
       procedure SetPosition(p: Int64);
       function GetSize: Int64;
       procedure SetSize(s: Int64);
-      function ReadBytes(var Buffer; count: integer; EoE: boolean = false): integer; inline;
-      function WriteBytes(const Buffer; count: integer; EoE: boolean = false): integer; inline;
+      function ReadBytes(var Buffer; count: integer; EoE: boolean = false): integer; virtual;
+      function WriteBytes(const Buffer; count: integer; EoE: boolean = false): integer; virtual;
       function ReadCharacter(out ch: unicodechar; EoE: boolean = false): boolean;
     public
       constructor Create(trg: TStream; enc: TStreamEncoding=seUTF8);
@@ -53,7 +53,7 @@ type
       property position: Int64 read GetPosition write SetPosition;
       property size: Int64 read GetSize write SetSize;
 
-      procedure close_stream;
+      procedure close_stream; virtual;
       function active: boolean;
     end;
 
@@ -103,15 +103,22 @@ type
     end;
 
 
-    { TLPipeStream }
 
-    TLPipeStream = class(TLStream)
+    { TLProcessPipes }
+
+    TLProcessPipes = class(TLStream)
+    private
+        function ReadBytes(var Buffer; count: integer; EoE: boolean = false): integer; override;
+        function WriteBytes(const Buffer; count: integer; EoE: boolean = false): integer; override;
+    public
         proc: TLProcess;
-        constructor Create(P: TLProcess; mode: WORD; enc: TStreamEncoding);
+        out_pipe: TStream;
+        in_pipe: TStream;
+        constructor Create(P: TLProcess; enc: TStreamEncoding);
         destructor Destroy; override;
         function description: unicodestring; override;
 
-        //procedure close_stream; override;
+        procedure close_stream; override;
     end;
 
 
@@ -144,27 +151,48 @@ end;
 end;
 
 
-{ TLPipeStream }
 
+{ TLProcessPipes }
 
-constructor TLPipeStream.Create(P: TLProcess; mode: WORD; enc: TStreamEncoding);
+function TLProcessPipes.ReadBytes(var Buffer; count: integer; EoE: boolean
+    ): integer;
+begin
+   if out_pipe=nil then raise ELE.Create('reading from closed pipe', 'stream');
+   result := out_pipe.Read(Buffer, count);
+   if EoE and (result<count) then raise ELEmptyStream.Create('pipe read', 'stream');
+end;
+
+function TLProcessPipes.WriteBytes(const Buffer; count: integer; EoE: boolean
+    ): integer;
+begin
+    if in_pipe=nil then raise ELE.Create('writing to closed stream', 'stream');
+    result := in_pipe.Write(Buffer, count);
+    if EoE and (result<>count) then raise ELEmptyStream.Create('pipe write', 'stream');
+end;
+
+constructor TLProcessPipes.Create(P: TLProcess; enc: TStreamEncoding);
 begin
     proc := P.Ref as TLProcess;
-    case mode of
-        fmOpenRead: inherited Create(P.Out_pipe, enc);
-        fmOpenReadWrite, fmOpenWrite, fmCreate: inherited Create(P.In_pipe, enc);
-    end;
+    inherited Create(nil, enc);
+    out_pipe := P.Out_pipe;
+    in_pipe := P.In_pipe;
 end;
 
-destructor TLPipeStream.Destroy;
+destructor TLProcessPipes.Destroy;
 begin
     proc.Release;
-    stream := nil;
+    out_pipe := nil;
+    in_pipe := nil;
 end;
 
-function TLPipeStream.description: unicodestring;
+function TLProcessPipes.description: unicodestring;
 begin
-    result := '<PIPE '+proc.description+'>';
+    result := 'PIPES OF '+proc.description;
+end;
+
+procedure TLProcessPipes.close_stream;
+begin
+    proc.CloseInput;
 end;
 
 
@@ -335,8 +363,8 @@ procedure TLStream.SetEncoding(enc: TStreamEncoding);
     function b: byte; inline; begin ReadBytes(result, 1, true); end;
 var p: integer;
 begin
-    CheckState;
     if enc <> seBOM then begin fencoding := enc; Exit; end;
+    CheckState;
 
     p := stream.Position;
     //UTF-8
@@ -397,6 +425,7 @@ end;
 
 function TLStream.ReadBytes(var Buffer; count: integer; EoE: boolean): integer;
 begin
+    if stream=nil then raise ELE.Create('reading from closed stream', 'stream');
     result := stream.Read(Buffer, count);
     if EoE and (result<count) then raise ELEmptyStream.Create('empty stream', 'stream');
 end;
@@ -463,7 +492,6 @@ end;
 
 function TLStream.read_byte: byte;
 begin
-    CheckState;
     ReadBytes(result, 1, true)
 end;
 
@@ -472,7 +500,6 @@ function TLStream.read_bytes(var bb: TBytes; count: integer): boolean;
 const bs = 4096;
 var bc: integer; buf: array of byte;
 begin
-    CheckState;
     if count>=0
     then begin
         SetLength(bb, count);
@@ -491,7 +518,6 @@ end;
 function TLStream.read_DWORD: DWORD;
 var bb: array[1..4] of byte;
 begin
-    CheckState;
     ReadBytes(bb, 4, true);
     result := bb[1]+bb[2]*256+bb[3]*256*256+bb[4]*256*256*256;
 end;
@@ -510,7 +536,6 @@ end;
 function TLStream.read_string(count: integer): unicodestring;
 var i: integer; ch: unicodechar;
 begin
-    CheckState;
     result := '';
     if count>=0
     then for i := 1 to count do begin ReadCharacter(ch, true); result := result + ch end
@@ -521,7 +546,6 @@ end;
 function TLStream.read_line(ls: unicodestring): unicodestring;
 var ch: unicodechar; ln: unicodestring;
 begin
-    CheckState;
     ln := '';
     while ReadCharacter(ch, false) do begin
         ln := ln + ch;
@@ -538,7 +562,6 @@ end;
 function TLStream.read_line(out ln: unicodestring; ls: unicodestring): boolean;
 var ch: unicodechar;
 begin
-    CheckState;
     result := true;
     ln := '';
     while ReadCharacter(ch, false) do begin
@@ -556,19 +579,18 @@ end;
 function TLStream.WriteBytes(const Buffer; count: integer; EoE: boolean
     ): integer;
 begin
+    if stream=nil then raise ELE.Create('writing to closed stream', 'stream');
     result := stream.Write(Buffer, count);
     if EoE and (result<>count) then raise ELEmptyStream.Create('write error', 'stream');
 end;
 
 procedure TLStream.write_byte(b: byte);
 begin
-    CheckState;
     WriteBytes(b, 1, true);
 end;
 
 procedure TLStream.write_bytes(bb: TBytes);
 begin
-    CheckState;
     WriteBytes(bb[0], Length(bb), true);
 end;
 
@@ -587,7 +609,6 @@ procedure TLStream.write_character(ch: unicodechar);
     end;
 var cp: cardinal;
 begin
-    CheckState;
     cp := ord(ch);
     case encoding of
         seUTF8: case cp of
@@ -656,5 +677,5 @@ begin
     result := stream <> nil;
 end;
 
-end.   //426
+end.   //426 659
 

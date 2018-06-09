@@ -2121,12 +2121,11 @@ end;
 function if_process_pipe        (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpProcessPointer, vpKeywordFileModeOrNIL, vpKeywordEncodingOrNIL]) of
+        tpProcessPointer, vpKeywordEncodingOrNIL]) of
         1: result := TVStreamPointer.Create(
-            TLPipeStream.Create(
+            TLProcessPipes.Create(
                 (PL.look[0] as TVProcessPointer).P,
-                ifh_keyword_to_file_mode(PL.look[1]),
-                ifh_keyword_to_encoding(PL.look[2])));
+                ifh_keyword_to_encoding(PL.look[1])));
     end;
 end;
 
@@ -2527,7 +2526,7 @@ begin
             1: begin;
                 if tpTrue(PL.look[1]) then WriteLn(ifh_format(PL.L[1]));
                 System.Write(PL.S[0]);
-                System.Read(S);
+                System.ReadLn(S);
                 result := TVList.Create([TVString.Create(S)]);
                 (result as TVList).Append(read_from_string('('+S+')') as TVList);
             end;
@@ -3074,7 +3073,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'RUN-COMMAND';               f:if_run_command;           s:'(c :optional d)'),
 (n:'PROCESS';                   f:if_process;               s:'(cmd :key directory)'),
-(n:'PROCESS-PIPE';              f:if_process_pipe;          s:'(proc :optional mode encoding)'),
+(n:'PROCESS-PIPE';              f:if_process_pipe;          s:'(proc :optional encoding)'),
 (n:'NOW';                       f:if_now;                   s:'()'),
 
 
