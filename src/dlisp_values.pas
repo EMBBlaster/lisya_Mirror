@@ -698,6 +698,7 @@ type
             oeQUOTE,
             oeRETURN,
             oeSET,          //mod
+            oeTRY,
             oeUSE,
             oeVAR,
             oeWHEN,

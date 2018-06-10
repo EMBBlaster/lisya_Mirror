@@ -270,6 +270,8 @@ function vpListHeaded_THEN                          (V: TValue): boolean;
 
 function vpListHeaded_VALUE                         (V: TValue): boolean;
 
+function vpListHeadedByString                       (V: TValue): boolean;
+
 
 function vpListKeywordValue                         (V: TValue): boolean;
 
@@ -1039,6 +1041,13 @@ end;
 function vpListHeaded_VALUE(V: TValue): boolean;
 begin
     result := vphListHeaded(V, 'VALUE');
+end;
+
+function vpListHeadedByString(V: TValue): boolean;
+begin
+    result := (V is TVList)
+            and ((V as TVList).Count>0)
+            and ((V as TVList).look[0] is TVString);
 end;
 
 function vpListKeywordValue                         (V: TValue): boolean;

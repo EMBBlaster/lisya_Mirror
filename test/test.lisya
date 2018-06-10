@@ -164,6 +164,15 @@
         :exit)
     (assertion (= a 1) "block outer"))
 
+(log \TRY)
+(block
+    (assertion (= :h1
+        (try (error "e1") ("e2" :h2) ("e1" :h1) ("e" :h) ("" :def))) "try 1")
+    (assertion (= :h
+        (try (error "e1") ("e2" :h2) ("e" :h) ("" :def))) "try 2")
+    (assertion (= :def
+        (try (error "e1") ("e2" :h2) ("" :def))) "try 3"))
+
 (log ">> взаимная рекурсия")
 (block "взаимная рекурсия"
     (var n 5)

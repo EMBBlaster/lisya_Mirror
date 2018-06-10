@@ -193,6 +193,7 @@ end;
 procedure TLProcessPipes.close_stream;
 begin
     proc.CloseInput;
+    in_pipe := nil;
 end;
 
 

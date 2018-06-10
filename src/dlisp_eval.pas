@@ -93,6 +93,7 @@ type
         function op_procedure(PL: TVList): TValue;
     {m} function op_push(PL: TVList): TValue;
     {m} function op_set(PL: TVList): TValue;
+        function op_try(PL: TVList): TValue;
         function op_return(PL: TVList): TValue;
         function op_var(PL: TVList): TValue;
         function op_when(PL: TVList): TValue;
@@ -124,6 +125,11 @@ implementation
 var base_stack: TVSymbolStack = nil;
     T: TVT;
     NULL: TVList;
+
+function ternary(cnd: boolean; a,b: unicodestring): unicodestring; inline;
+begin
+    if cnd then result := a else result := b;
+end;
 
 function value_by_key(L: TVList; key: unicodestring): TValue;
 var i: integer;
@@ -3201,6 +3207,7 @@ begin
             oeQUOTE     : op('QUOTE');
             oeRETURN    : op('RETURN');
             oeSET       : op('SET');
+            oeTRY       : op('TRY');
             oeUSE       : op('USE');
             oeVAR       : op('VAR');
             oeWHEN      : op('WHEN');
@@ -3372,7 +3379,7 @@ begin
 
 return:
     if with_frame then stack.clear_frame(frame_start);
-end;
+end; //92
 
 
 procedure TEvaluationFlow.oph_bind(s, P: TValue; constant: boolean;
@@ -4069,6 +4076,42 @@ begin try
 finally
     FreeAndNil(CP);
 end end;
+
+function TEvaluationFlow.op_try(PL: TVList): TValue;
+var exception_frame_start, i: integer;
+    ec, eh: unicodestring;
+begin
+    if PL.Count<2 then raise ELE.Malformed('TRY');
+
+    result := nil;
+    try
+        result := eval(PL[1]);
+    except on E:ELE do //eval может выбросить только ELisyaError
+        try
+            exception_frame_start := stack.Count;
+
+            stack.new_var('EXCEPTION-CLASS', TVString.Create(E.EClass));
+            stack.new_var('EXCEPTION-MESSAGE', TVString.Create(E.Message));
+            stack.new_var('EXCEPTION-STACK', TVString.Create(E.EStack));
+
+            ec := UnicodeUpperCase(E.EClass);
+            for i := 2 to PL.high do begin
+                if not vpListHeadedByString(PL.look[i]) then raise ELE.Malformed('TRY');
+                eh := UnicodeUpperCase(PL.L[i].S[0]);
+                if (Length(eh)<=Length(ec)) and (eh=ec[1..length(eh)])
+                then begin
+                    result := oph_block(PL.L[i], 1, true);
+                    Exit;
+                end;
+            end;
+
+            raise ELE.Create(E.Message, E.EClass, E.EStack);
+        finally
+            stack.clear_frame(exception_frame_start);
+        end;
+    end;
+end; //34
+
 
 
 
@@ -4892,6 +4935,7 @@ begin
         //TODO: QUOTE не проверяет количество аргументов
         oeRETURN    : result := op_return(PL);
         oeSET       : result := op_set(PL);
+        oeTRY       : result := op_try(PL);
         oeUSE       : result := op_with(PL, true);
         oeVAR       : result := op_var(PL);
         oeWHEN      : result := op_when(PL);
