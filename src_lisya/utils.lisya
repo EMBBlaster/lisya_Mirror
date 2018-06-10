@@ -1,11 +1,17 @@
 ﻿(package utils (
     inc
     dec
+    successfull
     tokens)
 
 (procedure inc (i) (set i (+ i 1)))
 
 (procedure dec (i) (set i (- i 1)))
+
+(macro successfull (:rest expression)
+    "Возвращает результат вычисления последнего переданного выражения.
+    В случае возникновения исключения, подавляет его, и возвращает NIL"
+    (assemble try (block @expression) ("")))
 
 (procedure tokens (rules s)
     "Разбирает переданную строку в соответствии с заданными правилами"

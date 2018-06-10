@@ -54,7 +54,6 @@ type
         destructor Destroy; override;
 
         function oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
-        function oph_block1(PL: TVList; start: integer; with_frame: boolean): TValue;
         procedure oph_bind(s, P: TValue; constant: boolean;
                         st: TVSymbolStack=nil; rests: TVRecord=nil);
         function oph_bind_to_list(s, P: TVList): TVList;
@@ -3289,100 +3288,6 @@ begin
 end;
 
 
-function TEvaluationFlow.oph_block1(PL: TVList; start: integer; with_frame: boolean): TValue;
-var frame_start, exception_frame_start: integer; pc, i: integer; V: TValue;
-    exception_message, exception_class, exception_stack: unicodestring;
-label return;
-    function val(): boolean;
-    begin try
-        FreeAndNil(V);
-        V := eval(PL[pc]);
-        result := true;
-    except
-        on E:ELE do begin
-            result := false;
-            exception_message := E.Message;
-            exception_class := E.EClass;
-            exception_stack := E.EStack;
-
-        end;
-        on E:Exception do begin
-            result := false;
-            exception_message := E.Message;
-            exception_class := E.ClassName;
-        end;
-    end; end;
-
-    function matched_exception: boolean;
-    var ec, eh: unicodestring;
-    begin
-        result := false;
-        ec := UnicodeUpperCase(exception_class);
-        if vpListHeaded_EXCEPTION(PL.look[pc]) then
-             if (PL.L[pc].Count>=2) and tpString(PL.L[pc].look[1])
-             then begin
-                eh := UnicodeUpperCase(PL.L[pc].S[1]);
-                if (Length(eh)<=Length(ec)) and (eh=ec[1..length(eh)])
-                then result := true;
-             end
-             else result := true;
-    end;
-
-begin
-
-    frame_start := stack.Count;
-    if with_frame then stack.new_var( ' <block>', TVT.Create);
-
-    pc := start;
-    V := TVList.Create;
-
-    while (pc<PL.Count) and not vpListHeaded_EXCEPTION(PL.look[pc]) do begin
-        if val
-        then begin //выполнение блока
-            Inc(pc);
-            if tpGoto(V)
-            then begin
-                pc := -1;
-                for i := 1 to PL.Count-1 do
-                    if tpKeyword(PL.look[i]) and (PL.SYM[i].N=(V as TVGoto).N)
-                    then pc := i;
-                if pc<0 then break;
-            end
-            else
-                if tpBreak(V) or tpContinue(V) or tpReturn(V) then break;
-
-        end
-        else begin //поиск обработчика исключений
-            inc(pc);
-            while pc<PL.Count do begin
-                if matched_exception
-                then begin
-                    exception_frame_start := stack.Count;
-
-                    stack.new_var('EXCEPTION-MESSAGE',
-                        TVString.Create(exception_message));
-                    stack.new_var('EXCEPTION-CLASS',
-                        TVString.Create(exception_class));
-                    stack.new_var('EXCEPTION-STACK',
-                        TVString.Create(exception_stack));
-                    result := oph_block(PL.L[pc], 1, false);
-                    stack.clear_frame(exception_frame_start);
-                    goto return;
-                end;
-                inc(pc);
-            end;
-            //если обработчик не найден
-            if with_frame then stack.clear_frame(frame_start);
-            raise ELE.Create(exception_message, exception_class, exception_stack);
-        end;
-    end;
-    result := V;
-
-return:
-    if with_frame then stack.clear_frame(frame_start);
-end; //92
-
-
 function TEvaluationFlow.oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
 var frame_start: integer; pc, i: integer; V: TValue;
 begin
@@ -3409,7 +3314,7 @@ begin
 
     result := V;
     if with_frame then stack.clear_frame(frame_start);
-end; //92
+end; //26
 
 procedure TEvaluationFlow.oph_bind(s, P: TValue; constant: boolean;
     st: TVSymbolStack; rests: TVRecord);
