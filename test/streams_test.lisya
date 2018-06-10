@@ -44,14 +44,10 @@
         (stream-encoding in :utf8)
         (assertion (= "20 string" (read-line in)) "read line 2")
         (stream-encoding in :cp1251)
-        (assertion (= "30 строка" (read-line in)) "read line 3"))
+        (assertion (= "30 строка" (read-line in)) "read line 3")))
 
+(delete-file "test.txt")
 
-    (delete-file "test.txt")
-    (exception ""
-        (delete-file "test.txt")
-        (error exception-class exception-message))
-        )
 
 (assertion (= "str" "str") "str")
 
@@ -66,12 +62,9 @@
         (var in (file "test.deflate"))
         (var arch (inflate in))
         (var data-in (read-character arch :all))
-        (assertion (= data data-in) "deflate"))
+        (assertion (= data data-in) "deflate")))
 
-    (delete-file "test.deflate")
-    (exception
-        (delete-file "test.deflate")
-        (error)))
+(delete-file "test.deflate")
 
 
 

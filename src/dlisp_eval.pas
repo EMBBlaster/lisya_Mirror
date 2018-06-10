@@ -54,6 +54,7 @@ type
         destructor Destroy; override;
 
         function oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
+        function oph_block1(PL: TVList; start: integer; with_frame: boolean): TValue;
         procedure oph_bind(s, P: TValue; constant: boolean;
                         st: TVSymbolStack=nil; rests: TVRecord=nil);
         function oph_bind_to_list(s, P: TVList): TVList;
@@ -183,7 +184,7 @@ begin
             if L.L[i].Count < result then result := L.L[i].Count;
 end;
 
-procedure replace_value(var variable: TValue; value: TValue);
+procedure replace_value(var variable: TValue; value: TValue); inline;
 begin
     variable.Free;
     variable := value;
@@ -3288,7 +3289,7 @@ begin
 end;
 
 
-function TEvaluationFlow.oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
+function TEvaluationFlow.oph_block1(PL: TVList; start: integer; with_frame: boolean): TValue;
 var frame_start, exception_frame_start: integer; pc, i: integer; V: TValue;
     exception_message, exception_class, exception_stack: unicodestring;
 label return;
@@ -3381,6 +3382,34 @@ return:
     if with_frame then stack.clear_frame(frame_start);
 end; //92
 
+
+function TEvaluationFlow.oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
+var frame_start: integer; pc, i: integer; V: TValue;
+begin
+    frame_start := stack.Count;
+    pc := start;
+    V := TVList.Create;
+    result := nil;
+
+    while (pc<PL.Count) do begin
+        FreeAndNil(V);
+        V := eval(PL[pc]);
+        Inc(pc);
+        if tpGoto(V)
+        then begin
+            pc := -1;
+            for i := start to PL.Count-1 do
+                if tpKeyword(PL.look[i]) and (PL.SYM[i].N=(V as TVGoto).N)
+                then begin pc := i; break; end;
+            if pc<0 then break;
+        end
+        else
+            if tpBreak(V) or tpContinue(V) or tpReturn(V) then break;
+    end;
+
+    result := V;
+    if with_frame then stack.clear_frame(frame_start);
+end; //92
 
 procedure TEvaluationFlow.oph_bind(s, P: TValue; constant: boolean;
     st: TVSymbolStack; rests: TVRecord);
@@ -4077,9 +4106,9 @@ finally
     FreeAndNil(CP);
 end end;
 
+
 function TEvaluationFlow.op_try(PL: TVList): TValue;
-var exception_frame_start, i: integer;
-    ec, eh: unicodestring;
+var exception_frame_start, i: integer; ec, eh: unicodestring;
 begin
     if PL.Count<2 then raise ELE.Malformed('TRY');
 
@@ -4110,9 +4139,7 @@ begin
             stack.clear_frame(exception_frame_start);
         end;
     end;
-end; //34
-
-
+end; //33
 
 
 function TEvaluationFlow.op_return(PL: TVList): TValue;

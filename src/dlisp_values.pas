@@ -1911,7 +1911,7 @@ end;
 procedure TVSymbolStack.clear_frame(n: integer);
 var i: integer;
 begin
-    Assert((n<=high(stack)) or (n=0), 'очистка выше стека');
+    Assert((n<=Length(stack)) or (n=0), 'очистка выше стека');
 
     for i := high(stack) downto n do
         if (stack[i].V<>nil) and (stack[i].V.ref_count>1) and (stack[i].V.V is TVProcedure)
