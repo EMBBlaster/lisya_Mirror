@@ -105,7 +105,7 @@ type
         procedure fill_subprogram_stack(sp: TVProcedure; symbols: TVList);
 
         function call(PL: TVList): TValue;
-        function call_procedure(PL: TVList): TValue; inline;
+        function call_procedure(PL: TVList): TValue; //inline;
         function call_macro({%H-}PL: TVList): TValue;
         function call_internal(PL: TVList): TValue; //inline;
         function call_operator(PL: TVList): TValue;
@@ -3080,6 +3080,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RUN-COMMAND';               f:if_run_command;           s:'(c :optional d)'),
 (n:'PROCESS';                   f:if_process;               s:'(cmd :key directory)'),
 (n:'PROCESS-PIPE';              f:if_process_pipe;          s:'(proc :optional encoding)'),
+//(n:'PROCESS-TERMINATE';         f:if_process_pipe;          s:'(proc :optional encoding)'),
 (n:'NOW';                       f:if_now;                   s:'()'),
 
 
@@ -3292,6 +3293,8 @@ function TEvaluationFlow.oph_block(PL: TVList; start: integer; with_frame: boole
 var frame_start: integer; pc, i: integer; V: TValue;
 begin
     frame_start := stack.Count;
+    //if with_frame then stack.new_var(' <block>', TVString.Create(' <block>'), true);
+
     pc := start;
     V := TVList.Create;
     result := nil;
@@ -4413,8 +4416,7 @@ begin
     proc.nN := PL.SYM[1].N;
 
     result := proc;
-    proc.stack_pointer := -1;
-    proc.home_stack := nil;
+
     proc.body := PL.Subseq(2, PL.Count) as TVList;
     proc.sign := TVList.Create;
     proc.rests := TVRecord.Create;
@@ -4426,9 +4428,6 @@ begin
     finally
         FreeAndNil(sl);
     end;
-
-    proc.stack.remove_unbound;
-    proc.evaluated := true;
 
     stack.new_var(PL.SYM[1], result.Copy, true);
 end;
@@ -4556,7 +4555,8 @@ begin
 end;
 
 function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
-var proc: TVProcedure; sl, rl: TVList;
+var proc: TVProcedure; sl, rl: TVList; P: PVariable;
+    mode: (forward_declaration, lambda, procedure_declaration);
     sign_pos, i: integer;
     function rest_names(L: TVList): TVList;
     var i: integer;
@@ -4576,27 +4576,46 @@ begin
     result := nil;
 
     if (PL.count>=3) and tpOrdinarySymbol(PL.look[1]) and tpList(PL.look[2])
-    then sign_pos := 2
+    then mode := procedure_declaration
     else
         if (PL.count>=2) and tpList(PL.look[1])
-        then sign_pos := 1
+        then mode := lambda
         else
-            raise ELE.InvalidParameters;
+            if (PL.Count=2) and tpOrdinarySymbol(PL.look[1])
+            then mode := forward_declaration
+            else
+                raise ELE.Malformed('PROCEDURE or MACRO');
 
     if (PL.look[0] as TVOperator).op_enum=oeMACRO
     then proc := TVMacro.Create
     else proc := TVProcedure.Create;
-
-    if sign_pos=2 then proc.nN := PL.SYM[1].N;
-
     result := proc;
-    proc.stack_pointer := stack.count;
-    proc.home_stack := stack;
+
+    case mode of
+        procedure_declaration: begin
+            P := stack.find_ref_or_nil(PL.SYM[1]);
+            if (P=nil) or not (P.V is TVProcedureForwardDeclaration)
+            then begin
+                ReleaseVariable(P);
+                stack.new_var(PL.SYM[1], nil, true);
+                P := stack.find_ref_or_nil(PL.SYM[1]);
+            end;
+            sign_pos := 2;
+            proc.nN := PL.SYM[1].N;
+        end;
+        lambda: begin
+            sign_pos := 1;
+            proc.nN := -1;
+        end;
+        forward_declaration: begin
+            stack.new_var(PL.SYM[1].N, TVProcedureForwardDeclaration.Create, true);
+            result := TVT.Create;
+            Exit;
+        end;
+    end;
+
     proc.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
-    proc.evaluated:=false;
-
     proc.sign := PL[sign_pos] as TVList;
-
     proc.stack := TVSymbolStack.Create(nil);
     try
         rl := nil;
@@ -4612,10 +4631,13 @@ begin
         FreeAndNil(rl);
     end;
 
-    if sign_pos=2 then
-        stack.new_var(PL.SYM[1],result.Copy, true);
+    if mode=procedure_declaration
+    then begin
+        replace_value(P.V, result.Copy);
+        ReleaseVariable(P);
+    end;
 
-end;
+end; //61 83
 
 function TEvaluationFlow.op_var                     (PL: TVList): TValue;
 var tmp: TValue;
@@ -4748,22 +4770,18 @@ end;
 
 procedure TEvaluationFlow.fill_subprogram_stack(sp: TVProcedure;
     symbols: TVList);
-var i: integer;
+var i: integer; P: PVariable;
 begin
-    //эта процедура заполняет стэк подпрограммы, символами из переданного списка
-    //символы для которых не найдено значения оставляются несвязанными
-    //на случай если они позднее будут использоваться для рекурсивного вызова
-    //игнорирование несвязанных символов так же позволяет работать при
-    //ошибочном включении лишних символов процедурой extract_body_symbols
-    //реальные ошибки будут проявляться как ошибка symbol not bound  на этапе
-    //исполнения подпрограммы
-    //несвязанные символы должны быть удалены при довычислении подпрограммы
-    //с целью избежания доступа по нулевым указателям
+    //эта процедура заполняет стэк подпрограммы, ссылками на переменные текущей
+    //области видимости согласно списку переданных символов.
+    //Если символ не указывает на переменную в текущей области видимости, то
+    //предполагается, что такая переменная будет объявлена при работе подпрограммы.
+    //В противном случае возникнет ошибка symbol not bound
 
-    for i := 0 to symbols.High do
-        sp.stack.new_ref(
-            symbols.SYM[i],
-            stack.find_ref_or_nil(symbols.SYM[i]));
+    for i := 0 to symbols.High do begin
+        P := stack.find_ref_or_nil(symbols.SYM[i]);
+        if P<> nil then sp.stack.new_ref(symbols.SYM[i], P);
+    end;
 end;
 
 function TEvaluationFlow.call(PL: TVList): TValue;
@@ -4789,7 +4807,6 @@ begin try
     params := nil;
     proc_stack := nil;
     proc := PL.look[0] as TVProcedure;
-    proc.Complement;
 
     proc_stack := proc.stack.Copy as TVSymbolStack;
     params := PL.CDR;
@@ -4904,6 +4921,8 @@ begin
 
     proc := PL.look[0] as TVProcedure;
 
+   // WriteLn('>> ', proc.AsString());
+
     params := TVList.Create([PL[0]]);
     params.SetCapacity(PL.Count);
     result := nil;
@@ -4929,6 +4948,7 @@ try
 
 finally
     params.Free;
+    //WriteLn('<< ', proc.AsString());
 end;
 
 end;
@@ -5095,4 +5115,4 @@ finalization
     base_stack.Free;
     free_int_fun_signs;
 end.
-//4576 4431 4488 4643 4499 4701 5166 5096
+//4576 4431 4488 4643 4499 4701 5166 5096 5104

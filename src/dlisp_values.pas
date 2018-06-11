@@ -552,7 +552,6 @@ type
         procedure set_var(symbol: TVSymbol; V: TValue);
         procedure clear_frame(n: integer);
         procedure bind_var(symbol, target: TVSymbol);
-//        procedure bind_var(symbol, target: TVSymbol);
         function find_ref(symbol: TVSymbol): PVariable; overload;
         function find_ref(N: integer): PVariable; overload;
         function look_var(N: integer): PVariable;
@@ -560,10 +559,6 @@ type
         procedure new_ref(symbol: TVSymbol; P: PVariable); overload;
 
         function find_ref_or_nil(symbol: TVSymbol): PVariable;
-        function find_ref_in_frame_or_nil(name: unicodestring; n: integer): PVariable; overload;
-        function find_ref_in_frame_or_nil(symbol: TVSymbol; n: integer): PVariable; overload;
-        function find_ref_in_frame_or_nil(nN: integer; n: integer): PVariable; overload;
-        procedure remove_unbound;
     end;
 
 
@@ -587,16 +582,21 @@ type
         //поле stack не используется операторами и внутренними функциями
     end;
 
+    { TVProcedureForwardDeclaration }
+
+    TVProcedureForwardDeclaration = class (TValue)
+        function Copy(): TValue; override;
+    end;
 
     { TVProcedure }
 
     TVProcedure = class (TVSubprogram)
-        evaluated: boolean;
+        //evaluated: boolean;
         sign: TVList;
-        stack_pointer: integer;
+        //stack_pointer: integer;
         stack: TVSymbolStack;
         rests: TVRecord;
-        home_stack: TVSymbolStack;
+        //home_stack: TVSymbolStack;
         body: TVList;
         constructor Create;
         destructor Destroy; override;
@@ -605,7 +605,7 @@ type
         function hash: DWORD; override;
         function equal(V: TValue): boolean; override;
 
-        procedure Complement;
+        //procedure Complement;
     end;
 
     { TVMacro }
@@ -925,6 +925,13 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVProcedureForwardDeclaration }
+
+function TVProcedureForwardDeclaration.Copy: TValue;
+begin
+    result := TVProcedureForwardDeclaration.Create;
 end;
 
 { TVProcessPointer }
@@ -1911,11 +1918,7 @@ end;
 procedure TVSymbolStack.clear_frame(n: integer);
 var i: integer;
 begin
-    Assert((n<=Length(stack)) or (n=0), 'очистка выше стека');
-
-    for i := high(stack) downto n do
-        if (stack[i].V<>nil) and (stack[i].V.ref_count>1) and (stack[i].V.V is TVProcedure)
-        then (stack[i].V.V as TVProcedure).Complement;
+    Assert(n<=Length(stack), 'очистка выше стека');
 
     for i := high(stack) downto n do ReleaseVariable(stack[i].V);
 
@@ -1971,44 +1974,6 @@ begin
         end;
 end;
 
-function TVSymbolStack.find_ref_in_frame_or_nil(name: unicodestring; n: integer
-    ): PVariable;
-begin
-    result := find_ref_in_frame_or_nil(TVSymbol.symbol_n(name), n);
-end;
-
-function TVSymbolStack.find_ref_in_frame_or_nil(symbol: TVSymbol; n: integer
-    ): PVariable;
-begin
-    result := find_ref_in_frame_or_nil(symbol.N, n);
-end;
-
-function TVSymbolStack.find_ref_in_frame_or_nil(nN: integer; n: integer
-    ): PVariable;
-var i: integer;
-begin
-    for i := n to high(stack) do begin
-        if stack[i].N = nN then begin
-            result := RefVariable(stack[i].V);
-            exit;
-        end;
-    end;
-    result := nil;
-end;
-
-procedure TVSymbolStack.remove_unbound;
-var i,j: integer;
-begin
-    i := high(stack);
-    while i>=0 do begin
-        if stack[i].V=nil then begin
-            for j := i+1 to high(stack) do stack[j-1] := stack[j];
-            SetLength(stack, Length(stack)-1);
-            if i>high(stack) then dec(i);
-        end
-        else dec(i);
-    end;
-end;
 
 { TVRange }
 
@@ -2336,12 +2301,8 @@ begin
     inherited;
     body := nil;
     stack := nil;
-    home_stack := nil;
-
     sign := nil;
     rests := nil;
-    evaluated := false;
-    stack_pointer := -1;
 end;
 
 destructor TVProcedure.Destroy;
@@ -2357,22 +2318,12 @@ end;
 function TVProcedure.Copy: TValue;
 begin
     //TODO: копирование процедуры ненадёжно может приводить к утечкам
-    //self.Complement;
 
     result := self.ClassType.Create as TValue;
 
     (result as TVProcedure).body := body.Copy() as TVList;
     (result as TVProcedure).stack := stack.Copy as TVSymbolStack;
-
-    (result as TVProcedure).home_stack := home_stack;
-
-    (result as TVProcedure).evaluated := evaluated;
-
     (result as TVProcedure).sign := sign.Copy as TVList;
-
-    (result as TVProcedure).stack_pointer := stack_pointer;
-
-
     (result as TVProcedure).nN := nN;
     (result as TVProcedure).rests := rests.Copy as TVRecord;
 end;
@@ -2395,32 +2346,13 @@ begin
     result := self.ClassType=V.ClassType;
     if not result then Exit;
     proc := V as TVProcedure;
-    Complement;
-    proc.Complement;
+
     result := sign.equal(proc.sign)
         and body.equal(proc.body)
         and rests.equal(proc.rests)
         and stack.equal(proc.stack);
 end;
 
-
-procedure TVProcedure.Complement;
-var i: integer;
-begin
-    if home_stack<>nil
-    then try
-        for i := 0 to stack.Count-1 do
-            if stack.stack[i].V=nil
-            then stack.stack[i].V :=
-                    home_stack.find_ref_in_frame_or_nil(stack.stack[i].N,
-                                                    stack_pointer);
-
-        stack.remove_unbound;
-        evaluated:=true;
-        home_stack := nil;
-    finally
-    end;
-end;
 
 { TVGoto }
 
@@ -2972,4 +2904,4 @@ finalization
     kwKEY.Free;
     kwFLAG.Free;
     _.Free;
-end.  //3477 3361 3324 3307 2938  2911
+end.  //3477 3361 3324 3307 2938  2911 2988

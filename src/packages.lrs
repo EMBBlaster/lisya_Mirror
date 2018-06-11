@@ -257,3 +257,8 @@ LazarusResources.Add('utils','LISYA',[
   +'subseq s i))))'#10'    (if (<> "" acc) (push tokens acc))'#10'    tokens)'
   +#10#10')'#10
 ]);
+LazarusResources.Add('gnuplot','LISYA',[
+  #239#187#191'(package gnuplot (run)'#10#10'(procedure cmd (gp c) (fmt gp c LF'
+  +'))'#10#10'(procedure run ()'#10'    (curry cmd (process-pipe (process "gnup'
+  +'lot --persist -")) _))'#10#10#10')'#10
+]);
