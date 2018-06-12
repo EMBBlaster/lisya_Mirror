@@ -726,6 +726,54 @@ begin
     end;
 end;
 
+function if_sin                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal]) of
+        1: result := TVFloat.Create(sin(PL.F[0]));
+    end;
+end;
+
+function if_arcsin              (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal]) of
+        1: result := TVFloat.Create(arcsin(PL.F[0]));
+    end;
+end;
+
+function if_cos                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal]) of
+        1: result := TVFloat.Create(cos(PL.F[0]));
+    end;
+end;
+
+function if_arccos              (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal]) of
+        1: result := TVFloat.Create(arccos(PL.F[0]));
+    end;
+end;
+
+function if_tan                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal]) of
+        1: result := TVFloat.Create(tan(PL.F[0]));
+    end;
+end;
+
+function if_arctan              (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal]) of
+        1: result := TVFloat.Create(arctan(PL.F[0]));
+    end;
+end;
+
 function if_round               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -811,6 +859,14 @@ begin
     case params_is(PL, result, [
         tpReal]) of
         1: result := TVFloat.Create(PL.F[0]*180/pi);
+    end;
+end;
+
+function if_complex             (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal, tpReal]) of
+        1: result := TVComplex.Create(PL.F[0], PL.F[1]);
     end;
 end;
 
@@ -2983,7 +3039,7 @@ begin
 end;
 
 
-const int_fun_count = 145;
+const int_fun_count = 152;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2999,6 +3055,12 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'MAX';                       f:if_max;                   s:'(a :rest b)'),
 (n:'MIN';                       f:if_min;                   s:'(a :rest b)'),
 (n:'SQRT КОРЕНЬ';               f:if_sqrt;                  s:'(a)'),
+(n:'SIN';                       f:if_sin;                   s:'(a)'),
+(n:'ARCSIN';                    f:if_arcsin;                s:'(a)'),
+(n:'COS';                       f:if_cos;                   s:'(a)'),
+(n:'ARCCOS';                    f:if_arccos;                s:'(a)'),
+(n:'TAN';                       f:if_tan;                   s:'(a)'),
+(n:'ARCTAN';                    f:if_arctan;                s:'(a)'),
 (n:'ROUND';                     f:if_round;                 s:'(a)'),
 (n:'RANGE';                     f:if_range;                 s:'(l :optional h)'),
 (n:'SYMBOL';                    f:if_symbol;                s:'(:optional n)'),
@@ -3007,6 +3069,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'IM';                        f:if_im;                    s:'(a)'),
 (n:'RAD';                       f:if_rad;                   s:'(d)'),
 (n:'DEG';                       f:if_deg;                   s:'(r)'),
+(n:'COMPLEX';                   f:if_complex;               s:'(r i)'),
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 (n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
 (n:'TRIM';                      f:if_trim;                  s:'(s)'),

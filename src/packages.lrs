@@ -264,8 +264,9 @@ LazarusResources.Add('gnuplot','LISYA',[
   +'utput-as-str (fmt t output))'#10#10'    (const terminal (if  output'#10'   '
   +'     (case (lower-case (extract-file-ext output-as-str))'#10'            (('
   +'".jpeg" ".jpg") "jpeg")'#10'            (".png" "png")'#10'            (t o'
-  +'utput-as-str))'#10'        "GNUTERM"))'#10#10'    (procedure cmd (:rest c) '
-  +'(fmt gp (apply fmt t c) LF))'#10#10'    (cmd "set terminal " terminal " siz'
+  +'utput-as-str))'#10'        "GNUTERM"))'#10#10'    (procedure cmd  (:rest c)'
+  +' (fmt gp (apply fmt t c) LF))'#10'    (procedure cmdr (:rest c) (fmt gp (ap'
+  +'ply fmt t c) "; replot" LF))'#10#10'    (cmd "set terminal " terminal " siz'
   +'e " width ", " height)'#10#10'    (if (member \("png" "jpeg") terminal)'#10
   +'        (cmd "set output \"" output-as-str "\""))'#10#10'    (var object 0)'
   +#10'    (procedure new_object () (set object (+ object 1)) object)'#10#10'  '
@@ -277,19 +278,19 @@ LazarusResources.Add('gnuplot','LISYA',[
   +#10'            (const obj (new_object))'#10'            (cmd "set object " '
   +'obj " ellipse"'#10'                " center " x "," y'#10'                "'
   +' size " (* 2 rx) "," (* 2 ry)'#10'                " angle " a)'#10'        '
-  +'    (cmd "set object " obj " fillstyle empty")'#10'            obj)'#10#10
+  +'    (cmdr "set object " obj " fillstyle empty")'#10'            obj)'#10#10
   +#10'        \equal-axes (curry cmd "set view equal xy")'#10#10'        \poly'
   +'gon (procedure (start-point :rest points)'#10'            (const obj (new_o'
   +'bject))'#10'            (fmt gp "set object " obj " polygon from " (point s'
   +'tart-point))'#10'            (for p points (fmt gp " to " (point p)))'#10' '
-  +'           (cmd " to " (point start-point))'#10'            obj)'#10#10'   '
-  +'     \polyline (procedure (:rest points)'#10'            (cmd "plot ''-'' w'
-  +'ith lines")'#10'            (for p points'#10'                (cond'#10'   '
-  +'                 ((complex? p) (cmd (re p) " " (im p)))'#10'               '
-  +'     ((list? p) (cmd p/0 " " p/1))'#10'                    (t (error "gnupl'
-  +'ot" "invalid point " p))))'#10'            (cmd "e"))'#10#10'        \range'
-  +' (procedure (lx hx ly hy) (cmd "set xrange [" lx ":" hx "]; set yrange [" l'
-  +'y ":" hy "]"))'#10#10'        \size (procedure (w h) (cmd "set terminal " t'
-  +'erminal " size " w ", " h "; replot"))'#10#10'        \close (procedure () '
-  +'(close-file gp)))'#10#10'    )'#10#10')'#10
+  +'           (cmdr " to " (point start-point))'#10'            obj)'#10#10'  '
+  +'      \polyline (procedure (:rest points)'#10'            (cmd "plot ''-'' '
+  +'with lines")'#10'            (for p points'#10'                (cond'#10'  '
+  +'                  ((complex? p) (cmd (re p) " " (im p)))'#10'              '
+  +'      ((list? p) (cmd p/0 " " p/1))'#10'                    (t (error "gnup'
+  +'lot" "invalid point " p))))'#10'            (cmd "e"))'#10#10'        \rang'
+  +'e (procedure (lx hx ly hy) (cmd "set xrange [" lx ":" hx "]; set yrange [" '
+  +'ly ":" hy "]"))'#10#10'        \size (procedure (w h) (cmd "set terminal " '
+  +'terminal " size " w ", " h "; replot"))'#10#10'        \close (procedure ()'
+  +' (close-file gp)))'#10#10'    )'#10#10#10')'#10
 ]);

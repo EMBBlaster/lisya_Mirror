@@ -15,7 +15,8 @@
             (t output-as-str))
         "GNUTERM"))
 
-    (procedure cmd (:rest c) (fmt gp (apply fmt t c) LF))
+    (procedure cmd  (:rest c) (fmt gp (apply fmt t c) LF))
+    (procedure cmdr (:rest c) (fmt gp (apply fmt t c) "; replot" LF))
 
     (cmd "set terminal " terminal " size " width ", " height)
 
@@ -42,7 +43,7 @@
                 " center " x "," y
                 " size " (* 2 rx) "," (* 2 ry)
                 " angle " a)
-            (cmd "set object " obj " fillstyle empty")
+            (cmdr "set object " obj " fillstyle empty")
             obj)
 
 
@@ -52,7 +53,7 @@
             (const obj (new_object))
             (fmt gp "set object " obj " polygon from " (point start-point))
             (for p points (fmt gp " to " (point p)))
-            (cmd " to " (point start-point))
+            (cmdr " to " (point start-point))
             obj)
 
         \polyline (procedure (:rest points)
@@ -71,5 +72,6 @@
         \close (procedure () (close-file gp)))
 
     )
+
 
 )
