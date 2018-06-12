@@ -168,19 +168,23 @@ begin
     i := StrToInt64(ss)*m;
 end;
 
+
 function str_is_float(s: unicodestring; out f: double): boolean;
-var fs: TFormatSettings;
-begin
-    fs.DecimalSeparator:='.';
-    result := TryStrToFloat(s, f, fs);
-    if result then exit;
-
-    fs.DecimalSeparator:=',';
-    result :=  TryStrToFloat(s, f, fs);
-end;
-
-function str_is_float2(s: unicodestring; out f: double): boolean;
+const ml: array[1..19] of record n: unicodestring; v: real; end = (
+    (n:'п';  v:10e-12),  (n:'p'; v:10e-12),
+    (n:'н';  v:10e-9),   (n:'n'; v:10e-9),
+    (n:'мк'; v:10e-6),   (n:'u'; v:10e-6),
+    (n:'м';  v:10e-3),   (n:'m'; v:10e-3),
+    (n:'к';  v:10e3),    (n:'k'; v:10e3),
+    (n:'М';  v:10e6),    (n:'M'; v:10e6),
+    (n:'Г';  v:10e9),    (n:'G'; v:10e9),
+    (n:'Т';  v:10e12),   (n:'T'; v:10e12),
+    (n:'гр'; v:pi/180),  (n:'deg'; v:pi/180), (n:'°'; v:pi/180));
 var i: integer; fs: TFormatSettings; m: double; ss: unicodestring;
+    function str_at_end(ss: unicodestring): boolean;
+    begin
+        result := (Length(s)>=Length(ss)) and (ss=s[Length(s)-Length(ss)+1..Length(s)]);
+    end;
 begin
     result := sp_float(s);
     if not result then Exit;
@@ -190,18 +194,16 @@ begin
     ss := '';
     for i:=1 to length(s) do case s[i] of
         '_':;
-        ',': ss := ss+'.';
-        'п','p': m := 10e-12;
-        'н','n': m := 10e-9;
-        'м': if i=length(s) then m := 10e-3 else m := 10e-6;
-        'u': m := 10e-6;
-        'm': m := 10e-3;
-        'к','k': m := 10e3;
-        'М','M': m := 10e6;
-        'Г','G': m := 10e9;
-        'Т','T': m := 10e12;
-        else ss := ss+s[i];
+        ',','.': ss := ss+'.';
+        '0','1','2','3','4','5','6','7','8','9','E','e','-','+': ss := ss+s[i];
+        else break;
     end;
+
+    for i := low(ml) to high(ml) do if str_at_end(ml[i].n) then begin
+        m := ml[i].v;
+        Break;
+    end;
+
     f := StrToFloat(ss,fs)*m;
 end;
 
@@ -486,7 +488,7 @@ begin
     then result := TVInteger.Create(l)
     else
 
-    if str_is_float2(t[i], re)
+    if str_is_float(t[i], re)
     then result := TVFloat.Create(re)
     else
 
