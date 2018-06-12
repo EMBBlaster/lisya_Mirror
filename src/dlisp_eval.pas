@@ -798,6 +798,22 @@ begin
     end;
 end;
 
+function if_rad                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal]) of
+        1: result := TVFloat.Create(PL.F[0]*pi/180);
+    end;
+end;
+
+function if_deg                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal]) of
+        1: result := TVFloat.Create(PL.F[0]*180/pi);
+    end;
+end;
+
 function if_hash                (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2967,7 +2983,7 @@ begin
 end;
 
 
-const int_fun_count = 143;
+const int_fun_count = 145;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -2989,6 +3005,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RANDOM';                    f:if_random;                s:'(:optional r)'),
 (n:'RE';                        f:if_re;                    s:'(a)'),
 (n:'IM';                        f:if_im;                    s:'(a)'),
+(n:'RAD';                       f:if_rad;                   s:'(d)'),
+(n:'DEG';                       f:if_deg;                   s:'(r)'),
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 (n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
 (n:'TRIM';                      f:if_trim;                  s:'(s)'),
@@ -3140,7 +3158,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 );
 
 
-const predicates: array[1..18] of record n: unicodestring; f: TTypePredicate; end = (
+const predicates: array[1..19] of record n: unicodestring; f: TTypePredicate; end = (
 (n:'T';                    f:tpT),
 (n:'NIL';                  f:tpNIL),
 (n:'TRUE';                 f:tpTRUE),
@@ -3148,6 +3166,7 @@ const predicates: array[1..18] of record n: unicodestring; f: TTypePredicate; en
 (n:'REAL';                 f:tpReal),
 (n:'INTEGER';              f:tpInteger),
 (n:'FLOAT';                f:tpFloat),
+(n:'COMPLEX';              f:tpComplex),
 (n:'ATOM';                 f:tpAtom),
 (n:'SUBPROGRAM';           f:tpSubprogram),
 (n:'LIST';                 f:tpList),
@@ -4411,12 +4430,10 @@ begin
     if (PL.Count<3) then raise ELE.Malformed('MACRO-SYMBOL');
     if not tpOrdinarySymbol(PL.look[1]) then raise ELE.InvalidParameters;
 
-
     proc := TVMacroSymbol.Create;
-    proc.nN := PL.SYM[1].N;
-
     result := proc;
 
+    proc.nN := PL.SYM[1].N;
     proc.body := PL.Subseq(2, PL.Count) as TVList;
     proc.sign := TVList.Create;
     proc.rests := TVRecord.Create;

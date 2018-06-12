@@ -1,0 +1,75 @@
+﻿(package gnuplot (run)
+
+(procedure run (:key output width height)
+    (var gp (process-pipe (process "gnuplot --persist -")))
+
+    (default width 300)
+    (default height 300)
+
+    (const output-as-str (fmt t output))
+
+    (const terminal (if  output
+        (case (lower-case (extract-file-ext output-as-str))
+            ((".jpeg" ".jpg") "jpeg")
+            (".png" "png")
+            (t output-as-str))
+        "GNUTERM"))
+
+    (procedure cmd (:rest c) (fmt gp (apply fmt t c) LF))
+
+    (cmd "set terminal " terminal " size " width ", " height)
+
+    (if (member \("png" "jpeg") terminal)
+        (cmd "set output \"" output-as-str "\""))
+
+    (var object 0)
+    (procedure new_object () (set object (+ object 1)) object)
+
+    (procedure point (p) (cond
+        ((complex? p) (fmt t (re p) "," (im p)))
+        ((list? p) (fmt t p/0 "," p/1))
+        ((string? p) p)
+        (t (error "gnuplot" "invalid point format" p))))
+
+    (record
+        \cmd cmd
+
+        \ellipse (procedure (x y rx :optional ry a)
+            (default ry rx)
+            (default a 0)
+            (const obj (new_object))
+            (cmd "set object " obj " ellipse"
+                " center " x "," y
+                " size " (* 2 rx) "," (* 2 ry)
+                " angle " a)
+            (cmd "set object " obj " fillstyle empty")
+            obj)
+
+
+        \equal-axes (curry cmd "set view equal xy")
+
+        \polygon (procedure (start-point :rest points)
+            (const obj (new_object))
+            (fmt gp "set object " obj " polygon from " (point start-point))
+            (for p points (fmt gp " to " (point p)))
+            (cmd " to " (point start-point))
+            obj)
+
+        \polyline (procedure (:rest points)
+            (cmd "plot '-' with lines")
+            (for p points
+                (cond
+                    ((complex? p) (cmd (re p) " " (im p)))
+                    ((list? p) (cmd p/0 " " p/1))
+                    (t (error "gnuplot" "invalid point " p))))
+            (cmd "e"))
+
+        \range (procedure (lx hx ly hy) (cmd "set xrange [" lx ":" hx "]; set yrange [" ly ":" hy "]"))
+
+        \size (procedure (w h) (cmd "set terminal " terminal " size " w ", " h "; replot"))
+
+        \close (procedure () (close-file gp)))
+
+    )
+
+)
