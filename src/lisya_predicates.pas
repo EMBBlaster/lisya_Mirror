@@ -75,6 +75,8 @@ function tpListOfSubprograms                        (V: TValue): boolean;
 
 function tpListOfSymbols                            (V: TValue): boolean;
 
+function tpListOrSymbol                             (V: TValue): boolean;
+
 function tpNIL                                      (V: TValue): boolean;
 
 function tpNumber                                   (V: TValue): boolean;
@@ -493,6 +495,11 @@ end;
 function tpListOfSymbols(V: TValue): boolean;
 begin
     result := tphListOf(V, tpSymbol);
+end;
+
+function tpListOrSymbol(V: TValue): boolean;
+begin
+    result := (V is TVList) or (V is TVSymbol);
 end;
 
 function tpNIL(V:  TValue): boolean;

@@ -591,12 +591,9 @@ type
     { TVProcedure }
 
     TVProcedure = class (TVSubprogram)
-        //evaluated: boolean;
         sign: TVList;
-        //stack_pointer: integer;
         stack: TVSymbolStack;
-        rests: TVRecord;
-        //home_stack: TVSymbolStack;
+        rest: TVList;
         body: TVList;
         constructor Create;
         destructor Destroy; override;
@@ -604,8 +601,6 @@ type
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
         function equal(V: TValue): boolean; override;
-
-        //procedure Complement;
     end;
 
     { TVMacro }
@@ -619,7 +614,6 @@ type
     end;
 
     TVMacroSymbol = class (TVProcedure)
-
     end;
 
     type TEvalProc = function (V: TValue): TValue of Object;
@@ -2302,7 +2296,7 @@ begin
     body := nil;
     stack := nil;
     sign := nil;
-    rests := nil;
+    rest := nil;
 end;
 
 destructor TVProcedure.Destroy;
@@ -2310,7 +2304,7 @@ begin
     stack.Free;
     body.Free;
     sign.Free;
-    rests.Free;
+    rest.Free;
     inherited Destroy;
 end;
 
@@ -2325,7 +2319,7 @@ begin
     (result as TVProcedure).stack := stack.Copy as TVSymbolStack;
     (result as TVProcedure).sign := sign.Copy as TVList;
     (result as TVProcedure).nN := nN;
-    (result as TVProcedure).rests := rests.Copy as TVRecord;
+    (result as TVProcedure).rest := rest.Copy as TVList;
 end;
 
 function TVProcedure.AsString: unicodestring;
@@ -2349,7 +2343,7 @@ begin
 
     result := sign.equal(proc.sign)
         and body.equal(proc.body)
-        and rests.equal(proc.rests)
+        and rest.equal(proc.rest)
         and stack.equal(proc.stack);
 end;
 

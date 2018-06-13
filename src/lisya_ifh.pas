@@ -15,6 +15,7 @@ type TBindings = array of record
     end;
 
 function ifh_bind(sign, PL: TValue): TBindings;
+procedure ifh_test_signature(sign: TValue; subprogram: boolean);
 
 function ifh_member(const L: TVList; const E: TValue): boolean;
 function ifh_member1(const L: TVList; const E: TValue): boolean;
@@ -206,6 +207,67 @@ begin
 
 end;
 
+procedure ifh_test_signature(sign: TValue; subprogram: boolean);
+var names: array of integer; tp: TTypePredicate;
+
+    procedure error(msg: unicodestring; V: TValue);
+    begin raise ELE.Create(msg+ '('+V.AsString+')','syntax'); end;
+
+    procedure unique(e: TVSymbol);
+    var j: integer;
+    begin
+        for j := 0 to high(names) do
+            if e.N=names[j] then error('duplicated signature element', e);
+        SetLength(names,Length(names)+1);
+        names[high(names)]:=e.N;
+    end;
+
+    procedure test(S: TVList);
+    var i: integer; mode: (nec, opt, key, flag, rest);
+    begin
+        mode := nec;
+        for i := 0 to S.high do
+        begin
+            if not tp(S.look[i]) then error('invalid signature element',S.look[i]);
+            if tpOrdinarySymbol(S.look[i]) then unique(S.SYM[i]);
+            case mode of
+                nec:
+                    if tpList            (S.look[i]) then test(S.L[i])     else
+                    if vpKeyword_OPTIONAL(S.look[i]) then mode := opt      else
+                    if vpKeyword_KEY     (S.look[i]) then mode := key      else
+                    if vpKeyword_FLAG    (S.look[i]) then mode := flag     else
+                    if vpKeyword_REST    (S.look[i]) then mode := rest     else
+                    if tpKeyword         (S.look[i])
+                    then error('invalid parameter mode', S.SYM[i]);
+                opt:
+                    if tpList            (S.look[i]) then test(S.L[i])     else
+                    if tpKeyword(S.look[i]) then error('duplicated parameter mode', S.SYM[i]);
+                key, flag:
+                    if tpList(S.look[i]) then error('invalid signature element', S.L[i]) else
+                    if tpKeyword(S.look[i]) then error('duplicated parameter mode', S.SYM[i]);
+                rest:
+                    if tpKeyword(S.SYM[i]) or (i<>S.high)
+                    then error('malformed rest parameter', S);
+            end;
+        end;
+    end;
+
+begin
+    SetLength(names,0);
+    if subprogram then begin
+        tp := tpSymbol;
+        if tpList(sign)
+        then test(sign as TVList)
+        else error('invalid signature', sign);
+    end
+    else begin
+        tp := tpListOrSymbol;
+        if tpOrdinarySymbol(sign) then Exit
+        else
+            if tpList(sign)  then test(sign as TVList)
+            else error('invalid signature', sign);
+    end;
+end;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// неупорядоченные множества //////////////////////////////////////////////////

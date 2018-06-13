@@ -55,7 +55,7 @@ type
 
         function oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
         procedure oph_bind(s, P: TValue; constant: boolean;
-                        st: TVSymbolStack=nil; rests: TVRecord=nil);
+                        st: TVSymbolStack=nil; rest: TVList=nil);
         function oph_bind_to_list(s, P: TVList): TVList;
         function oph_execute_file(fn: unicodestring): boolean;
         procedure oph_bind_package(name: unicodestring; import: boolean = false);
@@ -1491,16 +1491,9 @@ begin
     end;
 end;
 
+
 function if_curry               (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; f: TVProcedure; bind: TBindings;
-    procedure del_sym(L: TVList; n: integer);
-    var i: integer;
-    begin
-        for i := L.high downto 0 do
-            if tpList(L.look[i]) then del_sym(L.L[i], n)
-            else
-                if L.SYM[i].N=n then L.delete(i);
-    end;
 begin
     case params_is(PL, result, [
         tpProcedure, tpList]) of
@@ -1516,10 +1509,10 @@ begin
                 then bind[i].V.Free
                 else begin
                     if bind[i].rest
-                    then (f.rests.LookSlot(bind[i].nN) as TVList).Append(bind[i].V as TVList)
+                    then f.rest.Append(bind[i].V as TVList)
                     else begin
                         f.stack.new_var(bind[i].nN, bind[i].V, true);
-                        del_sym(f.sign, bind[i].nN);
+                        f.sign.delete(i);
                     end;
                 end;
             end;
@@ -1528,6 +1521,7 @@ begin
         end;
     end;
 end;
+
 
 function ifh_filter(const PL: TVList; call: TCallProc; P: TTypePredicate): TValue; inline;
 var expr: TVList; c: TValue; i: integer;
@@ -2062,7 +2056,7 @@ begin
             WriteLn(proc.AsString);
             WriteLn(proc.sign.AsString);
             if tpString(proc.body.look[0]) then WriteLn(proc.body.look[0].AsString);
-            WriteLn(proc.rests.AsString);
+            WriteLn(proc.rest.AsString);
         end;
         2: begin
             int_fun := PL.look[0] as TVInternalFunction;
@@ -3402,7 +3396,7 @@ begin
 end; //26
 
 procedure TEvaluationFlow.oph_bind(s, P: TValue; constant: boolean;
-    st: TVSymbolStack; rests: TVRecord);
+    st: TVSymbolStack; rest: TVList);
 var bind: TBindings; i: integer; restV: TVList;
 begin
     if st=nil then st := stack;
@@ -3410,8 +3404,8 @@ begin
     for i := 0 to high(bind) do begin
         if not (_.N = bind[i].nN)
         then begin
-            if (rests<>nil) and bind[i].rest then begin
-                restV := rests.GetSlot(bind[i].nN) as TVList;
+            if (rest<>nil) and bind[i].rest then begin
+                restV := rest.Copy as TVList;
                 restV.Append(bind[i].V as TVList);
                 st.new_var(bind[i].nN, restV, true);
             end
@@ -4499,7 +4493,7 @@ begin
     proc.nN := PL.SYM[1].N;
     proc.body := PL.Subseq(2, PL.Count) as TVList;
     proc.sign := TVList.Create;
-    proc.rests := TVRecord.Create;
+    proc.rest := TVList.Create;//todo: макросимволу не нужен остаточный параметр
 
     proc.stack := TVSymbolStack.Create(nil);
     try
@@ -4522,6 +4516,7 @@ begin
         if not tpNIL(result) then exit;
     end;
 end;
+
 
 function TEvaluationFlow.op_package(PL: TVList): TValue;
 var external_stack, package_stack: TVSymbolStack;
@@ -4635,23 +4630,9 @@ begin
 end;
 
 function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
-var proc: TVProcedure; sl, rl: TVList; P: PVariable;
+var proc: TVProcedure; sl: TVList; P: PVariable;
     mode: (forward_declaration, lambda, procedure_declaration);
     sign_pos, i: integer;
-    function rest_names(L: TVList): TVList;
-    var i: integer;
-    begin
-        result := TVList.Create;
-        for i := 0 to L.high do begin
-            if tpList(L.look[i]) then result.Append(rest_names(L.L[i]));
-            if vpKeyword_REST(L.look[i]) then begin
-                if L.high=(i+1)
-                then result.Add(L[i+1])
-                else raise ELE.Malformed(L.AsString);
-            end;
-        end;
-    end;
-
 begin
     result := nil;
 
@@ -4696,19 +4677,14 @@ begin
 
     proc.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
     proc.sign := PL[sign_pos] as TVList;
+    ifh_test_signature(proc.sign, true);//todo: может вызвать утечку при возникновении исключения
     proc.stack := TVSymbolStack.Create(nil);
     try
-        rl := nil;
         sl := extract_body_symbols(proc.body);
         fill_subprogram_stack(proc, sl);
-        rl := rest_names(proc.sign);
-        proc.rests := TVRecord.Create;
-
-        for i := 0 to rl.high do
-            proc.rests.AddSlot(rl.SYM[i], TVList.Create);
+        proc.rest := TVList.Create;
     finally
         FreeAndNil(sl);
-        FreeAndNil(rl);
     end;
 
     if mode=procedure_declaration
@@ -4890,7 +4866,7 @@ begin try
 
     proc_stack := proc.stack.Copy as TVSymbolStack;
     params := PL.CDR;
-    oph_bind(proc.sign, params, true, proc_stack, proc.rests);
+    oph_bind(proc.sign, params, true, proc_stack, proc.rest);
 
     tmp_stack := stack;
     stack := proc_stack;

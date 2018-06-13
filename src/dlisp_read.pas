@@ -199,13 +199,15 @@ begin
         else break;
     end;
 
-    for i := low(ml) to high(ml) do if str_at_end(ml[i].n) then begin
-        m := ml[i].v;
-        Break;
-    end;
+    for i := low(ml) to high(ml) do
+        if str_at_end(ml[i].n) then begin
+            m := ml[i].v;
+            Break;
+        end;
 
     f := StrToFloat(ss,fs)*m;
 end;
+
 
 function str_is_complex(s: unicodestring; out re, im: double): boolean;
 var fs: TFormatSettings; i_pos: integer;

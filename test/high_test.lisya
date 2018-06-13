@@ -16,26 +16,12 @@
     (Pf 1 :c)
     (procedure Pr (a :rest b)
         (assertion (and (= a 1) (= b \(2 3))) "rest"))
-    (Pr 1 2 3)
-    (procedure P (a (b :optional c) (d :key e) (f :flag g) (h :rest i) :rest j)
-        (assertion (and
-            (= a 1)
-            (= b 2)
-            (= c nil)
-            (= d 4)
-            (= e 5)
-            (= f 6)
-            (= g T)
-            (= h 8)
-            (= i \(9 10))
-            (= j \(11 12))) "nested"))
-    (P 1 \(2) \(4 :e 5) \(6 :g) \(8 9 10) 11 12))
+    (Pr 1 2 3))
 
 (block "вычисление параметров процедур"
     (procedure p (a) a)
     (assertion (= 1 (p 1)) "eval params"))
 
-;(log "WARNING не тестируются рекурсивные процедуры")
 (block "рекурсивные процедуры"
     (procedure p (n) (if (> n 0) (p (- n 1))))
     (p 5))
