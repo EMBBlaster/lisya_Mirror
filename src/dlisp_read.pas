@@ -261,7 +261,7 @@ var  i: integer; sn: unicodestring;
     var i: integer;
     begin
         if stream<>nil
-        then stream.body.write_string(s[i])
+        then stream.body.write_string(s)
         else System.Write(s);
     end;
     procedure indent;

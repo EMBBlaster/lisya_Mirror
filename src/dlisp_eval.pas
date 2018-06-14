@@ -1494,25 +1494,25 @@ end;
 
 
 function if_curry               (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; f: TVProcedure; bind1: TValues;
+var i: integer; f: TVProcedure; bind: TValues;
 begin
     case params_is(PL, result, [
         tpProcedure, tpList]) of
         1: try
-            bind1 := ifh_bind_params((PL.look[0] as TVProcedure).sign1, PL.L[1]);
+            bind := ifh_bind_params((PL.look[0] as TVProcedure).sign1, PL.L[1]);
             result := PL[0];
             f := result as TVProcedure;
             f.nN := 0;
             f.sign1.p := system.Copy((PL.look[0] as TVProcedure).sign1.p);
 
-            for i := high(bind1) downto 0 do begin
-                if vpSymbol__(bind1[i])
-                then bind1[i].Free
+            for i := high(bind) downto 0 do begin
+                if vpSymbol__(bind[i])
+                then bind[i].Free
                 else begin
-                    if (f.sign1.mode=spmRest) and (i=high(bind1))
-                    then f.rest.Append(bind1[i] as TVList)
+                    if (f.sign1.mode=spmRest) and (i=high(bind))
+                    then f.rest.Append(bind[i] as TVList)
                     else begin
-                        f.stack.new_var(f.sign1.p[i].n, bind1[i], true);
+                        f.stack.new_var(f.sign1.p[i].n, bind[i], true);
                         f.sign1.delete(i);
                     end;
                 end;
@@ -3829,7 +3829,6 @@ var vars: array of TVarRec; links: array of TVarRec;
             end;
             dec(indent);
         end;
-
     end;
 
 begin
@@ -4099,7 +4098,6 @@ begin
 
     result := nil;
     try
-        //stack.Print(10);
         result := eval(PL[1]);
     except on E:ELE do //eval может выбросить только ELisyaError
         try
@@ -4864,6 +4862,7 @@ begin
    result := eval(PL.Copy);
 end;
 
+
 function TEvaluationFlow.call_procedure(PL: TVList): TValue;
 var proc: TVProcedure; params: TVList; tmp_stack, proc_stack: TVSymbolStack;
     tmp: TValue; V: TValues; i: integer; rest: TVList;
@@ -4873,7 +4872,6 @@ begin try
     proc_stack := nil;
     V := nil;
     proc := PL.look[0] as TVProcedure;
-
 
     proc_stack := proc.stack.Copy as TVSymbolStack;
     params := PL.CDR;
@@ -4885,7 +4883,6 @@ begin try
         V[high(V)] := rest;
     end;
     for i:=0 to high(V) do proc_stack.new_var(proc.sign1.p[i].n, V[i], true);
-
 
     stack := proc_stack;
     result := oph_block(proc.body,0,false);
@@ -4901,6 +4898,7 @@ finally
 end;
     //DONE: при очистке стэка, рекурсивные процедуры не освобождаются
 end;
+
 
 function TEvaluationFlow.call_macro(PL: TVList): TValue;
 begin
@@ -4989,32 +4987,12 @@ end;
 function TEvaluationFlow.procedure_call(PL: TVList): TValue;
 var proc: TVProcedure; params: TVList;
     i: integer;
-    linkable: boolean;
 begin
-    //TODO: при вызове процедуры с несуществующими переменными не возникает ошибка
-
     proc := PL.look[0] as TVProcedure;
-
-   // WriteLn('>> ', proc.AsString());
-
     params := TVList.Create([PL[0]]);
     params.SetCapacity(PL.Count);
     result := nil;
 try
-    //linkable := true;
-    //for i := 1 to PL.high do
-    //    if proc is TVMacro
-    //    then params.Add(PL[i])
-    //    else begin
-    //        if linkable and not tpOrdinarySymbol(proc.sign.look[i-1])
-    //        then linkable := false;
-    //        if linkable
-    //        then params.Add(eval_link(PL.look[i]))
-    //        else params.Add(eval(PL[i]));
-    //
-    ////по ссылке привязываются только обязательные параметры
-    //    end;
-
     if proc is TVMacro
     then params.Append(PL.subseq(1) as TVList)
     else begin
@@ -5025,10 +5003,8 @@ try
     end;
 
     result := call_procedure(params);
-
 finally
     params.Free;
-    //WriteLn('<< ', proc.AsString());
 end;
 
 end;
