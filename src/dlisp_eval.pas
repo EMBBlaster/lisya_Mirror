@@ -27,6 +27,7 @@ uses
     lisya_packages
     ,lisya_predicates
     ,lisya_ifh
+    ,lisya_sign
     ,lisya_zip
     ,lisia_charset
     ,lisya_exceptions
@@ -191,12 +192,12 @@ end;
 
 function bind_parameters_list(PL: TVList; sign: TVList): TVList;
 var i, opt_start, p: integer;
-    mode: TSubprogramParmeterMode;
+    mode: TSubprogramParmetersMode;
 begin
     //TODO: bind_parameters_list не проверяет переданный список на наличие лишнего
 
     result := TVList.Create;
-    mode := spmNec;
+    mode := spmReq;
     for i := 0 to sign.Count-1 do
         if tpKeyword(sign.look[i])
         then begin
@@ -210,7 +211,7 @@ begin
         end
         else
             case mode of
-                spmNec:
+                spmReq:
                     if i<PL.Count
                     then result.Add(PL[i])
                     else raise ELE.Create('insufficient parameters count', 'invalid parameters');
@@ -1493,26 +1494,26 @@ end;
 
 
 function if_curry               (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; f: TVProcedure; bind: TBindings;
+var i: integer; f: TVProcedure; bind1: TValues;
 begin
     case params_is(PL, result, [
         tpProcedure, tpList]) of
         1: try
+            bind1 := ifh_bind_params((PL.look[0] as TVProcedure).sign1, PL.L[1]);
             result := PL[0];
             f := result as TVProcedure;
-            f.sign.CopyOnWrite;
             f.nN := 0;
+            f.sign1.p := system.Copy((PL.look[0] as TVProcedure).sign1.p);
 
-            bind := ifh_bind(f.sign,PL.L[1]);
-            for i := 0 to high(bind) do begin
-                if vpSymbol__(bind[i].V)
-                then bind[i].V.Free
+            for i := high(bind1) downto 0 do begin
+                if vpSymbol__(bind1[i])
+                then bind1[i].Free
                 else begin
-                    if bind[i].rest
-                    then f.rest.Append(bind[i].V as TVList)
+                    if (f.sign1.mode=spmRest) and (i=high(bind1))
+                    then f.rest.Append(bind1[i] as TVList)
                     else begin
-                        f.stack.new_var(bind[i].nN, bind[i].V, true);
-                        f.sign.delete(i);
+                        f.stack.new_var(f.sign1.p[i].n, bind1[i], true);
+                        f.sign1.delete(i);
                     end;
                 end;
             end;
@@ -2054,7 +2055,7 @@ begin
         1: begin
             proc := PL.look[0] as TVProcedure;
             WriteLn(proc.AsString);
-            WriteLn(proc.sign.AsString);
+            WriteLn(proc.sign1.AsString);
             if tpString(proc.body.look[0]) then WriteLn(proc.body.look[0].AsString);
             WriteLn(proc.rest.AsString);
         end;
@@ -4098,6 +4099,7 @@ begin
 
     result := nil;
     try
+        //stack.Print(10);
         result := eval(PL[1]);
     except on E:ELE do //eval может выбросить только ELisyaError
         try
@@ -4492,7 +4494,7 @@ begin
 
     proc.nN := PL.SYM[1].N;
     proc.body := PL.Subseq(2, PL.Count) as TVList;
-    proc.sign := TVList.Create;
+
     proc.rest := TVList.Create;//todo: макросимволу не нужен остаточный параметр
 
     proc.stack := TVSymbolStack.Create(nil);
@@ -4629,6 +4631,7 @@ begin
     result := asmbl(PL, 1);
 end;
 
+
 function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
 var proc: TVProcedure; sl: TVList; P: PVariable;
     mode: (forward_declaration, lambda, procedure_declaration);
@@ -4647,11 +4650,7 @@ begin
             else
                 raise ELE.Malformed('PROCEDURE or MACRO');
 
-    if (PL.look[0] as TVOperator).op_enum=oeMACRO
-    then proc := TVMacro.Create
-    else proc := TVProcedure.Create;
-    result := proc;
-
+try
     case mode of
         procedure_declaration: begin
             P := stack.find_ref_or_nil(PL.SYM[1]);
@@ -4659,13 +4658,19 @@ begin
             then begin
                 ReleaseVariable(P);
                 stack.new_var(PL.SYM[1], nil, true);
-                P := stack.find_ref_or_nil(PL.SYM[1]);
             end;
+            ReleaseVariable(P);
             sign_pos := 2;
+            if (PL.look[0] as TVOperator).op_enum=oeMACRO
+            then proc := TVMacro.Create
+            else proc := TVProcedure.Create;
             proc.nN := PL.SYM[1].N;
         end;
         lambda: begin
             sign_pos := 1;
+            if (PL.look[0] as TVOperator).op_enum=oeMACRO
+            then proc := TVMacro.Create
+            else proc := TVProcedure.Create;
             proc.nN := -1;
         end;
         forward_declaration: begin
@@ -4675,9 +4680,9 @@ begin
         end;
     end;
 
+    result := proc;
+    proc.sign1 := ifh_build_sign(PL.L[sign_pos]);
     proc.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
-    proc.sign := PL[sign_pos] as TVList;
-    ifh_test_signature(proc.sign, true);//todo: может вызвать утечку при возникновении исключения
     proc.stack := TVSymbolStack.Create(nil);
     try
         sl := extract_body_symbols(proc.body);
@@ -4689,10 +4694,14 @@ begin
 
     if mode=procedure_declaration
     then begin
+        P := stack.find_ref_or_nil(PL.SYM[1]);
         replace_value(P.V, result.Copy);
         ReleaseVariable(P);
     end;
 
+except
+    FreeAndNil(result); raise;
+end;
 end; //61 83
 
 function TEvaluationFlow.op_var                     (PL: TVList): TValue;
@@ -4857,18 +4866,27 @@ end;
 
 function TEvaluationFlow.call_procedure(PL: TVList): TValue;
 var proc: TVProcedure; params: TVList; tmp_stack, proc_stack: TVSymbolStack;
-    tmp: TValue;
+    tmp: TValue; V: TValues; i: integer; rest: TVList;
 begin try
-
+    tmp_stack := stack;
     params := nil;
     proc_stack := nil;
+    V := nil;
     proc := PL.look[0] as TVProcedure;
+
 
     proc_stack := proc.stack.Copy as TVSymbolStack;
     params := PL.CDR;
-    oph_bind(proc.sign, params, true, proc_stack, proc.rest);
 
-    tmp_stack := stack;
+    V := ifh_bind_params(proc.sign1,params);
+    if proc.sign1.mode=spmRest then begin
+        rest := proc.rest.Copy as TVList;
+        rest.Append(V[high(V)] as TVList);
+        V[high(V)] := rest;
+    end;
+    for i:=0 to high(V) do proc_stack.new_var(proc.sign1.p[i].n, V[i], true);
+
+
     stack := proc_stack;
     result := oph_block(proc.body,0,false);
     if tpReturn(result) then begin
@@ -4983,22 +5001,28 @@ begin
     params.SetCapacity(PL.Count);
     result := nil;
 try
-    //proc.Complement;
-    linkable := true;
-    for i := 1 to PL.high do
-        if proc is TVMacro
-        then params.Add(PL[i])
-        else begin
-            if linkable and not tpOrdinarySymbol(proc.sign.look[i-1])
-            then linkable := false;
-            if linkable
-            then params.Add(eval_link(PL.look[i]))
-            else params.Add(eval(PL[i]));
+    //linkable := true;
+    //for i := 1 to PL.high do
+    //    if proc is TVMacro
+    //    then params.Add(PL[i])
+    //    else begin
+    //        if linkable and not tpOrdinarySymbol(proc.sign.look[i-1])
+    //        then linkable := false;
+    //        if linkable
+    //        then params.Add(eval_link(PL.look[i]))
+    //        else params.Add(eval(PL[i]));
+    //
+    ////по ссылке привязываются только обязательные параметры
+    //    end;
 
-    //есть трудности с деструктурирующей привязкой параметров по ссылке,
-    //по этому по ссылке
-    //привязываются только обязательные параметры нулевого уровня
-        end;
+    if proc is TVMacro
+    then params.Append(PL.subseq(1) as TVList)
+    else begin
+        for i := 0 to min(proc.sign1.required_count,PL.Count-1)-1 do
+            params.Add(eval_link(PL.look[i+1]));
+        for i := min(proc.sign1.required_count,PL.Count-1) to PL.high-1 do
+            params.Add(eval(PL[i+1]));
+    end;
 
     result := call_procedure(params);
 

@@ -19,8 +19,8 @@ function PointerToStr(ptr: Pointer): unicodestring;
 function DirSep(s: unicodestring): unicodestring;
 
 function concat_integers(i1, i2: TIntegers): TIntegers;
-procedure append_integers(var i1: TIntegers; i2: TIntegers);
-procedure append_integer(var i1: TIntegers; i: integer);
+procedure append_integers(var i1: TIntegers; i2: TIntegers); inline;
+procedure append_integer(var i1: TIntegers; i: integer); inline;
 
 type
 

@@ -18,9 +18,61 @@
         (assertion (and (= a 1) (= b \(2 3))) "rest"))
     (Pr 1 2 3))
 
+
+(block "ошибки в сигнатурах"
+    (try (block (procedure (P a "b"))
+        (error "assertion" "не смвол в сигнатуре"))
+        ("syntax/subprogram/parameters"))
+
+    (try (block (procedure (P a :WHOLE b))
+        (error "assertion" "неподдерживаемый режим передачи параметров"))
+        ("syntax/subprogram/parameters"))
+
+    (try (block (procedure (P a :REST))
+        (error "assertion" "нет имени остаточного параметра"))
+        ("syntax/subprogram/parameters"))
+
+    (try (block (procedure (P a :REST b c))
+        (error "assertion" "множество остаточных параметров"))
+        ("syntax/subprogram/parameters"))
+
+    (try (block (procedure (P a :KEY :FLAG b))
+        (error "assertion" "дважды указан режим передачи параметров"))
+        ("syntax/subprogram/parameters"))
+
+    (try (block (procedure (P a :KEY a))
+        (error "assertion" "повтор имён"))
+        ("syntax/subprogram/parameters")))
+
+
 (block "вычисление параметров процедур"
     (procedure p (a) a)
     (assertion (= 1 (p 1)) "eval params"))
+
+(block "ошибки в параметрах"
+    (procedure Pn (a b))
+    (try (block (Pn 1) (error "assertion" "мало параметров"))
+        ("syntax/subprogram/parameters"))
+    (try (block (Pn 1 2 3) (error "assertion" "много параметров"))
+        ("syntax/subprogram/parameters"))
+
+    (procedure Po (a :optional b))
+    (try (block (Po) (error "assertion" "мало параметров"))
+        ("syntax/subprogram/parameters"))
+    (try (block (Po 1 2 3) (error "assertion" "много параметров"))
+        ("syntax/subprogram/parameters"))
+
+    (procedure Pk (a :key b))
+    (try (block (Pk 1 :b) (error "assertion" "ключ без значения"))
+        ("syntax/subprogram/parameters"))
+    (try (block (Pk 1 :с) (error "assertion" "ключ не найден"))
+        ("syntax/subprogram/parameters"))
+
+    (procedure Pf (a :flag b))
+    (try (block (Pf 1 :c) (error "assertion" "флаг не найден"))
+        ("syntax/subprogram/parameters")))
+
+
 
 (block "рекурсивные процедуры"
     (procedure p (n) (if (> n 0) (p (- n 1))))
@@ -44,6 +96,9 @@
     (const p2 (ШФ p1 _ 10 11))
     (assertion (= \("c" 5 6 7 10 11 12) (p2 "c" 12)) "curry 4")
     (assertion (= \("a" 5 6 7 "b") (p1 "a" "b")) "curry 3")
+    (procedure p3 (a b c) (list a b c))
+    (const p4 (curry p3 1 2 _))
+    (assertion (= \(1 2 4) (p4 4)) "curry 5")
     )
 
 (block "map-concatenate"

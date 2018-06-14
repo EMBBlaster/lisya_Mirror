@@ -12,7 +12,7 @@ uses
     sysutils,
     lisya_repl,
     dlisp_eval, lisya_process, lisya_streams, lisya_exceptions,
-lisya_string_predicates;
+lisya_string_predicates, lisya_sign;
 
 begin
     {$if declared(UseHeapTrace)}

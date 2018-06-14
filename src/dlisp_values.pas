@@ -564,14 +564,19 @@ type
 
     { TVSubprogram }
 
-    TSubprogramParmeterMode = (spmNec, spmOpt, spmKey, spmRest, spmFlag,
-        spmCaptured);
-    TSubprogramParameterDescription = record
-        n: unicodestring;
-        m: TSubprogramParmeterMode;
-        r: boolean;
+    TSubprogramParmetersMode = (spmReq, spmOpt, spmKey, spmRest, spmFlag);
+
+    { TSubprogramSignature }
+
+    TSubprogramSignature = record
+        required_count: integer;
+        mode: TSubprogramParmetersMode;
+        p: array of record n,k: integer; end;
+        procedure delete(n: integer);
+        function AsString: unicodestring;
+        //function Copy:TSubprogramSignature;
+        //procedure Clear;
     end;
-    TSubprogramSignature = array of TSubprogramParameterDescription;
 
 
     TVSubprogram = class (TValue)
@@ -591,7 +596,7 @@ type
     { TVProcedure }
 
     TVProcedure = class (TVSubprogram)
-        sign: TVList;
+        sign1: TSubprogramSignature;
         stack: TVSymbolStack;
         rest: TVList;
         body: TVList;
@@ -921,6 +926,52 @@ begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
 
+{ TSubprogramSignature }
+
+procedure TSubprogramSignature.delete(n: integer);
+var i: integer;
+begin
+    for i := n to high(p)-1 do p[i]:=p[i+1];
+    SetLength(p, Length(p)-1);
+    if n<required_count then Dec(required_count);
+end;
+
+function TSubprogramSignature.AsString: unicodestring;
+var i: integer;
+begin
+    result := '(';
+    for i := 0 to required_count-1 do result := result+TVSymbol.symbol_uname(P[i].n)+' ';
+    case mode of
+        spmReq:;
+        spmOpt: result := result+':OPTIONAL ';
+        spmKey: result := result+':KEY ';
+        spmFlag:result := result+':FLAG ';
+        spmRest:result := result+':REST ';
+    end;
+    for i := required_count to high(p) do result := result+TVSymbol.symbol_uname(P[i].n)+' ';
+    if result[Length(result)] = ' '
+    then result[Length(result)] := ')'
+    else result := result+')';
+end;
+
+{ TSubprogramSignature }
+
+//function TSubprogramSignature.Copy: TSubprogramSignature;
+//begin
+//    result.required_count:=self.required_count;
+//    result.mode:= self.mode;
+//    result.p := system.copy(self.p);
+//end;
+//
+//procedure TSubprogramSignature.Clear;
+//var i: integer;
+//begin
+//    required_count := 0;
+//    mode := spmReq;
+//    for i := 0 to high(p) do p[i].V.Free;
+//    SetLength(p, 0);
+//end;
+
 { TVProcedureForwardDeclaration }
 
 function TVProcedureForwardDeclaration.Copy: TValue;
@@ -1073,7 +1124,7 @@ end;
 function TVMacro.AsString: unicodestring;
 begin
     if nN<=0
-    then result := '#<MACRO '+sign.AsString+'>'
+    then result := '#<MACRO '+sign1.AsString+'>'
     else result := '#<MACRO '+symbols[nN]+'>';
 end;
 
@@ -2295,16 +2346,18 @@ begin
     inherited;
     body := nil;
     stack := nil;
-    sign := nil;
     rest := nil;
+    SetLength(sign1.p, 0);
+    sign1.mode:=spmReq;
+    sign1.required_count:=0;
 end;
 
 destructor TVProcedure.Destroy;
 begin
     stack.Free;
     body.Free;
-    sign.Free;
     rest.Free;
+    SetLength(sign1.p, 0);
     inherited Destroy;
 end;
 
@@ -2317,7 +2370,7 @@ begin
 
     (result as TVProcedure).body := body.Copy() as TVList;
     (result as TVProcedure).stack := stack.Copy as TVSymbolStack;
-    (result as TVProcedure).sign := sign.Copy as TVList;
+    (result as TVProcedure).sign1 := sign1;
     (result as TVProcedure).nN := nN;
     (result as TVProcedure).rest := rest.Copy as TVList;
 end;
@@ -2325,13 +2378,13 @@ end;
 function TVProcedure.AsString: unicodestring;
 begin
     if nN<=0
-    then result := '#<PROCEDURE '+sign.AsString+'>'
+    then result := '#<PROCEDURE '+sign1.AsString+'>'
     else result := '#<PROCEDURE '+symbols[nN]+'>';
 end;
 
 function TVProcedure.hash: DWORD;
 begin
-    result := (sign.hash div 2) + (body.hash div 2);
+    result := (body.hash div 2);//TODO: хэш от процедур вычисляется без учёта сигнатуры
 end;
 
 function TVProcedure.equal(V: TValue): boolean;
@@ -2340,9 +2393,10 @@ begin
     result := self.ClassType=V.ClassType;
     if not result then Exit;
     proc := V as TVProcedure;
-
-    result := sign.equal(proc.sign)
-        and body.equal(proc.body)
+    //TODO: равенство процедур вычисляется без учёта сигнатуры
+    result := //sign.equal(proc.sign)
+        //and
+        body.equal(proc.body)
         and rest.equal(proc.rest)
         and stack.equal(proc.stack);
 end;
