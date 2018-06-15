@@ -3435,9 +3435,7 @@ begin
     try
         prog_file := nil;
         res := nil;
-        //prog_file := TVStreamPointer.Create(
-        //        NewVariable(
-        //            TVFileStream.Create(DirSep(fn), fmOpenRead, seBOM)));
+
         prog_file := TVStreamPointer.Create(
                     TLFileStream.Create(DirSep(fn), fmOpenRead, seBOM));
         while true do begin
@@ -3604,8 +3602,8 @@ function TEvaluationFlow.opl_key(PL: TVList): TVChainPointer;
 var i: integer; L: TVList; HT: TVHashTable; key: TValue;
 begin try
     result := nil;
-    result := eval_link(PL.look[1]);
     key := nil;
+    result := eval_link(PL.look[1]);
     key := eval(PL[2]);
 
     if tpList(result.look)

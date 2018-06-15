@@ -273,7 +273,7 @@ begin
     case mode of
         fmOpenRead: if not FileExists(fn)
                         then ELE.Create(fn, 'file not found')
-                        else stream := TFileStream.Create(fn, fmOpenRead);
+                        else stream := TFileStream.Create(fn, fmOpenRead or fmShareDenyWrite);
         fmCreate: stream := TFileStream.Create(fn, fmCreate);
         fmOpenReadWrite: begin
             if FileExists(fn)
