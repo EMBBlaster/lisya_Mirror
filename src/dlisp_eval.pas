@@ -126,6 +126,7 @@ implementation
 var base_stack: TVSymbolStack = nil;
     T: TVT;
     NULL: TVList;
+    log_file: TLFileStream = nil;
 
 function ternary(cnd: boolean; a,b: unicodestring): unicodestring; inline;
 begin
@@ -386,6 +387,7 @@ begin
     if V is TVString then result := (V as TVString).S else result := default;
 end;
 
+
 procedure ifh_elt(var C: TVCompound; ind: TValue; call: TCallProc; var indices: TIntegers);
 var index, f_ind: TValue; expr, il: TVList; i,j: integer;
 begin try
@@ -444,7 +446,6 @@ end; end;
 function ifh_div_sequence(s: TVSequence; d: integer): TVList;
 var l,tl,i: integer;
 begin
-    WriteLn(s.AsString);
     result := TVList.Create;
     l := s.Count div d;
     tl := s.Count mod d;
@@ -2664,11 +2665,23 @@ function if_log                 (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpList]) of
-        1: begin
-            System.WriteLn(ifh_format(PL.L[0]));
-            result := TVT.Create;
-        end;
+        1: if log_file=nil
+            then System.WriteLn(ifh_format(PL.L[0]))
+            else log_file.Log(ifh_format(PL.L[0])+new_line);
     end;
+    result := TVT.Create;
+end;
+
+function if_log_file            (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpNIL, tpNIL,
+        tpString, vpKeywordEncodingOrNIL]) of
+        1: FreeAndNil(log_file);
+        2: log_file := TLFileStream.Create(PL.S[0], fmOpenReadWrite,
+            ifh_keyword_to_encoding(PL.look[1]));
+    end;
+    result := TVT.Create;
 end;
 
 function if_hex                 (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -3069,7 +3082,7 @@ begin
 end;
 
 
-const int_fun_count = 154;
+const int_fun_count = 155;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3225,6 +3238,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'WRITE';                     f:if_write;                 s:'(s a)'),
 (n:'PRINT';                     f:if_print;                 s:'(s a)'),
 (n:'INPUT ВВОД';                f:if_input;                 s:'(prompt :rest query)'),
+(n:'LOG-FILE';                  f:if_log_file;              s:'(:optional fn encoding)'),
 
 (n:'FMT';                       f:if_fmt;                   s:'(stream :rest s)'),
 (n:'LOG';                       f:if_log;                   s:'(:rest s)'),
@@ -5206,5 +5220,7 @@ finalization
     T.Free;
     base_stack.Free;
     free_int_fun_signs;
+    log_file.Free;
+
 end.
 //4576 4431 4488 4643 4499 4701 5166 5096 5104

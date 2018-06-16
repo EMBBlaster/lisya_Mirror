@@ -6,7 +6,7 @@ interface
 
 uses
     {$IFDEF LINUX}
-    cwstring,
+    cwstring, unix,
     {$ENDIF}
     zstream, LResources, Pipes,
     Classes, SysUtils, mar, lisia_charset, lisya_exceptions, lisya_zip, lisya_process;
@@ -69,8 +69,13 @@ type
     { TLFileStream }
 
     TLFileStream = class(TLStream)
+    private
+        function GetFileName: unicodestring;
+    public
         constructor Create(fn: unicodestring; mode: WORD; enc: TStreamEncoding);
         function description: unicodestring; override;
+        procedure Log(msg: unicodestring);
+        property FileName: unicodestring read GetFileName;
     end;
 
     { TLDeflateStream }
@@ -267,12 +272,17 @@ end;
 
 { TLFileStream }
 
+function TLFileStream.GetFileName: unicodestring;
+begin
+    result := (stream as TFileStream).FileName;
+end;
+
 constructor TLFileStream.Create(fn: unicodestring; mode: WORD;
     enc: TStreamEncoding);
 begin
     case mode of
         fmOpenRead: if not FileExists(fn)
-                        then ELE.Create(fn, 'file not found')
+                        then raise ELE.Create(fn, 'file not found')
                         else stream := TFileStream.Create(fn, fmOpenRead or fmShareDenyWrite);
         fmCreate: stream := TFileStream.Create(fn, fmCreate);
         fmOpenReadWrite: begin
@@ -290,6 +300,16 @@ begin
     if stream<>nil
     then result := 'FILE ('+IntToStr(refs)+') '+(stream as TFileStream).FileName
     else result := 'FILE';
+end;
+
+procedure TLFileStream.Log(msg: unicodestring);
+begin
+    self.write_string(msg);
+    {$IFDEF WINDOWS}
+    FlushFileBuffers((self.stream as TFileStream).Handle);
+    {$ELSE}
+    fpfsync((self.stream as TFileStream).Handle);
+    {$ENDIF}
 end;
 
 { TLMemoryStream }

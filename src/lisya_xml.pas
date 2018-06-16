@@ -49,7 +49,7 @@ begin
         Inc(i);
         if s[i]='&' then begin
             p := PosU(';', s, i);
-            if abs(p-i)>6 then raise ELE.Create('invalid symbol '+s[i..i+4],'xml');
+            if abs(p-i)>6 then raise ELE.Create('invalid symbol '+s[i..i+5],'xml');
             result := result + decode_symbol(s[i+1..p-1]);
             i := p;
         end
@@ -192,7 +192,7 @@ end;
 
 
 procedure read_tags(s: TLStream; var tags: TStringList);
-var depth: integer; ch: unicodechar; acc: unicodestring;
+var depth, p: integer; ch: unicodechar; acc, tmp: unicodestring;
     encoding: TStreamEncoding; BOM: DWORD; b: TBytes;
     quoted: boolean;
     procedure add;
@@ -227,6 +227,13 @@ begin
                 b[2]:=(BOM shr 16) and $FF;
                 b[3]:=(BOM shr 24) and $FF;
                 acc:=bytes_to_string(b, s.encoding);
+                p := PosU('>',acc);
+                if p>0 then begin
+                    tmp := acc[p+1..Length(acc)];
+                    acc := acc[1..p];
+                    add;
+                    acc := tmp;
+                end;
                 encoding := s.encoding;
             end else raise ELE.Create('Damaged byte order mask','xml');
     end;
