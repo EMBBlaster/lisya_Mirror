@@ -1,6 +1,6 @@
-﻿(block
-    (fmt nil "последовательности... ")
+﻿(fmt nil "последовательности... ")
 
+(block
     (var s "строка")
     (var l (list 1 2 3))
     (var b (bytes 1 2 3))
@@ -23,4 +23,16 @@
     (append b (bytes 4 5) (bytes 6))
     (assertion (= (bytes 1 2 3 4 5 6) b) "append bytes")
 
-    (log "успешно"))
+    )
+
+
+(block
+    (assertion (= (/ \(1 2 3 4) 2) \((1 2) (3 4))) "div sequence 1")
+    (assertion (= (/ \(1 2 3) 2) \((1 2) (3))) "div sequence 2")
+    (assertion (= (/ \(1 2) 2) \((1) (3))) "div sequence 3")
+    (assertion (= (/ \(1) 2) \((1) ())) "div sequence 4")
+    (assertion (= (/ \() 2) \(() ())) "div sequence 5"))
+
+
+
+(log "успешно")

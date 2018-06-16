@@ -10,6 +10,7 @@ uses
     Interfaces, Forms, lisya_canvas,
     {$ENDIF}
     sysutils,
+    //forms, dialogs, Interfaces,
     lisya_repl,
     dlisp_eval, lisya_process, lisya_streams, lisya_exceptions,
 lisya_string_predicates, lisya_sign;
@@ -23,6 +24,8 @@ begin
     {$IFDEF GUI}
     RequireDerivedFormResource := True;
     {$ENDIF}
+
+
 
     if (ParamCount=0) or not EXEC(paramStr(1)) then REPL;
 

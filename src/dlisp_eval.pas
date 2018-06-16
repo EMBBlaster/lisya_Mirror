@@ -441,14 +441,23 @@ finally
     f_ind.Free;
 end; end;
 
-function ifh_div_sequence(s: TVSequence; d: integer; tail: boolean): TVList;
+function ifh_div_sequence(s: TVSequence; d: integer): TVList;
 var l,tl,i: integer;
+begin
+    WriteLn(s.AsString);
+    result := TVList.Create;
+    l := s.Count div d;
+    tl := s.Count mod d;
+    for i := 0 to tl-1 do result.Add(s.subseq(i*(l+1), (i+1)*(l+1)));
+    for i := tl to d-1 do result.Add(s.subseq(tl*(l+1)+(i-tl)*l, tl*(l+1)+(i+1-tl)*l));
+end;
+
+function ifh_div_int_sequence(s: TVSequence; d: integer): TVList;
+var l,i: integer;
 begin
   result := TVList.Create;
   l := s.Count div d;
-  tl := s.Count mod d;
   for i := 0 to d-1 do result.Add(s.subseq(i*l, i*l+l));
-  if (tl>0) and tail then result.Add(s.subseq(s.Count-tl,s.Count));
 end;
 
 function if_structure_p         (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -592,7 +601,7 @@ begin
             else result := TVFloat.Create(PL.I[0] / PL.I[1]);
         5: result := TVFloat.Create(PL.F[0] / PL.F[1]);
         6: result := TVComplex.Create(PL.C[0] / PL.C[1]);
-        7: result := ifh_div_sequence(PL.look[0] as TVSequence, PL.I[1], true);
+        7: result := ifh_div_sequence(PL.look[0] as TVSequence, PL.I[1]);
     end;
 end;
 
@@ -602,7 +611,7 @@ begin
         tpInteger, vpIntegerNotZero,
         tpSequence, vpIntegerPositive]) of
         1: result := TVInteger.Create(PL.I[0] div PL.I[1]);
-        2: result := ifh_div_sequence(PL.look[0] as TVSequence, PL.I[1], false);
+        2: result := ifh_div_int_sequence(PL.look[0] as TVSequence, PL.I[1]);
     end;
 end;
 
@@ -901,6 +910,20 @@ begin
     case params_is(PL, result, [
         tpString]) of
         1: result := TVString.Create(trim(PL.S[0]));
+    end;
+end;
+
+function if_trim_quotes         (const PL: TVList; {%H-}call: TCallProc): TValue;
+var s: unicodestring;
+begin
+    case params_is(PL, result, [
+        tpString]) of
+        1: begin
+            s := trim(PL.S[0]);
+            if (Length(s)>0) and (s[1] in ['''', '"']) then delete(s,1,1);
+            if (Length(s)>0) and (s[Length(s)] in ['''', '"']) then delete(s,Length(s),1);
+            result := TVString.Create(s);
+        end;
     end;
 end;
 
@@ -1321,6 +1344,16 @@ begin
         1: result := TVList.Create;
         2: result := PL.L[0][0];
         3: result := PL[0];
+    end;
+end;
+
+function if_second              (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+    {1} tpList]) of
+        1: if PL.L[0].Count>1
+            then result := PL.L[0][1]
+            else result := TVList.Create;
     end;
 end;
 
@@ -2562,13 +2595,15 @@ begin
         tpNIL,           tpAny]) of
         1: begin
             //WriteLn('==1',PL.AsString());
-            dlisp_read.print(PL.look[1], PL.look[0] as TVStreamPointer);
+            //dlisp_read.print(PL.look[1], PL.look[0] as TVStreamPointer);
+            (PL.look[0] as TVStreamPointer).body.write_string(PL.look[1].AsString+new_line);
             result := TVT.Create;
             //TODO: не возвращается ошибка при записи в файл
         end;
         2: begin
             result := TVT.Create;
-            dlisp_read.print(PL.look[1], nil);
+            //dlisp_read.print(PL.look[1], nil);
+            WriteLn(PL.look[1].AsString);
         end;
     end;
 end;
@@ -3034,7 +3069,7 @@ begin
 end;
 
 
-const int_fun_count = 152;
+const int_fun_count = 154;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3068,6 +3103,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 (n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
 (n:'TRIM';                      f:if_trim;                  s:'(s)'),
+(n:'TRIM-QUOTES';               f:if_trim_quotes;           s:'(s)'),
+
 
 (n:'=';                         f:if_equal;                 s:'(a b)'),
 (n:'>';                         f:if_more;                  s:'(a b)'),
@@ -3106,6 +3143,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'EVERY КАЖДЫЙ';              f:if_every;                 s:'(p :rest l)'),
 (n:'SOME ЛЮБОЙ';                f:if_some;                  s:'(p :rest l)'),
 (n:'CAR HEAD ГОЛОВА';           f:if_car;                   s:'(l)'),
+(n:'SECOND ВТОРОЙ';             f:if_second;                s:'(l)'),
 (n:'LAST';                      f:if_last;                  s:'(l)'),
 (n:'SUBSEQ';                    f:if_subseq;                s:'(s b :optional e)'),
 (n:'SORT';                      f:if_sort;                  s:'(s :optional p)'),
