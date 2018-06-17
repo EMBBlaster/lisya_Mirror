@@ -14,7 +14,7 @@ uses
     {$IFDEF mysql50}
     ,mysql_50
     {$ENDIF}
-    ,dlisp_values;
+    ,dlisp_values, lisya_streams;
 
 
 function tpAny                                      (V: TValue): boolean;
@@ -104,6 +104,8 @@ function tpReturn                                   (V: TValue): boolean;
 function tpSelfEvaluating                           (V: TValue): boolean;
 
 function tpStreamPointer                            (V: TValue): boolean;
+
+function tpStreamSerial                             (V: TValue): boolean;
 
 function tpString                                   (V: TValue): boolean;
 
@@ -570,6 +572,12 @@ end;
 function tpStreamPointer(V: TValue): boolean;
 begin
     result := V is TVStreamPointer;
+end;
+
+function tpStreamSerial(V: TValue): boolean;
+begin
+    result := (V is TVStreamPointer)
+        and ((V as TVStreamPointer).body is TLSerialStream);
 end;
 
 function tpString(V: TValue): boolean;

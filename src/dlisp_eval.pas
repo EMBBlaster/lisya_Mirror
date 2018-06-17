@@ -2416,6 +2416,30 @@ begin
     end;
 end;
 
+function if_serial_port         (const PL: TVList; {%H-}call: TCallProc): TValue;
+    function timeout(V: TValue): integer;
+    begin if tpNIL(V) then result := 0 else result := (V as TVInteger).fI; end;
+begin
+    case params_is(PL, result, [
+        tpString, vpIntegerPositive, vpKeywordEncodingOrNIL, vpIntegerNotNegativeOrNIL]) of
+        1: result := TVStreamPointer.Create(
+                    TLSerialStream.Create(
+                        PL.S[0],
+                        PL.I[1],
+                        ifh_keyword_to_encoding(PL.look[2]),
+                        timeout(PL.look[3])));
+    end;
+end;
+
+function if_serial_discard_input(const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpStreamSerial]) of
+        1: ((PL.look[0] as TVStreamPointer).body as TLSerialStream).discard_input;
+    end;
+    result := TVT.Create;
+end;
+
 
 function if_stream_position     (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -3082,7 +3106,7 @@ begin
 end;
 
 
-const int_fun_count = 155;
+const int_fun_count = 157;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3217,6 +3241,9 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'DEFLATE';                   f:if_deflate;               s:'(s :key encoding header)'),
 (n:'INFLATE';                   f:if_inflate;               s:'(s :key encoding header)'),
 (n:'MEMORY-STREAM';             f:if_memory_stream;         s:'(:optional bv)'),
+(n:'SERIAL:PORT';               f:if_serial_port;           s:'(name boud :key encoding timeout)'),
+(n:'SERIAL:DISCARD-INPUT';      f:if_serial_discard_input;  s:'(port)'),
+
 
 (n:'ZIP:OPEN';                  f:if_zip_open;              s:'(n :key mode encoding)'),
 (n:'ZIP:FILELIST';              f:if_zip_filelist;          s:'(z)'),

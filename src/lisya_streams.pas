@@ -6,7 +6,12 @@ interface
 
 uses
     {$IFDEF LINUX}
-    cwstring, unix,
+    cwstring, unix, termio,
+    {$ENDIF}
+    {$IFDEF LINUX}
+    serial in './fpc_backport/serial.pp',
+    {$ELSE}
+    serial,
     {$ENDIF}
     zstream, LResources, Pipes,
     Classes, SysUtils, mar, lisia_charset, lisya_exceptions, lisya_zip, lisya_process;
@@ -108,7 +113,6 @@ type
     end;
 
 
-
     { TLProcessPipes }
 
     TLProcessPipes = class(TLStream)
@@ -124,6 +128,23 @@ type
         function description: unicodestring; override;
 
         procedure close_stream; override;
+    end;
+
+    { TLSerialStream }
+
+    TLSerialStream = class(TLStream)
+    private
+        port: {$IFDEF LINUX}TSerialHandle{$ELSE}THandle{$ENDIF};
+        timeout: integer;
+        function ReadBytes(var Buffer; count: integer; EoE: boolean = false): integer; override;
+        function WriteBytes(const Buffer; count: integer; EoE: boolean = false): integer; override;
+    public
+        constructor Create(port_name: unicodestring; boud: integer;
+            enc: TStreamEncoding=seUTF8;
+            _timeout: integer=0);
+        destructor Destroy; override;
+        function description: unicodestring; override;
+        procedure discard_input;
     end;
 
 
@@ -153,6 +174,59 @@ begin try
 finally
     stream.Release;
 end;
+end;
+
+{ TLSerialStream }
+
+function TLSerialStream.ReadBytes(var Buffer; count: integer; EoE: boolean
+    ): integer;
+var b: array of byte;
+begin
+    if timeout=0
+    then result := SerRead(port, Buffer, Count)
+    else begin
+        SetLength(b, count);
+        result := SerReadTimeout(port, b, count, timeout);
+        Move(b[0],buffer,result);
+        SetLength(b,0);
+    end;
+    if EoE and (result<count) then raise ELEmptyStream.Create('empty stream', 'serial/read');
+end;
+
+function TLSerialStream.WriteBytes(const Buffer; count: integer; EoE: boolean
+    ): integer;
+begin
+    result := SerWrite(port, Buffer, Count);
+    if EoE and (result<>count) then raise ELEmptyStream.Create('write error', 'serial');
+end;
+
+constructor TLSerialStream.Create(port_name: unicodestring; boud: integer;
+    enc: TStreamEncoding; _timeout: integer);
+begin
+    inherited Create(nil, enc);
+    timeout := _timeout;
+    port := SerOpen(port_name);
+    if port=0 then raise ELE.Create('device not found '+port_name,'serial');
+    SerSetParams(port, boud, 8, NoneParity, 1, []);
+end;
+
+
+
+destructor TLSerialStream.Destroy;
+begin
+    SerClose(port);
+    port := 0;
+    inherited Destroy;
+end;
+
+function TLSerialStream.description: unicodestring;
+begin
+    result := 'serial stream';
+end;
+
+procedure TLSerialStream.discard_input;
+begin
+    SerFlushInput(port);
 end;
 
 
