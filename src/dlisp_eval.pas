@@ -3418,6 +3418,8 @@ begin
     end;
 
     //загрузка констант
+    {$IFDEF WINDOWS} base_stack.new_var('PLATFORM', TVKeyword.Create(':WINDOWS'), true); {$ENDIF}
+    {$IFDEF LINUX} base_stack.new_var('PLATFORM', TVKeyword.Create(':LINUX'), true); {$ENDIF}
     base_stack.new_var('NL', TVString.Create(new_line), true);
     base_stack.new_var('CR', TVString.Create(#13), true);
     base_stack.new_var('LF', TVString.Create(#10), true);
