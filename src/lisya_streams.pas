@@ -6,14 +6,12 @@ interface
 
 uses
     {$IFDEF LINUX}
-    cwstring, unix, termio,
+    cwstring, unix, termio, BaseUnix,
     {$ENDIF}
-    {$IFDEF LINUX}
-    serial in './fpc_backport/serial.pp',
-    {$ELSE}
-    serial,
+    {$IFDEF WINDOWS}
+    windows,
     {$ENDIF}
-    zstream, LResources, Pipes,
+    zstream, LResources, Pipes, serial,
     Classes, SysUtils, mar, lisia_charset, lisya_exceptions, lisya_zip, lisya_process;
 
 type
@@ -195,8 +193,16 @@ end;
 
 function TLSerialStream.WriteBytes(const Buffer; count: integer; EoE: boolean
     ): integer;
+var BytesWritten: DWORD;
 begin
-    result := SerWrite(port, Buffer, Count);
+    {$IFDEF WINDOWS}
+    if not WriteFile(port, Buffer, Count, BytesWritten, nil)
+    then result := 0
+    else result := BytesWritten;
+    {$ENDIF}
+    {$IFDEF LINUX}
+    result := fpWrite(port, Buffer, Count);
+    {$ENDIF}
     if EoE and (result<>count) then raise ELEmptyStream.Create('write error', 'serial');
 end;
 
