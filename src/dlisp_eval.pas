@@ -2111,7 +2111,7 @@ begin
         tpString]) of
         1: begin
             wc := DirSep(PL.S[0]);
-            if wc[Length(wc)]=dir_separator
+            if wc[Length(wc)]=DirectorySeparator
             then begin
                 SetLength(wc, Length(wc)-1);
                 exclude_files := true;

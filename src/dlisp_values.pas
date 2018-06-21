@@ -15,14 +15,6 @@ uses
     lisya_process;
 
 
-const
-    {$ifdef windows}
-    dir_separator = '\';
-    {$else windows}
-    dir_separator = '/';
-    {$endif windows}
-
-
 type
 
     { TValue }
