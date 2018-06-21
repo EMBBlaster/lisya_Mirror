@@ -111,11 +111,11 @@ begin
      //поиск в LISYA_PATH
      try
         path := TStringList.Create;
-        path.Delimiter := {$IFDEF WINDOWS}';'{$ELSE}':'{$ENDIF};
+        path.Delimiter := PathSeparator;
         path.DelimitedText := GetEnvironmentVariable('LISYA_PATH');
 
     for i := 0 to path.Count-1 do begin
-        sdir := path[i]+{$IFDEF WINDOWS}'\'{$ELSE}'/'{$ENDIF};
+        sdir := path[i]+DirectorySeparator;
         result := sdir+ename; if FileExists(result) then Exit;
         result := sdir+rname; if FileExists(result) then Exit;
     end;
