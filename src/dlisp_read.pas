@@ -281,7 +281,7 @@ begin try
                 wr('( ');
                 print((V as TVList).look[0], stream);
                 for i := 1 to (V as TVList).high do begin
-                    wr(new_line);
+                    wr(LineEnding);
                     indent;
                     print((V as TVList).look[i], stream);
                 end;
@@ -305,7 +305,7 @@ begin try
             print((V as TVRecord).look[0], stream);
             Dec(ind, length(sn));
             for i := 1 to (V as TVRecord).count-1 do begin
-                wr(new_line);
+                wr(LineEnding);
                 indent;
                 sn := (V as TVRecord).name_n(i)+' ';
                 wr(sn);
@@ -335,7 +335,7 @@ begin try
                 wr('(  ');
                 print((V as TVList).look[0], stream);
                 for i:=1 to (V as TVList).count-1 do begin
-                    wr(new_line);
+                    wr(LineEnding);
                     indent;
                     print((V as TVList).look[i], stream);
                 end;
@@ -344,7 +344,7 @@ begin try
             end;
 
 finally
-    if line_end then wr(new_line);
+    if line_end then wr(LineEnding);
 end;
 
 end;

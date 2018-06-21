@@ -18,10 +18,8 @@ uses
 const
     {$ifdef windows}
     dir_separator = '\';
-    new_line: unicodestring = #13+#10;
     {$else windows}
     dir_separator = '/';
-    new_line: unicodestring = #10;
     {$endif windows}
 
 

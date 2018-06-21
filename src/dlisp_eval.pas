@@ -2569,7 +2569,7 @@ begin
         tpNIL, tpStringOrNIL]) of
         1: result := TVString.Create(
             (PL.look[0] as TVStreamPointer).body.read_line(
-                ifh_default_string(PL.look[1], new_line)));
+                ifh_default_string(PL.look[1], LineEnding)));
         2: begin
             System.ReadLn(s);
             result := TVString.Create(s);
@@ -2583,7 +2583,7 @@ begin
         vpStreamPointerActive, tpString, tpStringOrNIL,
         tpNIL,                 tpString, tpNIL]) of
         1: (PL.look[0] as TVStreamPointer).body.write_string(
-                                PL.S[1]+ifh_default_string(PL.look[2], new_line));
+                                PL.S[1]+ifh_default_string(PL.look[2], LineEnding));
         2: System.WriteLn(PL.S[1]);
     end;
     result := TVT.Create
@@ -2619,15 +2619,13 @@ begin
         vpStreamPointerActive, tpAny,
         tpNIL,           tpAny]) of
         1: begin
-            //WriteLn('==1',PL.AsString());
-            //dlisp_read.print(PL.look[1], PL.look[0] as TVStreamPointer);
-            (PL.look[0] as TVStreamPointer).body.write_string(PL.look[1].AsString+new_line);
+            (PL.look[0] as TVStreamPointer).body.write_string(PL.look[1].AsString);
+            (PL.look[0] as TVStreamPointer).body.write_string(LineEnding);
             result := TVT.Create;
             //TODO: не возвращается ошибка при записи в файл
         end;
         2: begin
             result := TVT.Create;
-            //dlisp_read.print(PL.look[1], nil);
             WriteLn(PL.look[1].AsString);
         end;
     end;
@@ -2691,7 +2689,7 @@ begin
         tpList]) of
         1: if log_file=nil
             then System.WriteLn(ifh_format(PL.L[0]))
-            else log_file.Log(ifh_format(PL.L[0])+new_line);
+            else log_file.Log(ifh_format(PL.L[0])+LineEnding);
     end;
     result := TVT.Create;
 end;
@@ -2848,7 +2846,7 @@ begin
                         for k := Length(data[i,j]) to cols[j] do Put(' ');
                         put(hs);
                     end;
-                    put(new_line);
+                    put(LineEnding);
                 end;
                 csv: for i := 0 to h-1 do begin
                     for j := 0 to w-1 do begin
@@ -3420,7 +3418,7 @@ begin
     //загрузка констант
     {$IFDEF WINDOWS} base_stack.new_var('PLATFORM', TVKeyword.Create(':WINDOWS'), true); {$ENDIF}
     {$IFDEF LINUX} base_stack.new_var('PLATFORM', TVKeyword.Create(':LINUX'), true); {$ENDIF}
-    base_stack.new_var('NL', TVString.Create(new_line), true);
+    base_stack.new_var('NL', TVString.Create(LineEnding), true);
     base_stack.new_var('CR', TVString.Create(#13), true);
     base_stack.new_var('LF', TVString.Create(#10), true);
     base_stack.new_var('CRLF', TVString.Create(#13#10), true);
@@ -3767,7 +3765,7 @@ begin try
     raise ELE.Create('eval_link не обработанный случай');
 except
     on E:ELE do begin
-        E.EStack := 'eval link '+P.AsString+new_line+'=> '+E.EStack;
+        E.EStack := 'eval link '+P.AsString+LineEnding+'=> '+E.EStack;
         raise ELE.Create(E.Message, E.EClass, E.EStack);
     end;
 end;
@@ -5213,9 +5211,9 @@ return:
 except
     on E:ELisyaError do begin
        // WriteLn('eval ELE>> ', E.Eclass,'  ', e.Message);
-       //E.Message := V.AsString+new_line+'=> '+E.Message;
+       //E.Message := V.AsString+LineEnding+'=> '+E.Message;
        //WriteLn('1>> ',E.EStack);
-       E.EStack := V.AsString+new_line+'=> '+E.EStack;
+       E.EStack := V.AsString+LineEnding+'=> '+E.EStack;
        //WriteLn('2>> ',E.EStack);
         V.Free;
         raise ELE.Create(E.Message, E.EClass, E.EStack);
@@ -5223,9 +5221,9 @@ except
     on E:Exception do begin
         //WriteLn('eval E>> ');
         try
-            EStack := V.AsString+new_line+'=> ';
+            EStack := V.AsString+LineEnding+'=> ';
         except
-            EStack := 'XXXX'+new_line+'=> ';
+            EStack := 'XXXX'+LineEnding+'=> ';
         end;
   //      stack.Print;
   //      WriteLn('>>>> ',E.Message);
