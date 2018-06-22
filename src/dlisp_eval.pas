@@ -1152,6 +1152,23 @@ begin
     result := TVT.Create;
 end;
 
+
+function if_canvas              (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer;
+begin
+{$IFDEF GUI}
+//    Application.Initialize;
+//    Application.CreateForm(TCanvasForm, CanvasForm);
+//    for i:= 0 to PL.L[0].high do
+//    CanvasForm.Post(PL.L[0].L[i]);
+//    Application.Run;
+    CanvasThread := TCanvasThread.Create;
+{$ENDIF}
+
+    result := TVT.Create;
+end;
+
+
 function if_likeness              (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2484,10 +2501,16 @@ begin
 end;
 
 function if_read_byte           (const PL: TVList; {%H-}call: TCallProc): TValue;
+var b: byte;
 begin
     case params_is(PL, result, [
-        vpStreamPointerActive]) of
+        vpStreamPointerActive,
+        tpNIL]) of
         1: result := TVInteger.Create((PL.look[0] as TVStreamPointer).body.read_byte);
+        2: begin
+            //WriteLn(system.readBuffer(b,1));
+            result := tvt.Create;
+        end;
     end;
 end;
 
@@ -3104,7 +3127,7 @@ begin
 end;
 
 
-const int_fun_count = 157;
+const int_fun_count = 158;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3158,6 +3181,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'IDENTITY';                  f:if_identity;              s:'(v)'),
 
 (n:'TEST-DYN';                  f:if_test_dyn;              s:'(:rest msgs)'),
+(n:'CANVAS';                    f:if_canvas;                s:'()'),
 (n:'LIKENESS СХОДСТВО';         f:if_likeness;              s:'(s1 s2)'),
 
 
@@ -4730,10 +4754,7 @@ try
         procedure_declaration: begin
             P := stack.find_ref_or_nil(PL.SYM[1]);
             if (P=nil) or not (P.V is TVProcedureForwardDeclaration)
-            then begin
-                ReleaseVariable(P);
-                stack.new_var(PL.SYM[1], nil, true);
-            end;
+            then stack.new_var(PL.SYM[1], nil, true);
             ReleaseVariable(P);
             sign_pos := 2;
             if (PL.look[0] as TVOperator).op_enum=oeMACRO

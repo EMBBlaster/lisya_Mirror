@@ -26,12 +26,66 @@ type
         { public declarations }
     end;
 
+
+    { TCanvasThread }
+
+    TCanvasThread = class (TThread)
+    private
+        f1: TCanvasForm;
+        fComplitedEvent: pRTLEvent;
+    protected
+        procedure Execute; override;
+    public
+        constructor Create;
+        destructor Destroy; override;
+        function WaitResult: TValue;
+    end;
+
+
 var
     CanvasForm: TCanvasForm;
+    CanvasThread: TCanvasThread;
 
 implementation
 
 {$R *.lfm}
+
+{ TCanvasThread }
+
+procedure TCanvasThread.Execute;
+begin
+  while not self.Terminated do begin
+        Application.ProcessMessages;
+        sleep(0);
+      //RtlEventSetEvent(fComplitedEvent);
+      //self.Suspended := true;
+  end;
+end;
+
+constructor TCanvasThread.Create;
+begin
+    self.FreeOnTerminate := true;
+    fComplitedEvent := RTLEventCreate;
+    Application.Initialize;
+    f1 := TCanvasForm.Create(nil);
+    f1.Show;
+
+    inherited Create(false);
+end;
+
+destructor TCanvasThread.Destroy;
+begin
+    f1.Free;
+    Application.Free;
+    RTLeventdestroy(fComplitedEvent);
+    self.Terminate;
+    inherited Destroy;
+end;
+
+function TCanvasThread.WaitResult: TValue;
+begin
+
+end;
 
 { TCanvasForm }
 
