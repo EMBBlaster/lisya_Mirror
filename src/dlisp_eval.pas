@@ -861,7 +861,7 @@ function if_rad                 (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpReal]) of
-        1: result := TVFloat.Create(math.degtograd(PL.F[0]));
+        1: result := TVFloat.Create(math.degtorad(PL.F[0]));
     end;
 end;
 
