@@ -861,7 +861,7 @@ function if_rad                 (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpReal]) of
-        1: result := TVFloat.Create(PL.F[0]*pi/180);
+        1: result := TVFloat.Create(math.degtograd(PL.F[0]));
     end;
 end;
 
@@ -869,7 +869,7 @@ function if_deg                 (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpReal]) of
-        1: result := TVFloat.Create(PL.F[0]*180/pi);
+        1: result := TVFloat.Create(math.radtodeg(PL.F[0]));
     end;
 end;
 
@@ -3449,6 +3449,7 @@ begin
     base_stack.new_var('TAB', TVString.Create(#09), true);
     base_stack.new_var('BOM', TVString.Create(BOM), true);
     base_stack.new_var('_', TVSymbol.Create('_'));
+    base_stack.new_var('PI', TVFloat.Create(pi));
 end;
 
 
