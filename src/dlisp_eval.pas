@@ -3061,7 +3061,7 @@ begin
         tpString, tpNIL,
         tpString, tpString]) of
         1,2: try
-            http := TFPHTTPClient.Create(nil);//TFPHTTPClient.Create(nil);
+            http := TFPHTTPClient.Create(nil);
             http.AllowRedirect:=true;
             if tpString(PL.look[1]) then begin
                 scp:= PosU(':',PL.S[1]);
@@ -3127,7 +3127,7 @@ begin
 end;
 
 
-const int_fun_count = 158;
+const int_fun_count = 157;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3181,7 +3181,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'IDENTITY';                  f:if_identity;              s:'(v)'),
 
 (n:'TEST-DYN';                  f:if_test_dyn;              s:'(:rest msgs)'),
-(n:'CANVAS';                    f:if_canvas;                s:'()'),
+//(n:'CANVAS';                    f:if_canvas;                s:'()'),
 (n:'LIKENESS СХОДСТВО';         f:if_likeness;              s:'(s1 s2)'),
 
 
@@ -3857,14 +3857,18 @@ end;
 end;
 
 function TEvaluationFlow.op_push                    (PL: TVList): TValue;
-var i: integer; CP: TVChainPointer; target: TValue;
+var i: integer; CP: TVChainPointer; target: TValue; elts: TVList;
 begin
     oph_eval_link_for_modification(CP, PL.look[1]);
 try
     target := CP.look;
     if not tpList(target) then raise ELE.Create('target is not list');
 
-    for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
+    elts := TVList.Create;
+    try for i := 2 to PL.High do elts.Add(eval(PL[i]));
+    except elts.Free; raise; end;
+    (CP.look as TVList).Append(elts);
+    //for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
 
     result := TVT.Create;
 finally

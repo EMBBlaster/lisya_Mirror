@@ -1,0 +1,104 @@
+﻿(const ldfh-sign $04034B50)
+(const cdfh-sign $02014B50)
+(const eocd-sign $06054B50)     
+
+
+(procedure read-u32 (f)
+    (+
+        (read-byte f)
+        (* 256 (read-byte f))
+        (* 256 256 (read-byte f))
+        (* 256 256 256 (read-byte f))))
+
+
+(procedure read-u16 (f)
+    (+
+        (read-byte f)
+        (* 256 (read-byte f))))
+	
+
+(procedure read-b-string (f n)
+    (bytes-to-string (read-bytes f n) :UTF-8))
+
+(procedure read-LDFH (f)
+    (var ldfh)
+    (push ldfh :versionToExtract        (read-u16 f))
+    (push ldfh :generalPurposeBitFlag   (read-u16 f))
+    (push ldfh :compressionMethod       (read-u16 f))
+    (push ldfh :modificationTime        (read-u16 f))
+    (push ldfh :modificationDate        (read-u16 f))
+    (push ldfh :crc32                   (read-u32 f))
+    (push ldfh :compressedSize          (read-u32 f))
+    (push ldfh :uncompressedSize        (read-u32 f))
+    (push ldfh :filenameLength          (read-u16 f))
+    (push ldfh :extraFieldLength        (read-u16 f))
+    (push ldfh :filename (read-b-string f (key ldfh :filenameLength)))
+    (stream-position f (+ (stream-position f) (key ldfh :extraFieldLength)))
+    ldfh)
+
+
+(procedure read-CDFH (f)
+    (var cdfh)
+    (push cdfh :versionMadeBy           (read-u16 f))
+    (push cdfh :versionToExtract        (read-u16 f))
+    (push cdfh :generalPurposeBitFlag   (read-u16 f))
+    (push cdfh :compressionMethod       (read-u16 f))
+    (push cdfh :modificationTime        (read-u16 f))
+    (push cdfh :modificationDate        (read-u16 f))
+    (push cdfh :crc32                   (read-u32 f))
+    (push cdfh :compressedSize          (read-u32 f))
+    (push cdfh :uncompressedSize        (read-u32 f))
+    (push cdfh :filenameLength          (read-u16 f))
+    (push cdfh :extraFieldLength        (read-u16 f))
+    (push cdfh :fileCommentLength       (read-u16 f))
+    (push cdfh :diskNumber              (read-u16 f))
+    (push cdfh :internalFileAttributes  (read-u16 f))
+    (push cdfh :externalFileAttributes  (read-u32 f))
+    (push cdfh :localFileHeaderOffset   (read-u32 f))
+    (push cdfh :filename (read-b-string f (key cdfh :filenameLength)))
+    (stream-position f (+
+        (stream-position f)
+        (key cdfh :extraFieldLength)
+        (key cdfh :fileCommentLength)))
+    cdfh)   
+
+
+(procedure read-zip (arch :optional fn)
+    (var z (file arch))
+    (var pos)
+    (var filename)
+    (var sign (read-u32 z))
+    (while (<> sign $06054B50)
+        (stream-encoding z :utf8)
+        (case sign
+            ($04034B50
+                (var ldfh (read-LDFH z))
+                (set filename (key ldfh :filename))
+                (set pos (stream-position z))
+                
+		(cond
+		    ((NIL? fn) 
+		        (log filename))
+		    ((= filename fn)
+		        (const file-data 
+			    (read-bytes 
+			        (case (key ldfh :compressionMethod)
+				    (0 z)
+				    (8 (inflate z)))
+			        (key ldfh :uncompressedSize)))
+			(assertion 
+			    (= (key ldfh :crc32) (crc32 file-data))
+			    "CRC error " arch ":" filename)
+			(write-byte (file filename :write) file-data)))
+			
+                (stream-position z (+ pos (key ldfh :compressedSize))))
+            ($02014B50
+                (read-CDFH z))
+            (otherwise
+                (error "zip" "invalid signature")))
+        (set sign (read-u32 z))))   
+
+	
+(apply read-zip (command-line))
+        
+exit
