@@ -78,7 +78,7 @@
                 
 		(cond
 		    ((NIL? fn) 
-		        (log filename))
+		        (fmt nil filename NL))
 		    ((= filename fn)
 		        (const file-data 
 			    (read-bytes 
