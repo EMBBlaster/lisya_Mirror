@@ -4221,11 +4221,11 @@ begin
                 if (Length(eh)<=Length(ec)) and (eh=ec[1..length(eh)])
                 then begin
                     result := oph_block(PL.L[i], 1, true);
-                    Exit;
+                    Break;
                 end;
             end;
 
-            raise ELE.Create(E.Message, E.EClass, E.EStack);
+            if result=nil then raise ELE.Create(E.Message, E.EClass, E.EStack);
         finally
             stack.clear_frame(exception_frame_start);
         end;
