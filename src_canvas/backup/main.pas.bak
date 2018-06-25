@@ -8,17 +8,20 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls, pipes,
-     Contnrs, math;
+    Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
+    StdCtrls, pipes, Contnrs, math;
 
 type
 
     TLCanvasException = exception;
+    TPointFloat = record x,y: real; end;
+    TMatrix = array[1..3,1..3] of real;
 
     { TGO }
 
     TGO = class
         fcolor: TColor;
+        ftransform: TMatrix;
         procedure paint; virtual; abstract;
     end;
 
@@ -51,7 +54,7 @@ type
     { TGMark }
 
     TGMark = class (TGO)
-        x,y:real;
+        fp: TPointFloat;
         text: unicodestring;
         procedure paint; override;
     end;
@@ -66,7 +69,7 @@ type
     { TGPolyline }
 
     TGPolyline = class (TGO)
-        points: array of record x,y: real; end;
+        points: array of TPointFloat;
         procedure paint; override;
     end;
 
@@ -79,26 +82,35 @@ type
         Timer1: TTimer;
         objects: TObjectList;
         cmdl: TStringList;
+        Timer2: TTimer;
         procedure FormCreate(Sender: TObject);
         procedure FormDestroy(Sender: TObject);
         procedure FormPaint(Sender: TObject);
         procedure FormResize(Sender: TObject);
         procedure Timer1Timer(Sender: TObject);
+        procedure Timer2Timer(Sender: TObject);
     private
         procedure on_command;
         procedure cmd_size;
         procedure cmd_area;
         procedure cmd_axis;
+        procedure cmd_circle;
         procedure cmd_color;
         procedure cmd_grid;
         procedure cmd_mark;
         procedure cmd_plot;
         procedure cmd_point;
         procedure cmd_polyline;
+        procedure cmd_translate;
+        procedure cmd_rotate;
+        procedure cmd_scale;
         { private declarations }
     public
         { public declarations }
     end;
+
+const
+    identity: TMatrix = ((1,0,0),(0,1,0),(0,0,1));
 
 var
     Form1: TForm1;
@@ -117,6 +129,9 @@ var
     cnv: TCanvas;
     equal_scale: boolean = true;
     color: TColor = clBlack;
+    transform: TMatrix = ((1,0,0),(0,1,0),(0,0,1));
+    tm: TMatrix = ((1,0,0),(0,1,0),(0,0,1));
+
 
 implementation
 
@@ -126,6 +141,34 @@ implementation
 procedure error(const msg: unicodestring);
 begin
     raise TLCanvasException.Create(msg);
+end;
+
+function mul(const p: TPointFloat; const m: TMatrix): TPointFloat; overload;
+begin
+    result.x := p.x*m[1,1]+p.y*m[2,1]+1*m[3,1];
+    result.y := p.x*m[1,2]+p.y*m[2,2]+1*m[3,2];
+end;
+
+function mul(const m1: TMatrix; const m2: TMatrix): TMatrix; overload;
+begin
+    result[1,1] := m1[1,1]*m2[1,1]+m1[1,2]*m2[2,1]+m1[1,3]*m2[3,1];
+    result[1,2] := m1[1,1]*m2[1,2]+m1[1,2]*m2[2,2]+m1[1,3]*m2[3,2];
+    result[1,3] := m1[1,1]*m2[1,3]+m1[1,2]*m2[2,3]+m1[1,3]*m2[3,3];
+
+    result[2,1] := m1[2,1]*m2[1,1]+m1[2,2]*m2[2,1]+m1[2,3]*m2[3,1];
+    result[2,2] := m1[2,1]*m2[1,2]+m1[2,2]*m2[2,2]+m1[2,3]*m2[3,2];
+    result[2,3] := m1[2,1]*m2[1,3]+m1[2,2]*m2[2,3]+m1[2,3]*m2[3,3];
+
+    result[3,1] := m1[3,1]*m2[1,1]+m1[3,2]*m2[2,1]+m1[3,3]*m2[3,1];
+    result[3,2] := m1[3,1]*m2[1,2]+m1[3,2]*m2[2,2]+m1[3,3]*m2[3,2];
+    result[3,3] := m1[3,1]*m2[1,3]+m1[3,2]*m2[2,3]+m1[3,3]*m2[3,3];
+end;
+
+function translate(const v: TPointFloat): TMatrix;
+begin
+    result := identity;
+    result[1,3]:=v.x;
+    result[2,3]:=v.y;
 end;
 
 procedure set_area(lx,hx,ly,hy: real);
@@ -160,7 +203,7 @@ begin
     result := Round(wy);
 end;
 
-function scale(x, y: real): TPoint; inline;
+function scale(x, y: real): TPoint;  overload;
 var wx,wy: real;
 begin
     if equal_scale
@@ -171,6 +214,22 @@ begin
     else begin
         wx := cw*(x - lo_x)/a_x;
         wy := ch - ch*(y - lo_y)/a_y;
+    end;
+    result := point(Round(wx), Round(wy));
+end;
+
+function scale(_p: TPointFloat): TPoint;  overload;
+var wx,wy: real; p: TPointFloat;
+begin
+    p := mul(_p,tm);
+    if equal_scale
+    then begin
+        wx := cw/2 - frame/2 + frame*(p.x - lo_x)/a_x;
+        wy := ch/2 + frame/2 - frame*(p.y - lo_y)/a_y;
+    end
+    else begin
+        wx := cw*(p.x - lo_x)/a_x;
+        wy := ch - ch*(p.y - lo_y)/a_y;
     end;
     result := point(Round(wx), Round(wy));
 end;
@@ -200,10 +259,10 @@ end;
 procedure TGMark.paint;
 var p: TPoint;
 begin
-    p := scale(x,y);
+    p := scale(fp);
     cnv.Line(p.x-5,p.y-5,p.x+5, p.y+5);
     cnv.Line(p.x-5,p.y+5,p.x+5, p.y-5);
-    cnv.TextOut(p.x+5,p.y-5,text);
+    cnv.TextOut(p.x+6,p.y-5,text);
 end;
 
 { TGAxisY }
@@ -259,8 +318,8 @@ end;
 procedure TGPolyline.paint;
 var i: integer;
 begin
-    cnv.MoveTo(scale(points[0].x, points[0].y));
-    for i := 1 to high(points) do cnv.LineTo(scale(points[i].x, points[i].y));
+    cnv.MoveTo(scale(points[0]));
+    for i := 1 to high(points) do cnv.LineTo(scale(points[i]));
 end;
 
 { TGPoint }
@@ -288,6 +347,18 @@ begin
     end;
 end;
 
+procedure TForm1.Timer2Timer(Sender: TObject);
+begin
+  timer2.Enabled:=false;
+  cmd := 'grid 0.5 0.5';
+  on_command;
+  cmd := 'translate 0.2 0.2';
+    on_command;
+
+    cmd:='mark x 0.1 0.1 hello';
+    on_command;
+end;
+
 procedure TForm1.on_command;
 var cnt, i: integer;
 begin try try
@@ -308,9 +379,16 @@ begin try try
     if cmdl[0]='plot' then cmd_plot else                          // yaxis xstart xstep y1 y2 ...
     if cmdl[0]='point' then cmd_point else                        // x y
     if cmdl[0]='polyline' then cmd_polyline else                  // p1x p1y p2x p2y ...
+    if cmdl[0]='reset_transform' then transform := identity else  //
+    if cmdl[0]='rotate' then cmd_rotate else                      // angle
+    if cmdl[0]='scale' then cmd_scale else                        // sx sy
     if cmdl[0]='size' then cmd_size;                              // width height
+    if cmdl[0]='translate' then cmd_translate;                    // dx dy
 
-    for i := cnt to objects.Count-1 do (objects[i] as TGO).fcolor:=color;
+    for i := cnt to objects.Count-1 do begin
+        (objects[i] as TGO).fcolor:=color;
+        (objects[i] as TGO).ftransform:=transform;
+    end;
 
 finally
     cmd := '';
@@ -348,6 +426,11 @@ begin
     objects.Add(axis);
 end;
 
+procedure TForm1.cmd_circle;
+begin
+
+end;
+
 procedure TForm1.cmd_color;
 begin
     if cmdl[1]='red' then color := clRed else
@@ -373,6 +456,7 @@ begin
     if cmdl[1]='cream' then color := clCream else
     if cmdl[1]='medgray' then color := clMedGray else
     color := TColor(StrToInt(cmdl[1]));
+    color := StringToColor(cmdl[1]);
 end;
 
 procedure TForm1.cmd_grid;
@@ -388,8 +472,8 @@ procedure TForm1.cmd_mark;
 var m: TGMark;
 begin
     m := TGMark.Create;
-    m.x:= StrToFloat(cmdl[2]);
-    m.y:= StrToFloat(cmdl[3]);
+    m.fp.x:= StrToFloat(cmdl[2]);
+    m.fp.y:= StrToFloat(cmdl[3]);
     m.text:=cmdl[4];
     objects.Add(m);
 end;
@@ -430,6 +514,34 @@ begin
     objects.Add(pl);
 end;
 
+procedure TForm1.cmd_translate;
+var tm: TMatrix;
+begin
+    tm := identity;
+    tm[3,1]:=StrToFloat(cmdl[1]);
+    tm[3,2]:=StrToFloat(cmdl[2]);
+    transform := mul(transform, tm);
+end;
+
+procedure TForm1.cmd_rotate;
+var a: real; tm: TMatrix;
+begin
+    tm := identity;
+    a := math.degtorad(StrToFloat(cmdl[1]));
+    tm[1,1] := cos(a); tm[1,2] := sin(a);
+    tm[2,1] :=-sin(a); tm[2,2] := cos(a);
+    transform := mul(transform, tm);
+end;
+
+procedure TForm1.cmd_scale;
+var tm: TMatrix;
+begin
+    tm := identity;
+    tm[1,1] := StrToFloat(cmdl[1]);
+    tm[2,2] := StrToFloat(cmdl[2]);
+    transform := mul(transform, tm);
+end;
+
 procedure TForm1.FormCreate(Sender: TObject);
 begin
     stdin := TInputPipeStream.Create(0);
@@ -441,6 +553,7 @@ begin
     cnv := form1.Canvas;
     set_area(lo_x, hi_x, lo_y, hi_y);
 end;
+
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
@@ -460,6 +573,7 @@ begin
     cnv.Brush.Style:=bsClear;
     for i := 0 to objects.Count-1 do begin
       cnv.pen.Color := (objects[i] as TGO).fcolor;
+      tm := (objects[i] as TGO).ftransform;
       (objects[i] as TGO).paint;
     end;
     Form1.EndFormUpdate;

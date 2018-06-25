@@ -52,7 +52,7 @@
   <CompilerOptions>
     <Version Value="11"/>
     <Target>
-      <Filename Value="canvas"/>
+      <Filename Value="../canvas"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
