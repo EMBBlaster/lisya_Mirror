@@ -868,10 +868,8 @@ begin
 end;
 
 procedure ReleaseVariable(var P: PVariable);
-{$IFDEF RECURSIVERELEASE} {$ELSE}var no_refs: boolean;{$ENDIF}
 begin
-    if P<>nil then begin
-        {$IFDEF RECURSIVERELEASE}
+  if P<>nil then begin
         if P.ref_count>0
         then begin
             if tpProcedure(P.V) and ReleaseRecursiveProcedure(P)
@@ -886,15 +884,6 @@ begin
                 end;
             end;
         end;
-        {$ELSE}
-        Dec(P.ref_count);
-        no_refs := P.ref_count<=0;
-        if no_refs then begin
-            P.V.Free;
-            Dispose(P);
-            P:= nil;
-        end;
-        {$ENDIF}
     end;
 end;
 
