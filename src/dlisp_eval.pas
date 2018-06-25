@@ -389,7 +389,7 @@ end;
 
 
 procedure ifh_elt(var C: TVCompound; ind: TValue; call: TCallProc; var indices: TIntegers);
-var index, f_ind: TValue; expr, il: TVList; i,j: integer;
+var index, f_ind: TValue; expr, il: TVList; i: integer;
 begin try
     index := nil;
     f_ind := nil;
@@ -442,6 +442,7 @@ begin try
 finally
     f_ind.Free;
 end; end;
+
 
 function ifh_div_sequence(s: TVSequence; d: integer): TVList;
 var l,tl,i: integer;
@@ -2501,16 +2502,10 @@ begin
 end;
 
 function if_read_byte           (const PL: TVList; {%H-}call: TCallProc): TValue;
-var b: byte;
 begin
     case params_is(PL, result, [
-        vpStreamPointerActive,
-        tpNIL]) of
+        vpStreamPointerActive]) of
         1: result := TVInteger.Create((PL.look[0] as TVStreamPointer).body.read_byte);
-        2: begin
-            //WriteLn(system.readBuffer(b,1));
-            result := tvt.Create;
-        end;
     end;
 end;
 
@@ -2551,7 +2546,7 @@ end;
 
 
 function if_read_character      (const PL: TVList; {%H-}call: TCallProc): TValue;
-var ch: unicodechar; s: unicodestring; i: integer;
+var ch: unicodechar;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpNIL,
@@ -2585,7 +2580,7 @@ end;
 
 
 function if_read_line           (const PL: TVList; {%H-}call: TCallProc): TValue;
-var ch: unicodechar; s: unicodestring;
+var s: unicodestring;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpStringOrNIL,
@@ -3081,14 +3076,12 @@ begin
 end;
 
 function if_regexp_match        (const PL: TVList; {%H-}call: TCallProc): TValue;
-var re: TRegExpr; start: integer; s, e: unicodestring;
+var re: TRegExpr; start: integer; s: unicodestring;
 begin
     case params_is(PL, result, [
         tpString, tpString, vpIntegerNotNegativeOrNIL]) of
         1: try
             re := TRegExpr.Create(PL.S[1]);
-            e:=pl.s[1];
-            //re.InputString:=PL.S[0];
             result := TVList.Create;
             if tpInteger(PL.look[2]) then start := PL.I[2]+1 else start := 1;
             s := PL.S[0][start..Length(PL.S[0])];
@@ -4740,7 +4733,7 @@ end;
 function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
 var proc: TVProcedure; sl: TVList; P: PVariable;
     mode: (forward_declaration, lambda, procedure_declaration);
-    sign_pos, i: integer;
+    sign_pos: integer;
 begin
     result := nil;
 

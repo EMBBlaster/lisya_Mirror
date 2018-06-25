@@ -14,7 +14,6 @@ uses
     dlisp_eval, lisya_process, lisya_streams, lisya_exceptions, pipes,
     lisya_string_predicates, lisya_sign;
 
-var stdin: TInputPipeStream;
 
 begin
     {$if declared(UseHeapTrace)}

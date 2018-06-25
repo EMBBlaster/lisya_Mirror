@@ -150,7 +150,7 @@ end;
 end;
 
 function str_is_integer(s: unicodestring; out i: Int64): boolean;
-var ss: unicodestring; j: integer; m: integer;
+var ss: unicodestring; j: integer; m: Int64;
 begin
     result := sp_integer(s);
     if not result then exit;
@@ -258,11 +258,8 @@ var ind: integer = 0;
 procedure print(V:TValue; stream: TVStreamPointer; line_end: boolean);
 var  i: integer; sn: unicodestring;
     procedure wr(s: unicodestring);
-    var i: integer;
     begin
-        if stream<>nil
-        then stream.body.write_string(s)
-        else System.Write(s);
+        if stream<>nil then stream.body.write_string(s) else System.Write(s);
     end;
     procedure indent;
     var i: integer;

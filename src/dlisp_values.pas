@@ -11,7 +11,7 @@ uses
     cwstring,
     {$ENDIF}
     SysUtils, Classes, Contnrs, ucomplex, crc,
-    lisia_charset, zstream, mar, lisya_zip, lisya_exceptions, lisya_streams,
+    lisia_charset, mar, lisya_zip, lisya_exceptions, lisya_streams,
     lisya_process;
 
 

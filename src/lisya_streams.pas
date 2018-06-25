@@ -6,12 +6,12 @@ interface
 
 uses
     {$IFDEF LINUX}
-    cwstring, unix, termio, BaseUnix,
+    cwstring, unix, BaseUnix,
     {$ENDIF}
     {$IFDEF WINDOWS}
     windows,
     {$ENDIF}
-    zstream, LResources, Pipes, serial, iostream,
+    zstream, LResources, serial,
     Classes, SysUtils, mar, lisia_charset, lisya_exceptions, lisya_zip, lisya_process;
 
 type
@@ -193,9 +193,10 @@ end;
 
 function TLSerialStream.WriteBytes(const Buffer; count: integer; EoE: boolean
     ): integer;
-var BytesWritten: DWORD;
+{$IFDEF WINDOWS}var BytesWritten: DWORD;{$ENDIF}
 begin
     {$IFDEF WINDOWS}
+    BytesWritten := 0;
     if not WriteFile(port, Buffer, Count, BytesWritten, nil)
     then result := 0
     else result := BytesWritten;
@@ -599,7 +600,7 @@ end;
 
 function TLStream.read_bytes(var bb: TBytes; count: integer): boolean;
 const bs = 4096;
-var bc: integer; buf: array of byte;
+var bc: integer;
 begin
     if count>=0
     then begin
