@@ -3433,7 +3433,7 @@ begin
     end;
 
     //загрузка констант
-    base_stack.new_var('EXECUTABLE-PATH', TVString.Create(ExtractFilePath(paramstr(0))));
+    base_stack.new_var('EXECUTABLE-PATH', TVString.Create(ExtractFilePath(paramstr(0))), true);
     {$IFDEF WINDOWS} base_stack.new_var('PLATFORM', TVKeyword.Create(':WINDOWS'), true); {$ENDIF}
     {$IFDEF LINUX} base_stack.new_var('PLATFORM', TVKeyword.Create(':LINUX'), true); {$ENDIF}
     base_stack.new_var('NL', TVString.Create(LineEnding), true);
