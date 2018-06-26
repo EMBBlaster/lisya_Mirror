@@ -17,29 +17,39 @@ Those steps are the same as they would be for any other self writen componont.
 interface
 
 uses
-  SynEdit, Forms, StdCtrls, ActnList, Dialogs, SimpleHl, ContextHL, FoldHl, Classes,
-  process, SysUtils;
+  SynEdit, Forms, StdCtrls, ActnList, Dialogs, ExtCtrls, SimpleHl, ContextHL,
+  FoldHl, Classes, process, SysUtils, SynEditTypes, Controls, LCLType;
 
 type
 
   { TForm1 }
 
   TForm1 = class(TForm)
+      Action_SearchBack: TAction;
+      Action_search: TAction;
       Action_execute: TAction;
       Action_quick_save: TAction;
       Action_save_as: TAction;
       Action_open: TAction;
       ActionList1: TActionList;
+      Edit_search: TEdit;
       OpenDialog1: TOpenDialog;
+      Panel: TPanel;
       SaveDialog1: TSaveDialog;
     SynEdit1: TSynEdit;
     procedure Action_executeExecute(Sender: TObject);
     procedure Action_openExecute(Sender: TObject);
     procedure Action_quick_saveExecute(Sender: TObject);
     procedure Action_save_asExecute(Sender: TObject);
+    procedure Action_SearchBackExecute(Sender: TObject);
+    procedure Action_searchExecute(Sender: TObject);
+    procedure Edit_searchKeyPress(Sender: TObject; var Key: char);
+    procedure Edit_searchKeyUp(Sender: TObject; var Key: Word;
+        Shift: TShiftState);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure SynEdit1Change(Sender: TObject);
+    procedure Search(back: boolean = false);
   private
     FSynDemoHl: TSynDemoHl;
     FSynDemoHlContext: TSynDemoHlContext;
@@ -75,6 +85,19 @@ procedure TForm1.SynEdit1Change(Sender: TObject);
 begin
     if Form1.Caption[Length(Form1.Caption)]<>'*'
     then Form1.Caption:=Form1.Caption+' *';
+end;
+
+procedure TForm1.Search(back: boolean);
+begin
+    if not panel.Visible then begin
+        panel.Visible:=true;
+        edit_search.SetFocus;
+    end
+    else begin
+        if back
+        then SynEdit1.SearchReplace(edit_search.Text, '', [ssoRegExpr,ssoFindContinue, ssoBackwards])
+        else SynEdit1.SearchReplace(edit_search.Text, '', [ssoFindContinue]);
+    end;
 end;
 
 
@@ -121,6 +144,33 @@ begin
         SynEdit1.Lines.SaveToFile(SaveDialog1.FileName);
         OpenDialog1.FileName:=saveDialog1.FileName;
         Form1.Caption:=SaveDialog1.Filename;
+    end;
+end;
+
+procedure TForm1.Action_SearchBackExecute(Sender: TObject);
+begin
+    Search(true);
+end;
+
+procedure TForm1.Action_searchExecute(Sender: TObject);
+begin
+    Search(false);
+end;
+
+procedure TForm1.Edit_searchKeyPress(Sender: TObject; var Key: char);
+begin
+
+end;
+
+procedure TForm1.Edit_searchKeyUp(Sender: TObject; var Key: Word;
+    Shift: TShiftState);
+begin
+    case key of
+        VK_ESCAPE: begin
+            Edit_Search.Text:='';
+            panel.Visible:=false;
+        end;
+        VK_RETURN: Action_Search.Execute;
     end;
 end;
 

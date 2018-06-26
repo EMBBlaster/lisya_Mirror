@@ -11,7 +11,7 @@ object Form1: TForm1
   LCLVersion = '1.6.2.0'
   inline SynEdit1: TSynEdit
     Left = 0
-    Height = 443
+    Height = 419
     Top = 0
     Width = 655
     Align = alClient
@@ -507,23 +507,39 @@ object Form1: TForm1
       end
     end
   end
+  object Panel: TPanel
+    Left = 0
+    Height = 24
+    Top = 419
+    Width = 655
+    Align = alBottom
+    ClientHeight = 24
+    ClientWidth = 655
+    TabOrder = 1
+    Visible = False
+    object Edit_search: TEdit
+      Left = 1
+      Height = 22
+      Top = 1
+      Width = 240
+      Align = alLeft
+      OnKeyPress = Edit_searchKeyPress
+      OnKeyUp = Edit_searchKeyUp
+      TabOrder = 0
+    end
+  end
   object ActionList1: TActionList
     left = 440
     top = 141
     object Action_open: TAction
       Caption = 'Action_open'
       OnExecute = Action_openExecute
-      SecondaryShortCuts.Strings = (
-        'F3'
-      )
       ShortCut = 16463
     end
     object Action_save_as: TAction
       Caption = 'Action_save_as'
       OnExecute = Action_save_asExecute
-      SecondaryShortCuts.Strings = (
-        'F4'
-      )
+      ShortCut = 24659
     end
     object Action_quick_save: TAction
       Caption = 'Action_quick_save'
@@ -534,6 +550,16 @@ object Form1: TForm1
       Caption = 'Action_execute'
       OnExecute = Action_executeExecute
       ShortCut = 116
+    end
+    object Action_search: TAction
+      Caption = 'Action_search'
+      OnExecute = Action_searchExecute
+      ShortCut = 114
+    end
+    object Action_SearchBack: TAction
+      Caption = 'Action_SearchBack'
+      OnExecute = Action_SearchBackExecute
+      ShortCut = 8306
     end
   end
   object OpenDialog1: TOpenDialog
