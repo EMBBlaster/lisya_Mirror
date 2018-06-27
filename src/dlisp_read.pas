@@ -69,6 +69,12 @@ begin
             end;
 end;
 
+function str_is_char(s: unicodestring; out ss: unicodestring): boolean;
+begin
+    result := sp_char(s);
+    if result then ss := unicodechar(StrToInt(s[2..Length(s)]));
+end;
+
 function str_is_datetime(s: unicodestring; out dt: TDateTime): boolean;
 var year, month, day, hours, minutes, seconds, milliseconds: word;
 begin try
@@ -420,6 +426,10 @@ begin
     then result := TVString.Create(str)
     else
 
+    if str_is_char(t[i], str)
+    then result := TVString.Create(str)
+    else
+
     if t[i]='('
     then begin
         result := TVList.Create;
@@ -482,7 +492,6 @@ begin
     then result := TVT.Create
     else
 
-    //if TryStrToInt64(t[i], l)
     if str_is_integer(t[i], l)
     then result := TVInteger.Create(l)
     else
