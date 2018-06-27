@@ -25,6 +25,7 @@ object main_form: Tmain_form
     ParentColor = False
     ParentFont = False
     TabOrder = 0
+    BookMarkOptions.GlyphsVisible = False
     BorderStyle = bsNone
     Gutter.Width = 57
     Gutter.MouseActions = <>
@@ -583,5 +584,9 @@ object main_form: Tmain_form
     Filter = 'Лися|*.lisya|*|*.*'
     left = 496
     top = 87
+  end
+  object ImageList1: TImageList
+    left = 235
+    top = 124
   end
 end

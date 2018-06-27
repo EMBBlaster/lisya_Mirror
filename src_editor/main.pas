@@ -34,6 +34,7 @@ type
       Action_open: TAction;
       ActionList1: TActionList;
       Edit_search: TEdit;
+      ImageList1: TImageList;
       OpenDialog1: TOpenDialog;
       Panel: TPanel;
       SaveDialog1: TSaveDialog;
@@ -54,6 +55,7 @@ type
     procedure SynEdit1Change(Sender: TObject);
     procedure Search(back: boolean = false);
   private
+    function confirm_saving: boolean;
 
   public
 
@@ -98,6 +100,19 @@ begin
     end;
 end;
 
+function Tmain_form.confirm_saving: boolean;
+begin
+    result := true;
+    if main_form.Caption[Length(main_form.Caption)]='*' then begin
+        case MessageDLG('Сохранить изменения?','Сохранить изменения в файле '+SaveDialog1.FileName+'?',
+            mtConfirmation,[mbYes,mbNo,mbCancel],0) of
+            mrYes: Action_quick_save.Execute;
+            mrNo:;
+            mrCancel: result := false;
+        end;
+    end;
+end;
+
 
 
 procedure Tmain_form.FormClose(Sender: TObject; var CloseAction: TCloseAction);
@@ -107,15 +122,7 @@ end;
 
 procedure Tmain_form.FormCloseQuery(Sender: TObject; var CanClose: boolean);
 begin
-    CanClose := true;
-    if main_form.Caption[Length(main_form.Caption)]='*' then begin
-        case MessageDLG('Сохранить изменения?','Сохранить изменения в файле '+SaveDialog1.FileName+'?',
-            mtConfirmation,[mbYes,mbNo,mbCancel],0) of
-            mrYes: Action_quick_save.Execute;
-            mrNo:;
-            mrCancel: CanClose := false;
-        end;
-    end;
+    CanClose := confirm_saving;
 end;
 
 procedure Tmain_form.Action_openExecute(Sender: TObject);
@@ -145,6 +152,7 @@ end;
 
 procedure Tmain_form.Action_NEWExecute(Sender: TObject);
 begin
+    if not confirm_saving() then exit;
     Action_quick_save.Execute;
     SaveDialog1.FileName:='';
     OpenDialog1.FileName:='';
