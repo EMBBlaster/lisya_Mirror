@@ -841,7 +841,7 @@ end;
 
 function vpKeyword_LATIN1(V: TValue): boolean;
 begin
-    result := vphKeywordNames(V, [':LATIN1',':LATIN-1', ':ISO-8859-1']);
+    result := vphKeywordNames(V, [':LATIN1',':LATIN-1', ':ISO-8859-1', ':CP819']);
 end;
 
 function vpKeyword_LEFT                             (V: TValue): boolean;

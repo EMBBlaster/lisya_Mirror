@@ -25,6 +25,7 @@ type
   { TForm1 }
 
   TForm1 = class(TForm)
+      Action_NEW: TAction;
       Action_SearchBack: TAction;
       Action_search: TAction;
       Action_execute: TAction;
@@ -38,6 +39,7 @@ type
       SaveDialog1: TSaveDialog;
     SynEdit1: TSynEdit;
     procedure Action_executeExecute(Sender: TObject);
+    procedure Action_NEWExecute(Sender: TObject);
     procedure Action_openExecute(Sender: TObject);
     procedure Action_quick_saveExecute(Sender: TObject);
     procedure Action_save_asExecute(Sender: TObject);
@@ -47,6 +49,7 @@ type
     procedure Edit_searchKeyUp(Sender: TObject; var Key: Word;
         Shift: TShiftState);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
     procedure FormCreate(Sender: TObject);
     procedure SynEdit1Change(Sender: TObject);
     procedure Search(back: boolean = false);
@@ -95,7 +98,7 @@ begin
     end
     else begin
         if back
-        then SynEdit1.SearchReplace(edit_search.Text, '', [ssoRegExpr,ssoFindContinue, ssoBackwards])
+        then SynEdit1.SearchReplace(edit_search.Text, '', [ssoFindContinue, ssoBackwards])
         else SynEdit1.SearchReplace(edit_search.Text, '', [ssoFindContinue]);
     end;
 end;
@@ -105,6 +108,19 @@ end;
 procedure TForm1.FormClose(Sender: TObject; var CloseAction: TCloseAction);
 begin
 
+end;
+
+procedure TForm1.FormCloseQuery(Sender: TObject; var CanClose: boolean);
+begin
+    CanClose := true;
+    if Form1.Caption[Length(Form1.Caption)]='*' then begin
+        case MessageDLG('Сохранить изменения?','Сохранить изменения в файле '+SaveDialog1.FileName+'?',
+            mtConfirmation,[mbYes,mbNo,mbCancel],0) of
+            mrYes: Action_quick_save.Execute;
+            mrNo:;
+            mrCancel: CanClose := false;
+        end;
+    end;
 end;
 
 procedure TForm1.Action_openExecute(Sender: TObject);
@@ -132,10 +148,22 @@ begin
     p.Free;
 end;
 
+procedure TForm1.Action_NEWExecute(Sender: TObject);
+begin
+    Action_quick_save.Execute;
+    SaveDialog1.FileName:='';
+    OpenDialog1.FileName:='';
+    Caption := 'Новый';
+    SynEdit1.Lines.Clear;
+end;
+
 procedure TForm1.Action_quick_saveExecute(Sender: TObject);
 begin
-    SynEdit1.Lines.SaveToFile(SaveDialog1.FileName);
-    Form1.Caption:=SaveDialog1.Filename;
+    if SaveDialog1.FileName<>'' then begin
+        SynEdit1.Lines.SaveToFile(SaveDialog1.FileName);
+        Form1.Caption:=SaveDialog1.Filename;
+    end
+    else Action_save_as.Execute;
 end;
 
 procedure TForm1.Action_save_asExecute(Sender: TObject);

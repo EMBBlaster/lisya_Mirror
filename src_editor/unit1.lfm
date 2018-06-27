@@ -7,6 +7,7 @@ object Form1: TForm1
   ClientHeight = 443
   ClientWidth = 655
   OnClose = FormClose
+  OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   LCLVersion = '1.6.2.0'
   inline SynEdit1: TSynEdit
@@ -210,7 +211,6 @@ object Form1: TForm1
       end    
       item
         Command = ecInsertLine
-        ShortCut = 16462
       end    
       item
         Command = ecDeleteWord
@@ -560,6 +560,11 @@ object Form1: TForm1
       Caption = 'Action_SearchBack'
       OnExecute = Action_SearchBackExecute
       ShortCut = 8306
+    end
+    object Action_NEW: TAction
+      Caption = 'Action_NEW'
+      OnExecute = Action_NEWExecute
+      ShortCut = 16462
     end
   end
   object OpenDialog1: TOpenDialog
