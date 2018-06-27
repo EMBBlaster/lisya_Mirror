@@ -104,7 +104,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    (* Define 4 Attributes, for the different highlights. *)
+    (* Define Attributes, for the different highlights. *)
     property OperatorAttri: TSynHighlighterAttributes read fOperatorAttri
       write SetOperatorAttri;
     property ModOperatorAttri: TSynHighlighterAttributes read fModOperatorAttri
@@ -309,7 +309,7 @@ begin
     Result := ModOperatorAttri
   else
 
-  if sp_float(FLineText[FTokenPos..FTokenEnd-1]) then
+  if sp_float(FLineText[FTokenPos..FTokenEnd-1]) or sp_integer(FLineText[FTokenPos..FTokenEnd-1]) then
     Result := NumberAttri
   else
 
