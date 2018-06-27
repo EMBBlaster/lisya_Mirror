@@ -55,7 +55,9 @@ unit lisya_highlighter;
 interface
 
 uses
-  Classes, SysUtils, Graphics, SynEditTypes, SynEditHighlighter, SynEditHighlighterFoldBase;
+  Classes, SysUtils, Graphics, SynEditTypes, SynEditHighlighter
+  ,lisya_string_predicates in '../src/lisya_string_predicates.pas'
+  , SynEditHighlighterFoldBase;
 
 
 type
@@ -259,12 +261,10 @@ begin
   else
   if FLineText[FTokenEnd]='(' then begin
     Inc(FTokenEnd);
-    //StartCodeFoldBlock(nil);
   end
   else
   if FLineText[FTokenEnd]=')' then begin
     Inc(FTokenEnd);
-    //EndCodeFoldBlock;
   end
   else
   if FLineText[FTokenEnd] in [';'] then FTokenEnd := l+1
@@ -308,7 +308,12 @@ begin
   if LowerCase(copy(FLineText, FTokenPos, FTokenEnd - FTokenPos)) = 'not' then
     Result := ModOperatorAttri
   else
-    Result := IdentifierAttri;
+
+  if sp_float(FLineText[FTokenPos..FTokenEnd-1]) then
+    Result := NumberAttri
+  else
+
+  Result := IdentifierAttri;
 end;
 
 function TSynDemoHl.GetToken: String;
