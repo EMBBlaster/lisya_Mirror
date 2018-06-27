@@ -1,4 +1,4 @@
-unit SimpleHl;
+unit lisya_highlighter;
 (*
   This is an example how to implement your own highlighter.
 

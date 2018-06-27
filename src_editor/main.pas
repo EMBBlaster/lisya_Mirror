@@ -1,4 +1,4 @@
-unit Unit1;
+unit main;
 (*
 
 This is an example how to write a highlighter from scratch.
@@ -17,14 +17,14 @@ Those steps are the same as they would be for any other self writen componont.
 interface
 
 uses
-  SynEdit, Forms, StdCtrls, ActnList, Dialogs, ExtCtrls, SimpleHl, ContextHL,
-  FoldHl, Classes, process, SysUtils, SynEditTypes, Controls, LCLType;
+  SynEdit, Forms, StdCtrls, ActnList, Dialogs, ExtCtrls, lisya_highlighter,
+  Classes, process, SysUtils, SynEditTypes, Controls, LCLType;
 
 type
 
-  { TForm1 }
+  { Tmain_form }
 
-  TForm1 = class(TForm)
+  Tmain_form = class(TForm)
       Action_NEW: TAction;
       Action_SearchBack: TAction;
       Action_search: TAction;
@@ -54,28 +54,23 @@ type
     procedure SynEdit1Change(Sender: TObject);
     procedure Search(back: boolean = false);
   private
-    FSynDemoHl: TSynDemoHl;
-    FSynDemoHlContext: TSynDemoHlContext;
-    FSynDemoHlFold: TSynDemoHlFold;
+
   public
 
   end;
 
 var
-  Form1: TForm1;
+  main_form: Tmain_form;
 
 implementation
 
 {$R *.lfm}
 
-{ TForm1 }
+{ Tmain_form }
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure Tmain_form.FormCreate(Sender: TObject);
 begin
-  FSynDemoHl := TSynDemoHl.Create(Self);
-  FSynDemoHlContext := TSynDemoHlContext.Create(Self);
-  FSynDemoHlFold := TSynDemoHlFold.Create(Self);
-  SynEdit1.Highlighter := FSynDemoHl;
+  SynEdit1.Highlighter := TSynDemoHl.Create(Self);
   if paramCount>0 then begin
         OpenDialog1.Filename := paramStr(1);
         SaveDialog1.FileName := paramStr(1);
@@ -84,13 +79,13 @@ begin
   end;
 end;
 
-procedure TForm1.SynEdit1Change(Sender: TObject);
+procedure Tmain_form.SynEdit1Change(Sender: TObject);
 begin
-    if Form1.Caption[Length(Form1.Caption)]<>'*'
-    then Form1.Caption:=Form1.Caption+' *';
+    if main_form.Caption[Length(main_form.Caption)]<>'*'
+    then main_form.Caption:=main_form.Caption+' *';
 end;
 
-procedure TForm1.Search(back: boolean);
+procedure Tmain_form.Search(back: boolean);
 begin
     if not panel.Visible then begin
         panel.Visible:=true;
@@ -105,15 +100,15 @@ end;
 
 
 
-procedure TForm1.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+procedure Tmain_form.FormClose(Sender: TObject; var CloseAction: TCloseAction);
 begin
 
 end;
 
-procedure TForm1.FormCloseQuery(Sender: TObject; var CanClose: boolean);
+procedure Tmain_form.FormCloseQuery(Sender: TObject; var CanClose: boolean);
 begin
     CanClose := true;
-    if Form1.Caption[Length(Form1.Caption)]='*' then begin
+    if main_form.Caption[Length(main_form.Caption)]='*' then begin
         case MessageDLG('Сохранить изменения?','Сохранить изменения в файле '+SaveDialog1.FileName+'?',
             mtConfirmation,[mbYes,mbNo,mbCancel],0) of
             mrYes: Action_quick_save.Execute;
@@ -123,16 +118,16 @@ begin
     end;
 end;
 
-procedure TForm1.Action_openExecute(Sender: TObject);
+procedure Tmain_form.Action_openExecute(Sender: TObject);
 begin
     if OpenDialog1.Execute then begin
         SynEdit1.Lines.LoadFromFile(OpenDialog1.FileName);
-        Form1.Caption := OpenDialog1.FileName;
+        main_form.Caption := OpenDialog1.FileName;
         SaveDialog1.FileName:=OpenDialog1.FileName;
     end;
 end;
 
-procedure TForm1.Action_executeExecute(Sender: TObject);
+procedure Tmain_form.Action_executeExecute(Sender: TObject);
 var p: TProcess;
 begin
     Action_quick_save.Execute;
@@ -148,7 +143,7 @@ begin
     p.Free;
 end;
 
-procedure TForm1.Action_NEWExecute(Sender: TObject);
+procedure Tmain_form.Action_NEWExecute(Sender: TObject);
 begin
     Action_quick_save.Execute;
     SaveDialog1.FileName:='';
@@ -157,40 +152,40 @@ begin
     SynEdit1.Lines.Clear;
 end;
 
-procedure TForm1.Action_quick_saveExecute(Sender: TObject);
+procedure Tmain_form.Action_quick_saveExecute(Sender: TObject);
 begin
     if SaveDialog1.FileName<>'' then begin
         SynEdit1.Lines.SaveToFile(SaveDialog1.FileName);
-        Form1.Caption:=SaveDialog1.Filename;
+        main_form.Caption:=SaveDialog1.Filename;
     end
     else Action_save_as.Execute;
 end;
 
-procedure TForm1.Action_save_asExecute(Sender: TObject);
+procedure Tmain_form.Action_save_asExecute(Sender: TObject);
 begin
     If SaveDialog1.Execute then begin
         SynEdit1.Lines.SaveToFile(SaveDialog1.FileName);
         OpenDialog1.FileName:=saveDialog1.FileName;
-        Form1.Caption:=SaveDialog1.Filename;
+        main_form.Caption:=SaveDialog1.Filename;
     end;
 end;
 
-procedure TForm1.Action_SearchBackExecute(Sender: TObject);
+procedure Tmain_form.Action_SearchBackExecute(Sender: TObject);
 begin
     Search(true);
 end;
 
-procedure TForm1.Action_searchExecute(Sender: TObject);
+procedure Tmain_form.Action_searchExecute(Sender: TObject);
 begin
     Search(false);
 end;
 
-procedure TForm1.Edit_searchKeyPress(Sender: TObject; var Key: char);
+procedure Tmain_form.Edit_searchKeyPress(Sender: TObject; var Key: char);
 begin
 
 end;
 
-procedure TForm1.Edit_searchKeyUp(Sender: TObject; var Key: Word;
+procedure Tmain_form.Edit_searchKeyUp(Sender: TObject; var Key: Word;
     Shift: TShiftState);
 begin
     case key of
