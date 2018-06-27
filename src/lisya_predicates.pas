@@ -195,6 +195,8 @@ function vpKeyword_KOI8R                            (V: TValue): boolean;
 
 function vpKeyword_LAST                             (V: TValue): boolean;
 
+function vpKeyword_LATIN1                           (V: TValue): boolean;
+
 function vpKeyword_LEFT                             (V: TValue): boolean;
 
 function vpKeyword_LESS                             (V: TValue): boolean;
@@ -837,6 +839,11 @@ begin
     result := (V is TVKeyword) and ((V as TVSymbol).uname = ':LAST');
 end;
 
+function vpKeyword_LATIN1(V: TValue): boolean;
+begin
+    result := vphKeywordNames(V, [':LATIN1',':LATIN-1', ':ISO-8859-1']);
+end;
+
 function vpKeyword_LEFT                             (V: TValue): boolean;
 begin
     result := vphKeywordName(V, ':LEFT');
@@ -985,8 +992,9 @@ begin
         or vpKeyword_UTF16LE(V)
         or vpKeyword_UTF16BE(V)
         or vpKeyword_UTF32LE(V)
-        or vpKeyword_UTF32BE(V))
-        ;
+        or vpKeyword_UTF32BE(V)
+        or vpKeyword_LATIN1(V)
+        );
 end;
 
 function vpKeywordEncodingOrNIL                     (V: TValue): boolean;

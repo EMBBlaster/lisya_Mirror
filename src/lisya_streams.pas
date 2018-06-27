@@ -587,6 +587,7 @@ begin
         seCP1252: ch := cp1252_cp[b[1]];
         seCP866:  ch := cp866_cp[b[1]];
         seKOI8R:  ch := KOI8_R_cp[b[1]];
+        seLatin1: ch := Latin1_cp[b[1]];
         else raise ECharsetError.Create('');
     end;
     result := true;
@@ -758,6 +759,7 @@ begin
         seCP1252: write8bit(cp1252_cp);
         seCP866:  write8bit(cp866_cp);
         seKOI8R:  write8bit(KOI8_R_cp);
+        seLatin1: write8bit(Latin1_cp);
         else raise ECharsetError.Create('неизвестная кодировка');
     end;
 end;
