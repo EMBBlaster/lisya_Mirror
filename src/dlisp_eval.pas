@@ -2875,7 +2875,7 @@ begin
                     put(#13#10);
                 end;
                 html: begin
-                    put('<table>'); put(#13#10);
+                    //put('<table>'); put(#13#10);
                     for i := 0 to h-1 do begin
                         put('<tr>');
                         for j := 0 to w-1 do begin
@@ -2885,7 +2885,7 @@ begin
                         end;
                         put('</tr>'); put(#13#10);
                     end;
-                    put('</table>'); put(#13#10);
+                    //put('</table>'); put(#13#10);
                 end;
             end;
         end;
@@ -3049,6 +3049,45 @@ begin
     end;
 end;
 
+function if_sql_query_table     (const PL: TVList; {%H-}call: TCallProc): TValue;
+var rec: TVList; i,j: integer;
+    ucommand: unicodestring;
+begin
+    case params_is(PL, result, [
+        vpSQLPointerActive, tpList]) of
+        1: with (PL.look[0] as TVSQLPointer).query do try
+            rec := nil;
+
+            Active := false;
+            SQL.Text := ifh_format(PL.L[1]);
+            ucommand := UnicodeUpperCase(SQL.Text);
+            if (Pos('SELECT', ucommand)=1)
+                or (Pos('SHOW', ucommand)=1)
+                or (Pos('DESCRIBE', ucommand)=1)
+            then Active := true
+            else begin
+                result := TVT.Create;
+                ExecSQL;
+                Exit;
+            end;
+            Last;
+
+            result := TVList.Create;
+
+            First;
+            for i := 0 to RecordCount-1 do begin
+                rec := TVList.Create;
+                for j := 0 to FieldCount-1 do rec.Add(ifh_SQL_datatype(Fields[j]));
+                (result as TVList).Add(rec);
+                rec := nil;
+                Next;
+            end;
+        finally
+            rec.Free;
+        end;
+    end;
+end;
+
 
 function if_http_get            (const PL: TVList; {%H-}call: TCallProc): TValue;
 var http: TFPHTTPClient; scp: integer;
@@ -3121,7 +3160,7 @@ begin
 end;
 
 
-const int_fun_count = 157;
+const int_fun_count = 158;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3300,6 +3339,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SQL:MYSQL-CONNECTION';      f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
 (n:'SQL:QUERY';                 f:if_sql_query;             s:'(db :rest q)'),
 (n:'SQL:QUERY-LIST';            f:if_sql_query_list;        s:'(db :rest q)'),
+(n:'SQL:QUERY-TABLE';           f:if_sql_query_table;       s:'(db :rest q)'),
 
 (n:'HTTP:GET';                  f:if_http_get;              s:'(url :key proxy)'),
 
