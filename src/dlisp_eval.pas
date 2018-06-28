@@ -2879,7 +2879,9 @@ begin
                     for i := 0 to h-1 do begin
                         put('<tr>');
                         for j := 0 to w-1 do begin
-                            put('<td>');
+                            if tpNumber(table.L[i].look[j])
+                            then put('<td align="right">')
+                            else put('<td>');
                             put(data[i,j]);
                             put('</td>');
                         end;
