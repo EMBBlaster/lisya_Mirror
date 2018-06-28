@@ -76,7 +76,7 @@ function TLProcess.description: unicodestring;
 begin
     if p=nil
     then result := 'nil'
-    else result := p.CommandLine;
+    else result := {$IFDEF WINDOWS} WinCPtoUnicode(p.CommandLine){$ELSE} p.CommandLine{$ENDIF};
 end;
 
 procedure TLProcess.term;
