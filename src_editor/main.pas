@@ -18,7 +18,10 @@ interface
 
 uses
   SynEdit, Forms, StdCtrls, ActnList, Dialogs, ExtCtrls, lisya_highlighter,
-  Classes, process, SysUtils, SynEditTypes, Controls, LCLType;
+  Classes, process, SysUtils, SynEditTypes, Controls, LCLType
+
+  {$IFDEF WINDOWS}, LazUnicode {$ENDIF}
+  ;
 
 type
 
@@ -34,7 +37,6 @@ type
       Action_open: TAction;
       ActionList1: TActionList;
       Edit_search: TEdit;
-      ImageList1: TImageList;
       OpenDialog1: TOpenDialog;
       Panel: TPanel;
       SaveDialog1: TSaveDialog;
@@ -56,6 +58,9 @@ type
     procedure Search(back: boolean = false);
   private
     function confirm_saving: boolean;
+    procedure Set_filename(fn: unicodestring);
+    function save_as(): boolean;
+    function quick_save(): boolean;
 
   public
 
@@ -102,15 +107,50 @@ end;
 
 function Tmain_form.confirm_saving: boolean;
 begin
-    result := true;
     if main_form.Caption[Length(main_form.Caption)]='*' then begin
         case MessageDLG('Сохранить изменения?','Сохранить изменения в файле '+SaveDialog1.FileName+'?',
             mtConfirmation,[mbYes,mbNo,mbCancel],0) of
-            mrYes: Action_quick_save.Execute;
-            mrNo:;
+            mrYes: result := quick_save();
+            mrNo: result := true;
             mrCancel: result := false;
         end;
+    end
+    else result := true;
+end;
+
+procedure Tmain_form.Set_filename(fn: unicodestring);
+begin
+    OpenDialog1.FileName:=fn;
+    SaveDialog1.FileName:=fn;
+    if fn<>''
+    then begin
+        Caption := fn;
+        Application.Title:=ExtractFileName(fn);
+    end
+    else begin
+        Caption := 'Новый';
+        Application.Title:='Лися';
     end;
+end;
+
+function Tmain_form.save_as: boolean;
+begin
+    If SaveDialog1.Execute then begin
+        SynEdit1.Lines.SaveToFile(SaveDialog1.FileName);
+        set_filename(SaveDialog1.FileName);
+        result := true;
+    end
+    else result := false;
+end;
+
+function Tmain_form.quick_save: boolean;
+begin
+    if SaveDialog1.FileName<>'' then begin
+        SynEdit1.Lines.SaveToFile(SaveDialog1.FileName);
+        set_filename(SaveDialog1.FileName);
+        result := true;
+    end
+    else result := save_as();
 end;
 
 
@@ -127,22 +167,26 @@ end;
 
 procedure Tmain_form.Action_openExecute(Sender: TObject);
 begin
+    if not Confirm_saving() then Exit;
     if OpenDialog1.Execute then begin
         SynEdit1.Lines.LoadFromFile(OpenDialog1.FileName);
-        main_form.Caption := OpenDialog1.FileName;
-        SaveDialog1.FileName:=OpenDialog1.FileName;
+        set_filename(OpenDialog1.FileName)
     end;
 end;
 
 procedure Tmain_form.Action_executeExecute(Sender: TObject);
 var p: TProcess;
 begin
-    Action_quick_save.Execute;
+    quick_save;
 
     p := TProcess.Create(nil);
     p.CommandLine:=
-        ExtractFilePath(Application.ExeName)+{$IFDEF WINDOWS}'lisya.exe'{$ELSE}'lisya'{$ENDIF}
-        +' "'+SaveDialog1.FileName+'"';
+    {$IFDEF WINDOWS}
+        UnicodeToWinCP(ExtractFilePath(Application.ExeName)+'lisya.exe'
+            +' "'+SaveDialog1.FileName+'"');
+    {$ELSE}
+        ExtractFilePath(Application.ExeName)+'lisya'+' "'+SaveDialog1.FileName+'"';
+    {$ENDIF}
     p.CurrentDirectory:=ExtractFilePath(SaveDialog1.FileName);
     p.Options:=[poNewConsole,poNewProcessGroup];
 
@@ -153,29 +197,19 @@ end;
 procedure Tmain_form.Action_NEWExecute(Sender: TObject);
 begin
     if not confirm_saving() then exit;
-    Action_quick_save.Execute;
-    SaveDialog1.FileName:='';
-    OpenDialog1.FileName:='';
-    Caption := 'Новый';
+    quick_save;
+    set_filename('');
     SynEdit1.Lines.Clear;
 end;
 
 procedure Tmain_form.Action_quick_saveExecute(Sender: TObject);
 begin
-    if SaveDialog1.FileName<>'' then begin
-        SynEdit1.Lines.SaveToFile(SaveDialog1.FileName);
-        main_form.Caption:=SaveDialog1.Filename;
-    end
-    else Action_save_as.Execute;
+    quick_save;
 end;
 
 procedure Tmain_form.Action_save_asExecute(Sender: TObject);
 begin
-    If SaveDialog1.Execute then begin
-        SynEdit1.Lines.SaveToFile(SaveDialog1.FileName);
-        OpenDialog1.FileName:=saveDialog1.FileName;
-        main_form.Caption:=SaveDialog1.Filename;
-    end;
+    save_as;
 end;
 
 procedure Tmain_form.Action_SearchBackExecute(Sender: TObject);

@@ -585,8 +585,4 @@ object main_form: Tmain_form
     left = 496
     top = 87
   end
-  object ImageList1: TImageList
-    left = 235
-    top = 124
-  end
 end

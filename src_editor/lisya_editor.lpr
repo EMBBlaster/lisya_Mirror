@@ -13,6 +13,7 @@ uses
 {$R *.res}
 
 begin
+    Application.Title:='Лися';
   RequireDerivedFormResource := True;
   Application.Initialize;
   Application.CreateForm(Tmain_form, main_form);
