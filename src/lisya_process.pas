@@ -8,6 +8,9 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
+    {$IFDEF WINDOWS}
+    LazUnicode,
+    {$ENDIF}
     Classes, SysUtils, process,
     mar,
     lisia_charset;
@@ -51,8 +54,13 @@ constructor TLProcess.Run(cmd: unicodestring; dir: unicodestring);
 begin
     inherited Create;
     p := TProcess.Create(nil);
-    p.CommandLine:=cmd;
+    {$IFDEF WINDOWS}
+    p.CommandLine:=UnicodeToWinCP(cmd);
+    p.CurrentDirectory:=UnicodeToWinCP(DirSep(dir));
+    {$ELSE}
+    p.CommandLine:=cmd;;
     p.CurrentDirectory:=DirSep(dir);
+    {$ENDIF};
     p.Options:=[poStderrToOutPut, poUsePipes];
     p.Execute;
 end;
