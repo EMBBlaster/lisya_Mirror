@@ -5,7 +5,9 @@ unit lisya_ifh;
 interface
 
 uses
-    Classes, SysUtils, dlisp_values, lisya_predicates, mar,  math, lisya_exceptions;
+    Classes, SysUtils, dlisp_values, lisya_predicates, mar,  math
+    ,lisya_symbols
+    , lisya_exceptions;
 
 type TBindings = array of record
         nN: integer;
@@ -126,7 +128,7 @@ function ifh_bind(sign, PL: TValue): TBindings;
         procedure bind_key(V: TVSymbol);
         var i: integer; nN: integer;
         begin
-            nN := TVSymbol.symbol_n(':'+V.uname);
+            nN := symbol_n(':'+V.uname);
             i := pl.high-1;
             while i>=key_start do begin
                 if tpKeyword(pl.look[i]) and (nN=pl.SYM[i].N)
@@ -142,7 +144,7 @@ function ifh_bind(sign, PL: TValue): TBindings;
         procedure bind_flag(V: TVSymbol);
         var i: integer; nN: integer;
         begin
-            nN := TVSymbol.symbol_n(':'+V.uname);
+            nN := symbol_n(':'+V.uname);
             for i := key_start to pl.high do
                 if tpKeyword(pl.look[i]) and (nN=pl.SYM[i].N)
                 then begin

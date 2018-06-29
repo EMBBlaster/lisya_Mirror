@@ -33,6 +33,7 @@ uses
     ,lisya_exceptions
     ,lisya_streams
     ,lisya_process
+    ,lisya_symbols
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -3385,7 +3386,7 @@ var o: TOperatorEnum;
     procedure op(name: unicodestring);
     begin
         ops[o].n := name;
-        ops[o].nN := TVSymbol.symbol_n(name);
+        ops[o].nN := symbol_n(name);
     end;
 begin
     for o := low(ops) to high(ops) do
@@ -5118,7 +5119,7 @@ begin
     then begin
         if res
         then result := PL[1]
-        else raise ELE.Create(PL.look[1].AsString+' is not '+TVSymbol.symbol_uname(P.nN), 'assertion');
+        else raise ELE.Create(PL.look[1].AsString+' is not '+symbol_uname(P.nN), 'assertion');
     end
     else bool_to_TV(res, result);
 end;

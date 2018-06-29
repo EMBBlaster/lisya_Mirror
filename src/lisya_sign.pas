@@ -5,7 +5,9 @@
 interface
 
 uses
-    Classes, SysUtils, dlisp_values, lisya_predicates, mar,  lisya_exceptions;
+    Classes, SysUtils, dlisp_values, lisya_predicates, mar
+    ,lisya_symbols
+    ,  lisya_exceptions;
 
 type
     TValues = array of TValue;
@@ -113,7 +115,7 @@ begin
         SetLength(result.p, Length(result.p)+1);
         with result.p[high(result.p)] do begin
             n:=S.N;
-            k := TVSymbol.symbol_n(':'+S.uname);
+            k := symbol_n(':'+S.uname);
         end;
     end;
 end;

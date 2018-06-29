@@ -12,7 +12,9 @@ uses
     {$ENDIF}
     SysUtils, Classes, Contnrs, ucomplex, crc,
     lisia_charset, mar, lisya_zip, lisya_exceptions, lisya_streams,
-    lisya_process;
+    lisya_process
+    ,lisya_symbols
+    ;
 
 
 type
@@ -196,9 +198,6 @@ type
         function AsString(): unicodestring; override;
         function hash: DWORD; override;
         function equal(V: TValue): boolean; override;
-
-        class function symbol_n(n: unicodestring): integer;
-        class function symbol_uname(nN: integer): unicodestring;
     end;
 
 
@@ -768,7 +767,7 @@ function NewVariable(_V: TValue = nil; _constant: boolean = false): PVariable;
 function RefVariable(P: PVariable): PVariable;
 procedure ReleaseVariable(var P: PVariable);
 
-var symbols: array of unicodestring;
+var
     _ : TVSymbol;
     kwFLAG, kwKEY, kwOPTIONAL, kwREST: TVKeyword;
 
@@ -776,8 +775,6 @@ var symbols: array of unicodestring;
 implementation
 
 uses lisya_predicates;
-
-var gensym_n: Int64 = -1;
 
 
 
@@ -919,7 +916,7 @@ function TSubprogramSignature.AsString: unicodestring;
 var i: integer;
 begin
     result := '(';
-    for i := 0 to required_count-1 do result := result+TVSymbol.symbol_uname(P[i].n)+' ';
+    for i := 0 to required_count-1 do result := result+symbol_uname(P[i].n)+' ';
     case mode of
         spmReq:;
         spmOpt: result := result+':OPTIONAL ';
@@ -927,7 +924,7 @@ begin
         spmFlag:result := result+':FLAG ';
         spmRest:result := result+':REST ';
     end;
-    for i := required_count to high(p) do result := result+TVSymbol.symbol_uname(P[i].n)+' ';
+    for i := required_count to high(p) do result := result+symbol_uname(P[i].n)+' ';
     if result[Length(result)] = ' '
     then result[Length(result)] := ')'
     else result := result+')';
@@ -1104,7 +1101,7 @@ function TVMacro.AsString: unicodestring;
 begin
     if nN<=0
     then result := '#<MACRO '+sign1.AsString+'>'
-    else result := '#<MACRO '+symbols[nN]+'>';
+    else result := '#<MACRO '+symbol_uname(nN)+'>';
 end;
 
 { TVHashTable }
@@ -1335,7 +1332,7 @@ end;
 
 constructor TVPredicate.Create(name: unicodestring; _body: TTypePredicate; a: boolean);
 begin
-    nN := TVSymbol.symbol_n(name);
+    nN := symbol_n(name);
     body := _body;
     fAssert := a;
 end;
@@ -1357,7 +1354,7 @@ function TVPredicate.AsString: unicodestring;
 var a: unicodestring;
 begin
     if fAssert then a := '!' else a := '?';
-    result := '#<PREDICATE '+symbols[nN]+a+'>';
+    result := '#<PREDICATE '+symbol_uname(nN)+a+'>';
 end;
 
 function TVPredicate.hash: DWORD;
@@ -1814,7 +1811,7 @@ end;
 
 function TVSymbolStack.index_of(name: unicodestring): integer;
 begin
-    result := index_of(TVSymbol.symbol_n(name));
+    result := index_of(symbol_n(name));
 end;
 
 function TVSymbolStack.index_of(n: integer): integer;
@@ -1822,10 +1819,10 @@ begin
     for result := high(stack) downto 0 do
         if stack[result].N = n then
             if stack[result].V=nil
-            then raise ELE.Create(symbols[n]+' - nil bound', 'internal')
+            then raise ELE.Create(symbol_uname(n)+' - nil bound', 'internal')
             else exit;
 
-    raise ELE.Create(symbols[n], 'symbol not bound');
+    raise ELE.Create(symbol_uname(n), 'symbol not bound');
 end;
 
 constructor TVSymbolStack.Create(parent: TVSymbolStack);
@@ -1895,7 +1892,7 @@ begin
     if low_i<0 then low_i := 0;
     WriteLn('-----------------------');
     for i := low_i to high(stack) do begin
-        Write('  | ', symbols[stack[i].N]);
+        Write('  | ', symbol_uname(stack[i].N));
         if stack[i].V<> nil
         then WriteLn('  >(', stack[i].V.ref_count,')',
                         {%H-}Cardinal(stack[i].V),'>  ', stack[i].V.V.AsString)
@@ -1907,7 +1904,7 @@ end;
 
 procedure TVSymbolStack.new_var(name: unicodestring; V: TValue; c: boolean);
 begin
-    new_var(TVSymbol.symbol_n(name), V, c);
+    new_var(symbol_n(name), V, c);
 end;
 
 procedure TVSymbolStack.new_var(symbol: TVSymbol; V: TValue; c: boolean);
@@ -1976,7 +1973,7 @@ end;
 procedure TVSymbolStack.new_ref(name: unicodestring; P: PVariable);
 begin
     SetLength(stack, Length(stack)+1);
-    stack[high(stack)].N := TVSymbol.symbol_n(name);
+    stack[high(stack)].N := symbol_n(name);
     stack[high(stack)].V := P;
 end;
 
@@ -2033,18 +2030,18 @@ end;
 
 function TVRecord.fGetSlot(index: unicodestring): TValue;
 begin
-    result := (slots[index_of(TVSymbol.symbol_n(index))] as TValue).copy;
+    result := (slots[index_of(symbol_n(index))] as TValue).copy;
 end;
 
 procedure TVRecord.fSetSlot(index: unicodestring; V: TValue);
 begin
-    slots[index_of(TVSymbol.symbol_n(index))] := V;
+    slots[index_of(symbol_n(index))] := V;
 end;
 
 function TVRecord.flook(index: unicodestring): TValue;
 begin
     //TODO: обращение к несуществующему слоту структуры вызывает необрабатываемую ошибку
-    result := slots[index_of(TVSymbol.symbol_n(index))] as TValue;
+    result := slots[index_of(symbol_n(index))] as TValue;
 end;
 
 function TVRecord.GetItem(index: integer): TValue;
@@ -2070,7 +2067,7 @@ begin
             result := i;
             Exit;
         end;
-    raise ELE.Create('slot '+TVSymbol.symbol_uname(nN)+' not found');
+    raise ELE.Create('slot '+symbol_uname(nN)+' not found');
 end;
 
 constructor TVRecord.Create(names: array of unicodestring);
@@ -2080,7 +2077,7 @@ begin
     slots := TObjectList.create(true);
     slots.Capacity := Length(names);
     for i := low(names) to high(names) do begin
-        unames[i] := TVSymbol.symbol_n(names[i]);
+        unames[i] := symbol_n(names[i]);
         slots.Add(TVList.Create);
     end;
 end;
@@ -2116,9 +2113,9 @@ var i: integer;
 begin
     result := '#R(';
     if slots.Count>0
-    then result := result + TVSymbol.symbol_uname(unames[0]) + ' ' + (slots[0] as TValue).AsString();
+    then result := result + symbol_uname(unames[0]) + ' ' + (slots[0] as TValue).AsString();
     for i := 1 to slots.Count - 1 do
-    result := result + ' ' + TVSymbol.symbol_uname(unames[i]) + ' ' + (slots[i] as TValue).AsString();
+    result := result + ' ' + symbol_uname(unames[i]) + ' ' + (slots[i] as TValue).AsString();
     result := result + ')';
 end;
 
@@ -2169,7 +2166,7 @@ end;
 procedure TVRecord.AddSlot(name: unicodestring; V: TValue);
 begin
     SetLength(unames, Length(unames)+1);
-    unames[high(unames)] := TVSymbol.symbol_n(name);
+    unames[high(unames)] := symbol_n(name);
     slots.Add(V);
 end;
 
@@ -2202,12 +2199,12 @@ end;
 
 function TVRecord.name_n(n: integer): unicodestring;
 begin
-    result := TVSymbol.symbol_uname(unames[n]);
+    result := symbol_uname(unames[n]);
 end;
 
 function TVRecord.get_n_of(index: unicodestring): integer;
 begin
-    result := index_of(TVSymbol.symbol_n(index));
+    result := index_of(symbol_n(index));
 end;
 
 
@@ -2215,7 +2212,7 @@ end;
 
 constructor TVOperator.Create(name: unicodestring; en: TOperatorEnum);
 begin
-    self.nN := TVSymbol.symbol_n(name);
+    self.nN := symbol_n(name);
     self.op_enum := en;
 end;
 
@@ -2237,7 +2234,7 @@ end;
 
 function TVOperator.AsString: unicodestring;
 begin
-    result := '#<OPERATOR '+symbols[nN]+'>';//+signature.AsString()+'>';
+    result := '#<OPERATOR '+symbol_uname(nN)+'>';//+signature.AsString()+'>';
 end;
 
 function TVOperator.hash: DWORD;
@@ -2259,7 +2256,7 @@ begin
     inherited Create;
     signature := sign;
     self.body := body;
-    self.nN := TVSymbol.symbol_n(name);
+    self.nN := symbol_n(name);
 end;
 
 constructor TVInternalFunction.CreateEmpty;
@@ -2289,7 +2286,7 @@ end;
 
 function TVInternalFunction.AsString: unicodestring;
 begin
-    result := '#<INTERNAL '+symbols[nN]+'>';//+signature.AsString()+'>';
+    result := '#<INTERNAL '+symbol_uname(nN)+'>';//+signature.AsString()+'>';
 end;
 
 function TVInternalFunction.hash: DWORD;
@@ -2358,7 +2355,7 @@ function TVProcedure.AsString: unicodestring;
 begin
     if nN<=0
     then result := '#<PROCEDURE '+sign1.AsString+'>'
-    else result := '#<PROCEDURE '+symbols[nN]+'>';
+    else result := '#<PROCEDURE '+symbol_uname(nN)+'>';
 end;
 
 function TVProcedure.hash: DWORD;
@@ -2397,7 +2394,7 @@ end;
 
 function TVGoto.AsString: unicodestring;
 begin
-    result := '#<GOTO '+TVSymbol.symbol_uname(N)+'>';
+    result := '#<GOTO '+symbol_uname(N)+'>';
 end;
 
 function TVGoto.hash: DWORD;
@@ -2600,36 +2597,12 @@ begin
     result := (V is TVSymbol) and (N=(V as TVSymbol).N);
 end;
 
-class function TVSymbol.symbol_n(n: unicodestring): integer;
-var i: integer; uname: unicodestring;
-begin
-    uname := UnicodeUpperCase(n);
-    result := -1;
 
-    for i := high(symbols) downto 0 do
-        if symbols[i] = uname then begin
-            result := i;
-            break;
-        end;
-
-    if result<0 then begin
-        SetLength(symbols, length(symbols)+1);
-        result := high(symbols);
-        symbols[high(symbols)] := uname;
-    end;
-
-end;
-
-class function TVSymbol.symbol_uname(nN: integer): unicodestring;
-begin
-    result := symbols[nN];
-end;
 
 constructor TVSymbol.Gensym;
 begin
     fN := gensym_n;
-    Dec(gensym_n);
-    fName := '#G'+IntToStr(fN);
+    fName := symbol_uname(fN);
 end;
 
 constructor TVSymbol.CreateEmpty;

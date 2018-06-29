@@ -5,6 +5,7 @@ uses
     {$IFDEF LINUX}
     cthreads,
     cwstring,
+    cmem,
     {$ENDIF}
     {$IFDEF GUI}
     Interfaces, Forms, lisya_canvas,
@@ -12,7 +13,7 @@ uses
     sysutils,
     lisya_repl,
     dlisp_eval, lisya_process, lisya_streams, lisya_exceptions, pipes,
-    lisya_string_predicates, lisya_sign;
+    lisya_string_predicates, lisya_sign, lisya_symbols;
 
 
 begin
