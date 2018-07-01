@@ -71,6 +71,8 @@ var
 
 implementation
 
+uses lisya_gc;
+
 {$R *.lfm}
 
 { TVSQLPointer }

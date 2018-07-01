@@ -13,7 +13,7 @@ uses
     sysutils,
     lisya_repl,
     dlisp_eval, lisya_process, lisya_streams, lisya_exceptions, pipes,
-    lisya_string_predicates, lisya_sign, lisya_symbols;
+    lisya_string_predicates, lisya_sign, lisya_symbols, lisya_gc;
 
 
 begin

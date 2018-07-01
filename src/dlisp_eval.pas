@@ -34,6 +34,7 @@ uses
     ,lisya_streams
     ,lisya_process
     ,lisya_symbols
+    ,lisya_gc
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -5032,6 +5033,7 @@ begin try
             result.Free;
             result := tmp;
         end;
+    //todo: некорректно ведёт себя если встретился break в теле
 finally
     stack := tmp_stack;
     params.Free;

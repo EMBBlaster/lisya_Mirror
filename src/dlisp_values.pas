@@ -48,7 +48,7 @@ type
     TVariable = record
         V: TValue;
         constant: boolean;
-    private
+    //private
         ref_count: integer;
     public
         property references: integer read ref_count;
@@ -763,9 +763,7 @@ function equal(v1, v2: TValue): boolean; inline;
 
 function op_null(V: TValue): boolean;
 
-function NewVariable(_V: TValue = nil; _constant: boolean = false): PVariable;
-function RefVariable(P: PVariable): PVariable;
-procedure ReleaseVariable(var P: PVariable);
+
 
 var
     _ : TVSymbol;
@@ -774,115 +772,8 @@ var
 
 implementation
 
-uses lisya_predicates;
+uses lisya_predicates, lisya_gc;
 
-
-
-    { TVariable }
-
-
-
-function ReleaseRecursiveProcedure(var P: PVariable): boolean;
-var vars, links: array of PVariable;
-    i, j, c: integer;
-    clear: boolean;
-    function registered_node(P: PVariable): boolean;
-    var i: integer;
-    begin
-        result := true;
-        for i := 0 to high(vars) do if vars[i]=pointer(P) then Exit;
-        result := false;
-    end;
-
-    procedure add_link(P: PVariable);
-    begin
-        SetLength(links, Length(links)+1);
-        links[high(links)]:=P;
-    end;
-
-    procedure add_node(P: PVariable);
-    var proc: TVProcedure; i: integer;
-    begin
-        if not registered_node(P) then begin
-            SetLength(vars, length(vars)+1);
-            vars[high(vars)]:=P;
-
-            proc := P.V as TVProcedure;
-            for i:=0 to high(proc.stack.stack) do begin
-                if (proc.stack.stack[i].V<>nil) and tpProcedure(proc.stack.stack[i].V.V)
-                then begin
-                    add_node(proc.stack.stack[i].V);
-                    add_link(proc.stack.stack[i].V);
-                end;
-            end;
-        end;
-    end;
-
-begin
-    result := false;
-
-    if not tpProcedure(P.V) then Exit;
-
-    add_link(P);
-    add_node(P);
-
-    clear := true;
-    for i := 0 to high(vars) do begin
-        c := 0;
-        for j := 0 to high(links) do if vars[i] = links[j] then Inc(c);
-
-        clear := c=vars[i].ref_count;
-        if not clear then Break;
-
-        if c>vars[i].ref_count then WriteLn('WARNING: нарушение ссылочной целостности');
-    end;
-
-    if clear then begin
-        for i := 0 to high(vars) do vars[i].ref_count:=-1;
-        for i := 0 to high(vars) do vars[i].V.Free;
-        for i := 0 to high(vars) do Dispose(vars[i]);
-    end;
-
-    result := clear;
-end;
-
-function NewVariable(_V: TValue = nil; _constant: boolean = false): PVariable;
-begin
-    New(result);
-    result.ref_count:=1;
-    result.constant := _constant;
-    result.V := _V;
-end;
-
-function RefVariable(P: PVariable): PVariable;
-begin
-    if P<>nil then begin
-        Inc(P.ref_count);
-        result := P;
-    end
-    else
-        result := nil;
-end;
-
-procedure ReleaseVariable(var P: PVariable);
-begin
-  if P<>nil then begin
-        if P.ref_count>0
-        then begin
-            if tpProcedure(P.V) and ReleaseRecursiveProcedure(P)
-            then
-                P := nil
-            else begin
-                Dec(P.ref_count);
-                if P.ref_count=0 then begin
-                    P.V.Free;
-                    Dispose(P);
-                    P := nil;
-                end;
-            end;
-        end;
-    end;
-end;
 
 
 procedure Assign(var v1, v2: TValue);
@@ -901,6 +792,8 @@ function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
+
+
 
 { TSubprogramSignature }
 
