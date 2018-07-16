@@ -41,6 +41,9 @@ uses
     {$IFDEF mysql50}
     ,mysql_50
     {$ENDIF}
+    {$IFDEF MULTITHREADING}
+   // , lisya_thread
+    {$ENDIF}
     ,db
     ,variants;
 
@@ -125,10 +128,11 @@ type
 implementation
 
 
-var base_stack: TVSymbolStack = nil;
-    T: TVT;
+var T: TVT;
     NULL: TVList;
     log_file: TLFileStream = nil;
+    log_cs, console_cs: TRTLCriticalSection;
+
 
 function ternary(cnd: boolean; a,b: unicodestring): unicodestring; inline;
 begin
@@ -418,7 +422,7 @@ begin try
 
     if tpSequence(C) and tpInteger(index) then begin
         i := (index as TVInteger).fI;
-        if i in [0..(C as TVSequence).high]
+        if (i>=0) and (i<c.Count)
         then append_integer(indices, i)
         else
             if (i<0) and (i>=-C.Count)
@@ -2708,9 +2712,15 @@ function if_log                 (const PL: TVList; {%H-}call: TCallProc): TValue
 begin
     case params_is(PL, result, [
         tpList]) of
-        1: if log_file=nil
-            then System.WriteLn(ifh_format(PL.L[0]))
+        1: try
+            EnterCriticalSection(log_cs);
+            if log_file=nil
+            then try
+                EnterCriticalSection(console_cs);
+                System.WriteLn(ifh_format(PL.L[0]))
+            finally LeaveCriticalSection(console_cs); end
             else log_file.Log(ifh_format(PL.L[0])+LineEnding);
+        finally LeaveCriticalSection(log_cs); end;
     end;
     result := TVT.Create;
 end;
@@ -2720,9 +2730,13 @@ begin
     case params_is(PL, result, [
         tpNIL, tpNIL,
         tpString, vpKeywordEncodingOrNIL]) of
-        1: FreeAndNil(log_file);
-        2: log_file := TLFileStream.Create(PL.S[0], fmOpenReadWrite,
+        1: try EnterCriticalSection(log_cs);
+            FreeAndNil(log_file);
+        finally LeaveCriticalSection(log_cs) end;
+        2: try EnterCriticalSection(log_cs);
+          log_file := TLFileStream.Create(PL.S[0], fmOpenReadWrite,
             ifh_keyword_to_encoding(PL.look[1]));
+        finally LeaveCriticalSection(log_cs) end;
     end;
     result := TVT.Create;
 end;
@@ -3447,16 +3461,16 @@ begin
     for i := low(int_fun) to high(int_fun) do int_fun_sign[i].Free;
 end;
 
-procedure fill_base_stack;
+function create_base_stack: TVSymbolStack;
 var i, j: integer; fun_names: TStringArray;
 begin
-    base_stack := TVSymbolStack.Create(nil);
+    result := TVSymbolStack.Create(nil);
 
     //загрузка внутренних функций
     for i := low(int_fun) to high(int_fun) do begin
         fun_names := SplitString(int_fun[i].n);
         for j := 0 to high(fun_names) do
-            base_stack.new_var(
+            result.new_var(
                 fun_names[j],
                 TVInternalFunction.Create(
                         int_fun_sign[i],
@@ -3467,28 +3481,28 @@ begin
 
     //загрузка предикатов
     for i := low(predicates) to high(predicates) do begin
-        base_stack.new_var(
+        result.new_var(
             predicates[i].n+'?',
             TVPredicate.Create(predicates[i].n, predicates[i].f, false),
             true);
-        base_stack.new_var(
+        result.new_var(
             predicates[i].n+'!',
             TVPredicate.Create(predicates[i].n, predicates[i].f, true),
             true);
     end;
 
     //загрузка констант
-    base_stack.new_var('EXECUTABLE-PATH', TVString.Create(ExtractFilePath(paramstr(0))), true);
-    {$IFDEF WINDOWS} base_stack.new_var('PLATFORM', TVKeyword.Create(':WINDOWS'), true); {$ENDIF}
-    {$IFDEF LINUX} base_stack.new_var('PLATFORM', TVKeyword.Create(':LINUX'), true); {$ENDIF}
-    base_stack.new_var('NL', TVString.Create(LineEnding), true);
-    base_stack.new_var('CR', TVString.Create(#13), true);
-    base_stack.new_var('LF', TVString.Create(#10), true);
-    base_stack.new_var('CRLF', TVString.Create(#13#10), true);
-    base_stack.new_var('TAB', TVString.Create(#09), true);
-    base_stack.new_var('BOM', TVString.Create(BOM), true);
-    base_stack.new_var('_', TVSymbol.Create('_'));
-    base_stack.new_var('PI', TVFloat.Create(pi));
+    result.new_var('EXECUTABLE-PATH', TVString.Create(ExtractFilePath(paramstr(0))), true);
+    {$IFDEF WINDOWS} result.new_var('PLATFORM', TVKeyword.Create(':WINDOWS'), true); {$ENDIF}
+    {$IFDEF LINUX} result.new_var('PLATFORM', TVKeyword.Create(':LINUX'), true); {$ENDIF}
+    result.new_var('NL', TVString.Create(LineEnding), true);
+    result.new_var('CR', TVString.Create(#13), true);
+    result.new_var('LF', TVString.Create(#10), true);
+    result.new_var('CRLF', TVString.Create(#13#10), true);
+    result.new_var('TAB', TVString.Create(#09), true);
+    result.new_var('BOM', TVString.Create(BOM), true);
+    result.new_var('_', TVSymbol.Create('_'));
+    result.new_var('PI', TVFloat.Create(pi));
 end;
 
 
@@ -3498,7 +3512,7 @@ constructor TEvaluationFlow.Create(parent_stack: TVSymbolStack);
 begin
     if parent_stack<>nil
     then main_stack := parent_stack
-    else main_stack := base_stack.Copy as TVSymbolStack;
+    else main_stack := create_base_stack;
     stack := main_stack;
 end;
 
@@ -3933,82 +3947,16 @@ begin
 end;
 
 
-procedure oph_debug_print_graph(V: PVariable);
-type TVarRec = record P: PVariable; ref_count: integer; end;
-var vars: array of TVarRec; links: array of TVarRec;
-    indent, i, j, c: integer;
-    clear: boolean;
-    function registered_node(P: PVariable): boolean;
-    var i: integer;
-    begin
-        result := true;
-        for i := 0 to high(vars) do if vars[i].P=pointer(P) then Exit;
-        result := false;
-    end;
-
-    procedure add_link(P: PVariable);
-    begin
-        SetLength(links, Length(links)+1);
-        links[high(links)].P:=P;
-        links[high(links)].ref_count:=P.references;
-    end;
-
-    procedure add_node(p: PVariable);
-    var proc: TVProcedure; i,j: integer;
-    begin
-        if not registered_node(P) then begin
-            SetLength(vars, length(vars)+1);
-            vars[high(vars)].P:=P;
-            vars[high(vars)].ref_count:=P.references;
-
-            proc := P.V as TVProcedure;
-            for j := 1 to indent do Write('   ');
-            WriteLn(PointerToStr(P), '  ', P.references,' ', proc.AsString);
-            Inc(indent);
-            for i:=0 to high(proc.stack.stack) do begin
-                if (proc.stack.stack[i].V<>nil) and tpProcedure(proc.stack.stack[i].V.V)
-                then begin
-                    add_node(proc.stack.stack[i].V);
-                    add_link(proc.stack.stack[i].V);
-                end;
-            end;
-            dec(indent);
-        end;
-    end;
-
-begin
-    add_link(V);
-    indent := 0;
-    if tpProcedure(V.V) then add_node(V);
-    WriteLn();
-
-    for i := 0 to high(links) do
-        WriteLn(PointerToStr(links[i].P), '  ', (links[i].P.V as TVProcedure).AsString);
-
-    clear := true;
-    for i := 0 to high(vars) do begin
-        c := 0;
-        for j := 0 to high(links) do begin
-            if vars[i].P = links[j].P then Inc(c);
-        end;
-        if c<vars[i].ref_count then begin
-            clear := false;
-            Break;
-        end;
-        if c>vars[i].ref_count then WriteLn('WARNING: нарушение ссылочной целостности');
-    end;
-
-    WriteLn(clear);
-end;
-
 function TEvaluationFlow.op_debug(PL: TVList): TValue;
-var tmp: TValue;
+    function params(c: integer; p: TTypePredicate): boolean;
+    begin result := (PL.Count=c) and p(PL.look[1]); end;
+var tmp : TValue;
 begin
-    result := TVT.Create;
+    result := nil;
 
     if (PL.Count=2) and vpKeyword_RESET_STACK(PL.look[1]) then begin
         main_stack.Free;
-        main_stack := base_stack.Copy as TVSymbolStack;
+        main_stack := create_base_stack;
         stack := main_stack;
         exit;
     end;
@@ -4032,17 +3980,29 @@ begin
         exit;
     end;
 
+    {$IFDEF MULTITHREADING}
     //if (PL.Count>=2) and vpKeyword_THREADS_COUNT(PL.look[1]) then begin
     //    if (PL.Count=3) and vpIntegerNotNegative(PL.look[2])
     //    then set_threads_count(PL.I[2]);
     //    exit;
     //end;
+    {$ENDIF}
 
-    if (PL.Count=3) and vpKeyword_SHOW_GRAPH(PL.look[1]) then begin
-        oph_debug_print_graph(stack.look_var(PL.SYM[2].N));
+    if params(3, vpKeyword_PRINT_LINKS) then begin
+        tmp := eval(PL[2]);
+        print_links(tmp);
+        tmp.Free;
     end;
 
+    if params(3, vpKeyword_SEPARATE) then begin
+        tmp := eval(PL[2]);
+        result := separate(tmp);
+        tmp.Free;
+    end;
+
+    if result=nil then result := TVT.Create;
 end;
+
 
 function TEvaluationFlow.op_default                 (PL: TVList): TValue;
 var CP: TVChainPointer;
@@ -4675,7 +4635,7 @@ begin
     if FindPackage(PL.uname[1])<>nil
     then raise ELE.Create('package redefinition: '+PL.name[1], 'syntax');
 
-    package_stack := base_stack.Copy as TVSymbolStack;
+    package_stack := create_base_stack;
     external_stack := stack;
     stack := package_stack;
     result := nil;
@@ -5208,7 +5168,10 @@ begin try
 
     case type_v of
 
-        selfEval: result := V.Copy;
+        selfEval: begin
+          result := V;
+          V := nil;
+        end;
 
         symbol: begin
             for o := low(ops) to high(ops) do
@@ -5303,17 +5266,20 @@ end;
 initialization
     system.Randomize;
     fill_int_fun_signs;
-    fill_base_stack;
     fill_ops_array;
     T := TVT.Create;
     NULL := TVList.Create;
+    InitCriticalSection(log_cs);
+    InitCriticalSection(console_cs);
 
 finalization
     NULL.Free;
     T.Free;
-    base_stack.Free;
     free_int_fun_signs;
     log_file.Free;
+    DoneCriticalSection(log_cs);
+    DoneCriticalSection(console_cs);
+
 
 end.
 //4576 4431 4488 4643 4499 4701 5166 5096 5104

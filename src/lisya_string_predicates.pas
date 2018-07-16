@@ -48,6 +48,7 @@ initialization
 finalization
     re_integer.Free;
     re_float.Free;
+    re_char.Free;
 
 end.
 

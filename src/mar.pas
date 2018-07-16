@@ -15,7 +15,8 @@ function PosU(const ss, s: unicodestring; offset: integer = 1): integer;
 function SplitString(S: unicodestring; separator: unicodestring = ' '): TStringArray;
 function StringSubstitute(const src, a, b: unicodestring): unicodestring;
 
-function PointerToStr(ptr: Pointer): unicodestring;
+function PointerToStr(ptr: Pointer; digits: integer = -1): unicodestring;
+function PointerToQWORD(ptr: Pointer): QWORD;
 function DirSep(s: unicodestring): unicodestring;
 
 function concat_integers(i1, i2: TIntegers): TIntegers;
@@ -87,13 +88,27 @@ begin
     result := result + src[p1..Length(src)];
 end;
 
-function PointerToStr(ptr: Pointer): unicodestring;
+function PointerToStr(ptr: Pointer; digits: integer): unicodestring;
 var d: record case byte of 0: (p: pointer); 1: (b: array [1..SizeOf(ptr)] of Byte); end;
-    i: integer;
+    i, _digits: integer;
 begin
     d.p:=ptr;
     result := '';
-    for i := low(d.b) to high(d.b) do result := IntToHex(d.b[i],2)+result;
+    for i := low(d.b) to high(d.b) do begin
+        result := IntToHex(d.b[i],2)+result;
+        if i=4 then result := '_'+result;
+    end;
+
+    if (digits>0) and (digits<length(result))
+    then result := result[Length(result)-digits+1..Length(result)];
+end;
+
+function PointerToQWORD(ptr: Pointer): QWORD;
+var d: record case byte of 0: (p: pointer); 1: (c: QWORD); end;
+    i: integer;
+begin
+    d.p:=ptr;
+    result := d.c;
 end;
 
 function DirSep(s: unicodestring): unicodestring;

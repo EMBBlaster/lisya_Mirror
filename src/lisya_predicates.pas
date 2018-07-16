@@ -209,6 +209,8 @@ function vpKeyword_PRINT_STACK                      (V: TValue): boolean;
 
 function vpKeyword_PRINT_HASH_TABLE                 (V: TValue): boolean;
 
+function vpKeyword_PRINT_LINKS                      (V: TValue): boolean;
+
 function vpKeyword_PROLOGUE                         (V: TValue): boolean;
 
 function vpKeyword_READ                             (V: TValue): boolean;
@@ -225,7 +227,11 @@ function vpKeyword_RIGHT                            (V: TValue): boolean;
 
 function vpKeyword_SECOND                           (V: TValue): boolean;
 
+function vpKeyword_SEPARATE                         (V: TValue): boolean;
+
 function vpKeyword_SHOW_GRAPH                       (V: TValue): boolean;
+
+function vpKeyword_SHOW_LINKS                       (V: TValue): boolean;
 
 function vpKeyword_THREADS_COUNT                    (V: TValue): boolean;
 
@@ -874,6 +880,11 @@ begin
     result := vphKeywordName(V, ':PRINT-HASH-TABLE');
 end;
 
+function vpKeyword_PRINT_LINKS(V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':PRINT-LINKS');
+end;
+
 function vpKeyword_PROLOGUE(V: TValue): boolean;
 begin
     result := vphKeywordName(V, ':PROLOGUE');
@@ -915,9 +926,19 @@ begin
     result := (V is TVKeyword) and ((V as TVSymbol).uname = ':SECOND');
 end;
 
+function vpKeyword_SEPARATE(V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':SEPARATE');
+end;
+
 function vpKeyword_SHOW_GRAPH(V: TValue): boolean;
 begin
     result := vphKeywordName(V, ':SHOW-GRAPH');
+end;
+
+function vpKeyword_SHOW_LINKS(V: TValue): boolean;
+begin
+    result := vphKeywordName(V, ':SHOW-LINKS');
 end;
 
 function vpKeyword_THREADS_COUNT(V: TValue): boolean;

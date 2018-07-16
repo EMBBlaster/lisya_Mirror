@@ -54,6 +54,7 @@ type
         property references: integer read ref_count;
     end;
     PVariable = ^TVariable;
+    PPVariable = ^PVariable;
 
 
     TStackRecord = record
@@ -275,6 +276,7 @@ type
         function AsString: unicodestring; override;
         function hash: DWORD; override;
 
+        function get_link: PPVariable;
         function constant: boolean;
         function value: TValue;
         function look: TValue;
@@ -492,6 +494,7 @@ type
         function GetItem(index: integer): TValue; override;
         procedure SetItem(index: integer; _V: TValue); override;
         function LookItem(index: integer): TValue; override;
+        function LookKey(index: integer): TValue;
 
         procedure Expand;
         function FindEmpty(h: DWORD): integer;
@@ -506,6 +509,9 @@ type
         procedure print;
 
         procedure CopyOnWrite;
+        procedure CopyKeys;
+        property look[index: integer]: TValue read LookItem;
+        property look_key[index: integer]: TValue read LookKey;
 
         function Get(key: TValue): TValue;
         function GetIndex(key: TValue): integer;
@@ -1014,6 +1020,11 @@ begin
     result := data.look[index];
 end;
 
+function TVHashTable.LookKey(index: integer): TValue;
+begin
+    result := keys.look[index];
+end;
+
 
 function TVHashTable.GetIndex(key: TValue): integer;
 var h: DWORD; i, li: integer;
@@ -1136,8 +1147,15 @@ end;
 procedure TVHashTable.CopyOnWrite;
 begin
     data.CopyOnWrite;
+    keys.CopyOnWrite;
     //ключи не копируются при модификации значения ХЭШ таблицы,
     //поскольку они изменяются только при добавлении новых значений
+end;
+
+procedure TVHashTable.CopyKeys;
+begin
+    //этот метод нужен процедуре разделения памяти
+    keys.CopyOnWrite;
 end;
 
 //procedure TVHashTable.AddPair(key, value: TValue);
@@ -1417,6 +1435,11 @@ end;
 function TVChainPointer.hash: DWORD;
 begin
     Result:= look.hash;
+end;
+
+function TVChainPointer.get_link: PPVariable;
+begin
+    result := @V;
 end;
 
 function TVChainPointer.constant: boolean;

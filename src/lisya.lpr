@@ -5,7 +5,7 @@ uses
     {$IFDEF LINUX}
     cthreads,
     cwstring,
-    cmem,
+    //cmem,
     {$ENDIF}
     {$IFDEF GUI}
     Interfaces, Forms, lisya_canvas,

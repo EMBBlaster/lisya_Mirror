@@ -5,7 +5,7 @@
 interface
 
 uses
-    Classes, SysUtils, dlisp_eval, dlisp_values, lisya_ifh;
+    Classes, SysUtils, dlisp_eval, dlisp_values, lisya_ifh, lisya_gc;
 
 type
 
@@ -16,13 +16,11 @@ type
     TEvaluationThread = class (TThread)
     private
         fflow: dlisp_eval.TEvaluationFlow;
-        fFunction: TMTFunction;
+
         fExpression: TVList;
-        fP: TVSubprogram;
-        fData: TVList;
+
         fComplitedEvent: pRTLEvent;
         eclass, emessage, estack: unicodestring;
-        fA, fB: integer;
         fError: boolean;
     protected
         procedure Execute; override;
@@ -30,7 +28,8 @@ type
         fResult: TValue;
         constructor Create;
         destructor Destroy; override;
-        procedure eval(f: TMTFunction; P: TVSubprogram; PL: TVList; b, e: integer);
+        procedure eval(f: TMTFunction; P: TVSubprogram; PL: TVList; b, e: integer); overload;
+        procedure eval(PL: TVList); overload;
         function WaitResult: TValue;
     end;
 
@@ -71,10 +70,8 @@ procedure TEvaluationThread.Execute;
 begin
     while not self.Terminated do begin
         try
-            //fResult := fFun;//fFlow.eval(fExpression);
-            fResult := fFunction(fflow.call, fP, fData, fA, fB);
-            fExpression := nil;
             fError := false;
+            fResult := fFlow.eval(fExpression);
         except
             on E:ELE do begin
                 fError := true;
@@ -83,11 +80,11 @@ begin
                 estack := E.EStack;
             end;
             on E:Exception do begin
-                WriteLn('необработанная ошибка в потоке');
-                WriteLn(E.Message);
-                raise;
+                fError := true;
+                eclass := '!'+E.ClassName+'!';
+                emessage := E.Message;
+                estack := 'thread';
             end;
-
         end;
         RtlEventSetEvent(fComplitedEvent);
         self.Suspended := true;
@@ -109,23 +106,21 @@ destructor TEvaluationThread.Destroy;
 begin
     fflow.Free;
     fResult.Free;
-    //fExpression.Free;
+    fExpression.Free;
     RTLeventdestroy(fComplitedEvent);
     self.Terminate;
     self.Suspended := false;
     inherited;
 end;
 
-procedure TEvaluationThread.eval(f: TMTFunction; P: TVSubprogram; PL: TVList; b, e: integer);
+
+procedure TEvaluationThread.eval(PL: TVList);
 begin
-    fFunction := f;
-    fP := P;
-    fData := PL;
-    fA := b;
-    fB := e;
+    fExpression := separate(PL);
     RTLEventResetEvent(fComplitedEvent);
     self.Start;
 end;
+
 
 function TEvaluationThread.WaitResult: TValue;
 begin
@@ -133,12 +128,9 @@ begin
 
     result := fResult;
     fResult := nil;
-    if fError then begin
-        WriteLn('in thread error');
-        raise ELE.Create(emessage, eclass, estack);
-
-    end;
+    if fError then raise ELE.Create(emessage, eclass, estack);
 end;
+
 
 initialization
     {$IFDEF MULTITHREADING}

@@ -5,7 +5,7 @@ unit lisya_gc;
 interface
 
 uses
-    Classes, SysUtils, dlisp_values, lisya_predicates;
+    Classes, SysUtils, dlisp_values, lisya_predicates, mar, math;
 
 
 function NewVariable(_V: TValue = nil; _constant: boolean = false): PVariable;
@@ -13,7 +13,224 @@ function RefVariable(P: PVariable): PVariable;
 procedure ReleaseVariable(var P: PVariable);
 
 
+
+function separate(V: TValue): TValue;
+procedure print_links(V: TValue);
+
+
 implementation
+
+type
+    TLinks = array of PPVariable;
+    TBlock = record P: PVariable; l: TLinks; end;
+    TBlocks = array of TBlock;
+
+
+
+procedure extract_block_links(var l: TLinks; V: TValue);
+
+    procedure add_link(from_: PPVariable); inline;
+    begin SetLength(l, Length(l)+1); l[high(l)] := from_; end;
+
+var proc: TVProcedure; ls: TVList; rec: TVRecord; ht: TVHashTable;
+    ret: TVReturn; CP: TVChainPointer; ss: TVSymbolStack;
+    i: integer;
+begin
+    if V is TVSymbolStack then begin
+        ss := V as TVSymbolStack;
+        for i := 0 to high(ss.stack) do add_link(@ss.stack[i].V);
+    end
+
+    else if V is TVProcedure then begin
+        proc := V as TVProcedure;
+        extract_block_links(l, proc.stack);
+        extract_block_links(l, proc.body);
+    end
+
+    else if V is TVChainPointer then begin
+        CP := V as TVChainPointer;
+        add_link(CP.get_link);
+    end
+
+    else if V is TVList then begin
+        ls := V as TVList;
+        for i := 0 to ls.high do extract_block_links(l,ls.look[i]);
+    end
+
+    else if V is TVRecord then begin
+        rec := V as TVRecord;
+        for i := 0 to rec.count-1 do extract_block_links(l,rec.look[i]);
+    end
+
+    else if V is TVHashTable then begin
+        ht := V as TVHashTable;
+        for i := 0 to ht.Count-1 do begin
+            extract_block_links(l, ht.look[i]);
+            extract_block_links(l, ht.look_key[i]);
+        end;
+    end
+
+    else if V is TVReturn then begin
+        ret := V as TVReturn;
+        extract_block_links(l, ret.value);
+    end;
+end;
+
+
+procedure extract_links(var b: TBlocks; P: PVariable);
+var i, this: integer;
+begin
+    if P=nil then Exit;
+    for i := 0 to high(b) do if b[i].P = Pointer(P) then Exit;
+    SetLength(b, Length(b)+1);
+    this := high(b);
+    b[this].P := P;
+    SetLength(b[this].l,0);
+    extract_block_links(b[this].l, P.V);
+    for i := 0 to high(b[this].l) do
+        extract_links(b, b[this].l[i]^);
+end;
+
+
+procedure show_links_tree(const b: TBlocks);
+var i,j: integer; c: array of qword; mask,n, a1, a2: qword;
+label next_n;
+begin
+    SetLength(c,0);
+    for i := 0 to high(b) do begin
+        a1 := PointerToqword(b[i].p);
+        if a1>0 then begin
+            SetLength(c, Length(c)+1);
+            c[high(c)] := a1;
+        end;
+        for j := 0 to high(b[i].l) do begin
+            SetLength(c, Length(c)+2);
+            c[high(c)-1] := PointerToqword(b[i].l[j]);
+            c[high(c)] := PointerToqword(b[i].l[j]^);
+        end;
+    end;
+
+    n := 0;
+    while true do begin
+        next_n:
+        Inc(n);
+        mask := not (2**(n*4)-1);
+        a1 := c[0] and mask;
+        for i := 1 to high(c) do begin
+            a2 := c[i] and mask;
+            if a1<>a2 then goto next_n;
+        end;
+        Break;
+    end;
+
+    for i := 0 to high(b) do begin
+        if b[i].p<>nil
+        then WriteLn(PointerToStr(b[i].p, n), ' [', IntToStr(b[i].P.ref_count),']', '  (', b[i].p.V.AsString, ')')
+        else WriteLn(PointerToStr(b[i].p, n));
+        for j := 0 to high(b[i].l) do
+            WriteLn('    '+PointerToStr(b[i].l[j], n),' --> ', PointerToStr(b[i].l[j]^, n));
+    end;
+end;
+
+
+
+
+
+procedure print_links(V: TValue);
+var P: PVariable; b: TBlocks;
+begin
+    New(P);
+    P.V := V;
+    P.ref_count := 0;
+    SetLength(b, 0);
+    extract_links(b, P);
+    show_links_tree(b);
+    Dispose(P);
+end;
+
+
+procedure separate_block(V: TValue);
+var proc: TVProcedure; ls: TVList; rec: TVRecord; ht: TVHashTable; ret: TVReturn;
+    i: integer;
+begin
+    if V is TVProcedure then begin
+        proc := V as TVProcedure;
+        separate_block(proc.body);
+    end
+
+    else if V is TVList then begin
+        ls := V as TVList;
+        ls.CopyOnWrite;
+        for i := 0 to ls.high do separate_block(ls.look[i]);
+    end
+
+    else if V is TVRecord then begin
+        rec := V as TVRecord;
+        for i := 0 to rec.count-1 do separate_block(rec.look[i]);
+    end
+
+    else if V is TVHashTable then begin
+        ht := V as TVHashTable;
+        ht.CopyOnWrite;
+        ht.CopyKeys;
+        for i := 0 to ht.Count-1 do begin
+            separate_block(ht.look[i]);
+            separate_block(ht.look_key[i]);
+        end;
+    end
+
+    else if V is TVReturn then begin
+        ret := V as TVReturn;
+        separate_block(ret.value);
+    end;
+end;
+
+
+function separate(V: TValue): TValue;
+var i,j,k: integer; b,nb: TBlocks; P: PVariable;
+
+    function variable_mirror(P: PVariable): PVariable;
+    begin
+        New(result);
+        result.V := P.V.Copy;
+        result.constant:= P.constant;
+        result.ref_count := 0;
+    end;
+
+begin
+    //первый проход - извлечение графа связей заданной переменной
+    New(P);
+    P.ref_count:=0;
+    P.V := V;
+    SetLength(b,0);
+    extract_links(b, P);
+
+    //второй проход - копирование блоков
+    SetLength(nb, Length(b));
+    for i := 0 to high(b) do begin
+        SetLength(nb[i].l, 0);
+        nb[i].P := variable_mirror(b[i].P);
+        separate_block(nb[i].P.V);
+        extract_block_links(nb[i].l, nb[i].P.V);
+    end;
+
+    //третий проход - перенаправление ссылок из нового графа в старый
+    //(образовавшихся при копировании блоков) в новый граф
+    for i := 0 to high(nb) do begin
+        for j := 0 to high(nb[i].l) do begin
+            for k := 1 to high(b) do if b[k].P=Pointer(nb[i].l[j]^) then Break;
+            nb[i].l[j]^ := nb[k].P;
+            Inc(nb[k].P.ref_count);
+            Dec(b[k].P.ref_count);
+        end;
+    end;
+
+    result := nb[0].P.V;
+    Dispose(nb[0].P);
+    Dispose(P);
+end;
+
+
 
 
 function ReleaseRecursiveProcedure(var P: PVariable): boolean;
@@ -90,6 +307,7 @@ begin
     result.V := _V;
 end;
 
+
 function RefVariable(P: PVariable): PVariable;
 begin
     result := P;
@@ -102,12 +320,15 @@ begin
     try
         if P=nil then Exit;
         if P.ref_count=1 then begin P.V.Free; Dispose(P); Exit; end;
+        if P.ref_count<0 then Exit;
         if tpProcedure(P.V) and ReleaseRecursiveProcedure(P) then Exit;
         Dec(P.ref_count);
     finally
         P := nil;
     end;
 end;
+
+
 
 
 
