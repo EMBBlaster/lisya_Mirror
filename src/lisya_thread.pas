@@ -34,7 +34,7 @@ type
     end;
 
 
-var map_threads_pool: array of TEvaluationThread;
+var threads_pool: array of TEvaluationThread;
 
 {$IFDEF MULTITHREADING}
 var th: boolean = false;
@@ -46,23 +46,48 @@ procedure set_threads_count(n: integer);
 
 implementation
 
+var complited_cs: TRTLCriticalSection;
+    complited_event: pRTLEvent;
+
 procedure set_threads_count(n: integer);
 var i, n_old: integer;
 begin
-    if n<Length(map_threads_pool) then begin
-        for i := n to high(map_threads_pool) do map_threads_pool[i].Free;
-        SetLength(map_threads_pool, n);
+    if n<Length(threads_pool) then begin
+        for i := n to high(threads_pool) do threads_pool[i].Free;
+        SetLength(threads_pool, n);
     end;
 
-    if n>Length(map_threads_pool) then begin
-        n_old := Length(map_threads_pool);
-        SetLength(map_threads_pool, n);
-        for i := n_old to high(map_threads_pool) do
-            map_threads_pool[i] := TEvaluationThread.Create;
+    if n>Length(threads_pool) then begin
+        n_old := Length(threads_pool);
+        SetLength(threads_pool, n);
+        for i := n_old to high(threads_pool) do
+            threads_pool[i] := TEvaluationThread.Create;
     end;
 
 end;
 
+procedure Ready;
+begin
+    EnterCriticalSection(complited_cs);
+    RtlEventSetEvent(complited_event);
+    LeaveCriticalSection(complited_cs);
+end;
+
+function NextThread: TEvaluationThread;
+var i: integer;
+begin
+    RtlEventWaitFor(complited_event);
+    EnterCriticalSection(complited_cs);
+    RTLEventResetEvent(complited_event);
+    for i := 0 to high(threads_pool) do begin
+        if threads_pool[i].Suspended then begin
+            result := threads_pool[i];
+            Exit;
+        end;
+    end;
+
+
+end;
 
 { TEvaluationThread }
 
@@ -86,8 +111,8 @@ begin
                 estack := 'thread';
             end;
         end;
-        RtlEventSetEvent(fComplitedEvent);
         self.Suspended := true;
+        ready;
     end;
 end;
 
@@ -136,9 +161,12 @@ initialization
     {$IFDEF MULTITHREADING}
     set_threads_count(4);
     {$ENDIF}
+    InitCriticalSection(complited_cs);
+    complited_event := RTLEventCreate;
 
 finalization
     set_threads_count(0);
-
+    DoneCriticalSection(complited_cs);
+    RTLeventdestroy(complited_event);
 end.
 

@@ -30,6 +30,7 @@ type
     TCountingObject = class
     private
         ref_count: integer;
+        CS: TRTLCriticalSection;
     public
         constructor Create;
         function Ref: TCountingObject;
@@ -148,18 +149,27 @@ end;
 constructor TCountingObject.Create;
 begin
     ref_count := 1;
+    InitCriticalSection(cs);
 end;
 
 function TCountingObject.Ref: TCountingObject;
 begin
+    EnterCriticalSection(cs);
     Inc(ref_count);
+    LeaveCriticalSection(cs);
     result := self;
 end;
 
 function TCountingObject.Release: boolean;
+var rel: boolean;
 begin
+    EnterCriticalSection(cs);
     Dec(ref_count);
-    if ref_count=0 then begin
+    rel := ref_count=0;
+    LeaveCriticalSection(cs);
+
+    if rel then begin
+        DoneCriticalSection(cs);
         result := true;
         self.Free;
     end

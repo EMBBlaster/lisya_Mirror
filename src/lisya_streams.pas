@@ -58,11 +58,26 @@ type
 
       procedure close_stream; virtual;
       function active: boolean;
+
+      procedure Lock; virtual; abstract;
+      procedure Unlock; virtual; abstract;
+    end;
+
+    { TLTargetStream }
+
+    TLTargetStream = class (TLStream)
+    private
+        cs: TRTLCriticalSection;
+    public
+        constructor Create(trg: TStream; enc: TStreamEncoding=seUTF8);
+        destructor Destroy; override;
+        procedure Lock; override;
+        procedure Unlock; override;
     end;
 
     { TLMemoryStream }
 
-    TLMemoryStream = class(TLStream)
+    TLMemoryStream = class(TLTargetStream)
       constructor Create(enc: TStreamEncoding = seUTF8); overload;
       constructor Create(const b: TBytes; enc: TStreamEncoding = seUTF8); overload;
       constructor Create(const s: unicodestring); overload;
@@ -71,7 +86,7 @@ type
 
     { TLFileStream }
 
-    TLFileStream = class(TLStream)
+    TLFileStream = class(TLTargetStream)
     private
         function GetFileName: unicodestring;
     public
@@ -81,10 +96,17 @@ type
         property FileName: unicodestring read GetFileName;
     end;
 
+    { TLProxyStream }
+
+    TLProxyStream = class(TLStream)
+        target: TLStream;
+        procedure Lock;
+        procedure Unlock;
+    end;
+
     { TLDeflateStream }
 
-    TLDeflateStream = class(TLStream)
-      target: TLStream;
+    TLDeflateStream = class(TLProxyStream)
       constructor Create(trg: TLStream; head: boolean = false; enc: TStreamEncoding=seUTF8);
       destructor Destroy; override;
       function description: unicodestring; override;
@@ -92,8 +114,7 @@ type
 
     { TLInflateStream }
 
-    TLInflateStream = class(TLStream)
-      target: TLStream;
+    TLInflateStream = class(TLProxyStream)
       constructor Create(trg: TLStream; head: boolean = false; enc: TStreamEncoding=seUTF8);
       destructor Destroy; override;
       function description: unicodestring; override;
@@ -130,7 +151,7 @@ type
 
     { TLSerialStream }
 
-    TLSerialStream = class(TLStream)
+    TLSerialStream = class(TLTargetStream)
     private
         port: {$IFDEF LINUX}TSerialHandle{$ELSE}THandle{$ENDIF};
         timeout: integer;
@@ -172,6 +193,42 @@ begin try
 finally
     stream.Release;
 end;
+end;
+
+{ TLProxyStream }
+
+procedure TLProxyStream.Lock;
+begin
+    target.Lock;
+end;
+
+procedure TLProxyStream.Unlock;
+begin
+    target.Unlock;
+end;
+
+{ TLTargetStream }
+
+constructor TLTargetStream.Create(trg: TStream; enc: TStreamEncoding);
+begin
+    inherited Create(trg, enc);
+    InitCriticalSection(cs);
+end;
+
+destructor TLTargetStream.Destroy;
+begin
+    DoneCriticalSection(cs);
+    inherited Destroy;
+end;
+
+procedure TLTargetStream.Lock;
+begin
+    EnterCriticalSection(cs);
+end;
+
+procedure TLTargetStream.Unlock;
+begin
+    LeaveCriticalSection(cs);
 end;
 
 { TLSerialStream }

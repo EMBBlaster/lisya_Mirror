@@ -469,6 +469,26 @@ begin
   for i := 0 to d-1 do result.Add(s.subseq(i*l, i*l+l));
 end;
 
+
+procedure ifh_lock_and_write_string(stream: TVStreamPointer; s: unicodestring);
+begin
+    if stream<>nil then
+    try
+        stream.body.Lock;
+        stream.body.write_string(s);
+    finally
+        stream.body.Unlock;
+    end
+    else
+    try
+        EnterCriticalSection(console_cs);
+        Write(s);
+    finally
+        LeaveCriticalSection(console_cs);
+    end;
+end;
+
+
 function if_structure_p         (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2587,19 +2607,22 @@ end;
 
 
 function if_read_line           (const PL: TVList; {%H-}call: TCallProc): TValue;
-var s: unicodestring;
+var s: unicodestring; sp: TVStreamPointer;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpStringOrNIL,
-        tpNIL, tpStringOrNIL]) of
-        1: result := TVString.Create(
-            (PL.look[0] as TVStreamPointer).body.read_line(
-                ifh_default_string(PL.look[1], LineEnding)));
-        2: begin
+        tpNIL, tpNIL]) of
+        1: try
+            sp := PL.look[0] as TVStreamPointer;
+            sp.body.Lock;
+            s := sp.body.read_line(ifh_default_string(PL.look[1], LineEnding));
+        finally sp.body.Unlock; end;
+        2: try
+            EnterCriticalSection(console_cs);
             System.ReadLn(s);
-            result := TVString.Create(s);
-        end;
+        finally LeaveCriticalSection(console_cs); end;
     end;
+    result := TVString.Create(s);
 end;
 
 function if_write_line          (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -2607,9 +2630,9 @@ begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpString, tpStringOrNIL,
         tpNIL,                 tpString, tpNIL]) of
-        1: (PL.look[0] as TVStreamPointer).body.write_string(
-                                PL.S[1]+ifh_default_string(PL.look[2], LineEnding));
-        2: System.WriteLn(PL.S[1]);
+        1: ifh_lock_and_write_string(PL.look[0] as TVStreamPointer,
+                            PL.S[1]+ifh_default_string(PL.look[2], LineEnding));
+        2: ifh_lock_and_write_string(nil, PL.S[1]);
     end;
     result := TVT.Create
 end;
@@ -2622,55 +2645,66 @@ begin
         vpStreamPointerActive,
         tpNIL,
         tpString]) of
-        1: begin
+        1: try
+            (PL.look[0] as TVStreamPointer).body.Lock;
             result := dlisp_read.read(PL.look[0] as TVStreamPointer);
 
             if result is TVEndOfStream then begin
                 FreeAndNil(result);
                 result := TVList.Create;
             end;
+        finally
+            (PL.look[0] as TVStreamPointer).body.Unlock;
         end;
-        2: begin
+        2: try
+            EnterCriticalSection(console_cs);
             ReadLn(s);
             result := dlisp_read.read_from_string(s);
+        finally
+            LeaveCriticalSection(console_cs);
         end;
         3: result := dlisp_read.read_from_string(PL.S[0]);
     end;
 end;
 
 function if_write               (const PL: TVList; {%H-}call: TCallProc): TValue;
+var sp: TVStreamPointer;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpAny,
         tpNIL,           tpAny]) of
-        1: begin
-            (PL.look[0] as TVStreamPointer).body.write_string(PL.look[1].AsString);
-            (PL.look[0] as TVStreamPointer).body.write_string(LineEnding);
-            result := TVT.Create;
+        1: ifh_lock_and_write_string(PL.look[0] as TVStreamPointer,
+                PL.look[1].AsString+LineEnding);
             //TODO: не возвращается ошибка при записи в файл
-        end;
-        2: begin
-            result := TVT.Create;
-            WriteLn(PL.look[1].AsString);
-        end;
+        2: ifh_lock_and_write_string(nil, PL.look[1].AsString+LineEnding);
     end;
+    result := TVT.Create;
 end;
 
 function if_print               (const PL: TVList; {%H-}call: TCallProc): TValue;
+var sp: TVStreamPointer;
 begin
         case params_is(PL, result, [
             vpStreamPointerActive, tpAny,
             tpNIL,                 tpAny,
-            vpKeyword_RESULT,      tpAny]) of
-            1: begin
-                print(PL.look[1], PL.look[0] as TVStreamPointer, true);
+            vpKeyword_RESULT,      tpAny,
+            tpT,                   tpAny]) of
+            1: try
+                sp := PL.look[0] as TVStreamPointer;
+                sp.body.Lock;
+                print(PL.look[1], sp, true);
                 result := TVT.Create;
+            finally
+                sp.body.Unlock;
             end;
-            2: begin
+            2: try
+                EnterCriticalSection(console_cs);
                 print(PL.look[1], nil, true);
                 result := TVT.Create;
+            finally
+                LeaveCriticalSection(console_cs);
             end;
-            3: result := TVString.Create(PL[1].AsString);
+            3,4: result := TVString.Create(PL[1].AsString);
         end;
 end;
 
@@ -2679,12 +2713,15 @@ var s: unicodestring;
 begin
         case params_is(PL, result, [
             tpString, tpList]) of
-            1: begin;
+            1: try
+                EnterCriticalSection(console_cs);
                 if tpTrue(PL.look[1]) then WriteLn(ifh_format(PL.L[1]));
                 System.Write(PL.S[0]);
                 System.ReadLn(S);
                 result := TVList.Create([TVString.Create(S)]);
                 (result as TVList).Append(read_from_string('('+S+')') as TVList);
+            finally
+                LeaveCriticalSection(console_cs);
             end;
         end;
 end;
@@ -2697,13 +2734,14 @@ begin
         vpKeyword_RESULT,        tpList,
         tpT,                     tpList]) of
         1: begin
-            (PL.look[0] as TVStreamPointer).body.write_string(ifh_format(PL.L[1]));
+            ifh_lock_and_write_string(PL.look[0] as TVStreamPointer, ifh_format(PL.L[1]));
             result := TVT.Create;
         end;
-        2: begin
+        2: try
+            EnterCriticalSection(console_cs);
             System.Write(ifh_format(PL.L[1]));
             result := TVT.Create;
-        end;
+        finally LeaveCriticalSection(console_cs); end;
         3,4: result := TVString.Create(ifh_format(PL.L[1]));
     end;
 end;
