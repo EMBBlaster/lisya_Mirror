@@ -336,6 +336,7 @@ type
         function crc32: DWORD;
 
         function subseq(istart: integer; iend: integer = -1): TValue; override;
+        procedure Append(_s: TVString);
     end;
 
 
@@ -2449,6 +2450,12 @@ function TVString.subseq(istart: integer; iend: integer = -1): TValue;
 begin
     if iend<0 then iend := Length(S);
     result := TVString.Create(S[istart+1..iend]);
+end;
+
+procedure TVString.Append(_s: TVString);
+begin
+    S := S + _s.S;
+    _s.Free;
 end;
 
 

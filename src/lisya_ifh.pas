@@ -28,7 +28,7 @@ function ifh_union              (const L: TVList): TVList;
 function ifh_intersection       (const L: TVList): TVList;
 function ifh_set_include        (const A, B: TVList): boolean;
 
-function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
+function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TVList;
 function ifh_fold(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
 
 function ifh_like (str1, str2: unicodestring): integer;
@@ -354,19 +354,19 @@ finally
 end;
 end;
 //------------------------------------------------------------------------------
-function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
+function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TVList;
 var expr: TVList;
     i, j: integer;
 begin try try
     result := TVList.Create;
-    (result as TVList).SetCapacity(e-b+1);
+    result.SetCapacity(e-b+1);
 
     expr := TVList.Create([P.Copy]);
     for i := 0 to PL.high do expr.Add(nil);
     for i := b to e do begin
         for j := 0 to PL.high do expr[j+1] := PL.L[j][i];
         //WriteLn('ifh_map>> ', expr.AsString);
-        (result as TVList).Add(call(expr));
+        result.Add(call(expr));
     end;
 except
     FreeAndNil(result);

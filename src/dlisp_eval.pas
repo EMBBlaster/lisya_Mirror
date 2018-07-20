@@ -41,9 +41,6 @@ uses
     {$IFDEF mysql50}
     ,mysql_50
     {$ENDIF}
-    {$IFDEF MULTITHREADING}
-   // , lisya_thread
-    {$ENDIF}
     ,db
     ,variants;
 
@@ -126,6 +123,10 @@ type
     end;
 
 implementation
+
+{$IFDEF MULTITHREADING}
+uses lisya_thread;
+{$ENDIF}
 
 
 var T: TVT;
@@ -1659,6 +1660,19 @@ begin
                 PL.look[0] as TVSubprogram,
                 PL.L[1],
                 0, PL.L[1].L[0].high); //эти параметры рудимент многопоточности
+    end;
+end;
+
+function if_map_th              (const PL: TVList; call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpSubprogram, tpNIL,
+        tpSubprogram, vpListOfListsEqualLength]) of
+        1: result := TVList.Create;
+        2: result := ifh_map_th(
+                call,
+                PL.look[0] as TVSubprogram,
+                PL.L[1]); //эти параметры рудимент многопоточности
     end;
 end;
 
@@ -3216,7 +3230,7 @@ begin
 end;
 
 
-const int_fun_count = 158;
+const int_fun_count = 159;
 var int_fun_sign: array[1..int_fun_count] of TVList;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3301,6 +3315,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'REJECT';                    f:if_reject;                s:'(p l)'),
 (n:'FOLD';                      f:if_fold;                  s:'(p l)'),
 (n:'MAP ОТОБРАЖЕНИЕ';           f:if_map;                   s:'(p :rest l)'),
+(n:'MAP-TH';                    f:if_map_th;                s:'(p :rest l)'),
 (n:'MAP-CONCATENATE';           f:if_map_concatenate;       s:'(p :rest l)'),
 (n:'APPLY ПРИМЕНИТЬ';           f:if_apply;                 s:'(p :rest params)'),
 
@@ -3848,7 +3863,7 @@ begin try
     head := nil;
 
     if tpOrdinarySymbol(P) then begin
-        i := stack.index_of((P as TVSymbol).uname);
+        i := stack.index_of((P as TVSymbol).N);
         if stack.stack[i].V.V is TVChainPointer
         then result := stack.stack[i].V.V.Copy as TVChainPointer
         else result := TVChainPointer.Create(RefVariable(stack.stack[i].V));
@@ -4698,35 +4713,30 @@ end;
 
 
 function TEvaluationFlow.op_append(PL: TVList): TValue;
-var CP: TVChainPointer; i: integer; PLI: TVList;
+var CP: TVChainPointer; i: integer;
 begin
     if PL.Count<3 then raise ELE.InvalidParameters;
 try
-    //TODO: слишком много копирований
     //TODO: нет предварительной проверки корректности параметров
     // в случае несоответствия параметров программа упадёт при
     // попытке приведения типов
-
-    PLI := TVList.Create;
-    for i := 2 to PL.high do PLI.Add(eval(PL[i]));
 
     oph_eval_link_for_modification(CP, PL.look[1]);
 
     if CP.look is TVString
     then
-        for i := 0 to PLI.high do
-            (CP.look as TVString).S := (CP.look as TVString).S + PLI.S[i]
+        for i := 2 to PL.high do (CP.look as TVString).Append(eval(PL[i]) as TVString)
 
 
     else if CP.look is TVList
     then
-        for i := 0 to PLI.high do (CP.look as TVList).Append(PLI[i] as TVList)
+        for i := 2 to PL.high do (CP.look as TVList).Append(eval(PL[i]) as TVList)
 
 
     else if CP.look is TVBytes
     then
-        for i := 0 to PLI.high do
-            (CP.look as TVBytes).append(PLI[i] as TVBytes)
+        for i := 2 to PL.high do
+            (CP.look as TVBytes).append(eval(PL[i]) as TVBytes)
 
 
     else raise ELE.InvalidParameters;
@@ -4734,7 +4744,6 @@ try
     result := TVT.Create;
 finally
     FreeAndNil(CP);
-    PLI.Free;
 end
 end;
 

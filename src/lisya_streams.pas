@@ -147,6 +147,8 @@ type
         function description: unicodestring; override;
 
         procedure close_stream; override;
+        procedure Lock; override;
+        procedure Unlock; override;
     end;
 
     { TLSerialStream }
@@ -337,6 +339,16 @@ procedure TLProcessPipes.close_stream;
 begin
     proc.CloseInput;
     in_pipe := nil;
+end;
+
+procedure TLProcessPipes.Lock;
+begin
+    proc.Lock;
+end;
+
+procedure TLProcessPipes.Unlock;
+begin
+    proc.Unlock;
 end;
 
 

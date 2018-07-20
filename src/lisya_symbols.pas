@@ -19,12 +19,14 @@ implementation
 var g_n: Int64 = -1;
 var cs: TRTLCriticalSection;
 var names: array of unicodestring;
+var read_count: integer = 0;
 
 function symbol_n(name: unicodestring): Int64;
 var uname: unicodestring;
 begin
     uname := UnicodeUpperCase(name);
     EnterCriticalSection(cs);
+    Inc(read_count);
     try
         for result := 0 to high(names) do if names[result]=uname then Exit;
         SetLength(names, Length(names)+1);
@@ -40,7 +42,12 @@ function symbol_uname(n: Int64): unicodestring;
 begin
     if n<0
     then result := '#G'+IntToStr(n)
-    else result := names[n];
+    else try
+        EnterCriticalSection(cs);
+        result := names[n];
+    finally
+        LeaveCriticalSection(cs);
+    end;
 end;
 
 
@@ -59,6 +66,7 @@ initialization
 
 finalization
     DoneCriticalSection(cs);
+    WriteLn('Символов прочитано: ', read_count);
 
 end.
 

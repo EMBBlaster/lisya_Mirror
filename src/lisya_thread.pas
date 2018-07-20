@@ -8,7 +8,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    Classes, SysUtils, dlisp_eval, dlisp_values, lisya_ifh, lisya_gc;
+    Classes, SysUtils, dlisp_eval, dlisp_values, lisya_ifh, lisya_gc, lisya_exceptions;
 
 type
 
@@ -21,21 +21,29 @@ type
         fflow: dlisp_eval.TEvaluationFlow;
 
         fExpression: TVList;
+        fProc: TVSubprogram;
+        fParams: TVList;
 
         fComplitedEvent: pRTLEvent;
         eclass, emessage, estack: unicodestring;
         fError: boolean;
+        procedure SetProc(P: TVSubprogram);
     protected
         procedure Execute; override;
     public
         fResult: TValue;
+        property Proc: TVSubprogram write SetProc;
         constructor Create;
         destructor Destroy; override;
         procedure eval(f: TMTFunction; P: TVSubprogram; PL: TVList; b, e: integer); overload;
         procedure eval(PL: TVList); overload;
+        procedure Run;
+        procedure WaitEnd;
         function WaitResult: TValue;
     end;
 
+
+function ifh_map_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
 
 var threads_pool: array of TEvaluationThread;
 
@@ -49,8 +57,11 @@ procedure set_threads_count(n: integer);
 
 implementation
 
-var complited_cs: TRTLCriticalSection;
+
+var task_cs: TRTLCriticalSection;
     complited_event: pRTLEvent;
+    task_queue: array of TValue;
+    task_i: integer = 0;
 
 procedure set_threads_count(n: integer);
 var i, n_old: integer;
@@ -69,37 +80,66 @@ begin
 
 end;
 
-procedure Ready;
+function ifh_map_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
+var i,j: integer;
 begin
-    EnterCriticalSection(complited_cs);
-    RtlEventSetEvent(complited_event);
-    LeaveCriticalSection(complited_cs);
-end;
-
-function NextThread: TEvaluationThread;
-var i: integer;
-begin
-    RtlEventWaitFor(complited_event);
-    EnterCriticalSection(complited_cs);
-    RTLEventResetEvent(complited_event);
-    for i := 0 to high(threads_pool) do begin
-        if threads_pool[i].Suspended then begin
-            result := threads_pool[i];
-            Exit;
+    //TODO: возможна утечка содержимого очереди заданий при возникновении исключения
+    if not th then try
+        th := true;
+        result := nil;
+        for i := 0 to high(threads_pool) do threads_pool[i].Proc := P;
+        SetLength(task_queue, PL.L[0].Count);
+        task_i := 0;
+        for i := 0 to high(task_queue) do begin
+            task_queue[i] := TVList.Create();
+            for j := 0 to PL.high do
+                (task_queue[i] as TVList).Add(separate(PL.L[j].look[i]));
         end;
-    end;
-
-
+        for i := 0 to high(threads_pool) do threads_pool[i].Run;
+        for i := 0 to high(threads_pool) do threads_pool[i].WaitEnd;
+        result := TVList.Create;
+        result.SetCapacity(Length(task_queue));
+        for i := 0 to high(task_queue) do result.Add(task_queue[i]);
+        SetLength(task_queue, 0);
+        for i := 0 to high(threads_pool) do threads_pool[i].fProc := nil;
+    finally
+        th := false;
+    end
+    else result := ifh_map(call, P, PL, 0, PL.L[0].high);
 end;
+
+function  NextTask(out tn: integer): boolean;
+begin
+    EnterCriticalSection(task_cs);
+    result := task_i<Length(task_queue);
+    tn := task_i;
+    Inc(task_i);
+    LeaveCriticalSection(task_cs);
+end;
+
+
 
 { TEvaluationThread }
 
+procedure TEvaluationThread.SetProc(P: TVSubprogram);
+begin
+    fProc.Free;
+    fProc := separate(P) as TVSubprogram;
+end;
+
 procedure TEvaluationThread.Execute;
+var n: integer;
 begin
     while not self.Terminated do begin
         try
             fError := false;
-            fResult := fFlow.eval(fExpression);
+            //fResult := fFlow.eval(fExpression);
+            while NextTask(n) do begin
+                fExpression := TVList.Create([fProc.Copy]);
+                fExpression.Append(task_queue[n] as TVList);
+                task_queue[n] := fFlow.call(fExpression);
+                FreeAndNil(fExpression);
+            end;
         except
             on E:ELE do begin
                 fError := true;
@@ -114,14 +154,16 @@ begin
                 estack := 'thread';
             end;
         end;
+        RtlEventSetEvent(fComplitedEvent);
         self.Suspended := true;
-        ready;
     end;
 end;
 
 constructor TEvaluationThread.Create;
 begin
     self.fExpression := nil;
+    fProc := nil;
+    fParams := nil;
     self.fflow := TEvaluationFlow.Create(nil);
     self.fResult := nil;
     self.FreeOnTerminate := false;
@@ -135,18 +177,38 @@ begin
     fflow.Free;
     fResult.Free;
     fExpression.Free;
+    fProc.Free;
+    fParams.Free;
     RTLeventdestroy(fComplitedEvent);
     self.Terminate;
     self.Suspended := false;
     inherited;
 end;
 
+procedure TEvaluationThread.eval(f: TMTFunction; P: TVSubprogram; PL: TVList;
+    b, e: integer);
+begin
+
+end;
+
 
 procedure TEvaluationThread.eval(PL: TVList);
 begin
-    fExpression := separate(PL);
+    fExpression := separate(PL) as TVList;
     RTLEventResetEvent(fComplitedEvent);
     self.Start;
+end;
+
+procedure TEvaluationThread.Run;
+begin
+    RTLEventResetEvent(fComplitedEvent);
+    Start;
+end;
+
+procedure TEvaluationThread.WaitEnd;
+begin
+    RtlEventWaitFor(fComplitedEvent);
+    if fError then raise ELE.Create(emessage, eclass, estack);
 end;
 
 
@@ -162,14 +224,14 @@ end;
 
 initialization
     {$IFDEF MULTITHREADING}
-    set_threads_count(4);
+    set_threads_count(6);
     {$ENDIF}
-    InitCriticalSection(complited_cs);
+    InitCriticalSection(task_cs);
     complited_event := RTLEventCreate;
 
 finalization
     set_threads_count(0);
-    DoneCriticalSection(complited_cs);
+    DoneCriticalSection(task_cs);
     RTLeventdestroy(complited_event);
 end.
 
