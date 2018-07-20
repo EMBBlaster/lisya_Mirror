@@ -5,6 +5,9 @@
 interface
 
 uses
+    {$IFDEF LINUX}
+    cwstring,
+    {$ENDIF}
     Classes, SysUtils, dlisp_eval, dlisp_values, lisya_ifh, lisya_gc;
 
 type

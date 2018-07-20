@@ -1,4 +1,4 @@
-unit lisya_repl;
+﻿unit lisya_repl;
 
 {$mode delphi}
 
@@ -24,15 +24,25 @@ var
     root_evaluation_flow: TEvaluationFlow;
 
 procedure REPL;
-var input_string: unicodestring; expr, res: TValue;
+var input_string, u_input_string: unicodestring; expr, res: TValue;
     last_error_stack: unicodestring;
 begin
     last_error_stack := '';
     Write('> ');ReadLn(input_string);
+    u_input_string := UnicodeUpperCase(input_string);
     while input_string<>'' do begin
 
-        if UnicodeUpperCase(input_string) = 'ERROR STACK'
+        if u_input_string = 'ERROR STACK'
         then WriteLn(last_error_stack)
+        else
+
+        if (u_input_string = 'RELOAD') or (u_input_string = 'ПЕРЕЗАГРУЗИТЬ')
+        then begin
+            root_evaluation_flow.Free;
+            root_evaluation_flow := TEvaluationFlow.Create(nil);
+            FreePackages;
+            if (ParamCount>0) then EXEC(paramStr(1));
+        end
         else
 
         try
@@ -54,6 +64,7 @@ begin
             end;
         end;
         Write('> ');ReadLn(input_string);
+        u_input_string := UnicodeUpperCase(input_string);
     end;
 end;
 
