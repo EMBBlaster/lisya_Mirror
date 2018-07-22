@@ -270,7 +270,7 @@ begin
   if FLineText[FTokenEnd] in [';'] then FTokenEnd := l+1
   else
     // At None-Space? Find end of None-spaces
-    while (FTokenEnd <= l) and not(FLineText[FTokenEnd] in [#9, ' ',')',';']) do inc (FTokenEnd)
+    while (FTokenEnd <= l) and not(FLineText[FTokenEnd] in [#9, ' ','(',')',';']) do inc (FTokenEnd)
 end;
 
 function TSynDemoHl.GetEol: Boolean;
