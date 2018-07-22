@@ -58,26 +58,12 @@ type
 
       procedure close_stream; virtual;
       function active: boolean;
-
-      procedure Lock; virtual; abstract;
-      procedure Unlock; virtual; abstract;
     end;
 
-    { TLTargetStream }
-
-    TLTargetStream = class (TLStream)
-    private
-        cs: TRTLCriticalSection;
-    public
-        constructor Create(trg: TStream; enc: TStreamEncoding=seUTF8);
-        destructor Destroy; override;
-        procedure Lock; override;
-        procedure Unlock; override;
-    end;
 
     { TLMemoryStream }
 
-    TLMemoryStream = class(TLTargetStream)
+    TLMemoryStream = class(TLStream)
       constructor Create(enc: TStreamEncoding = seUTF8); overload;
       constructor Create(const b: TBytes; enc: TStreamEncoding = seUTF8); overload;
       constructor Create(const s: unicodestring); overload;
@@ -86,7 +72,7 @@ type
 
     { TLFileStream }
 
-    TLFileStream = class(TLTargetStream)
+    TLFileStream = class(TLStream)
     private
         function GetFileName: unicodestring;
     public
@@ -100,8 +86,8 @@ type
 
     TLProxyStream = class(TLStream)
         target: TLStream;
-        procedure Lock;
-        procedure Unlock;
+        procedure Lock; override;
+        procedure Unlock; override;
     end;
 
     { TLDeflateStream }
@@ -129,6 +115,9 @@ type
         constructor Create(Z: TZipArchive; fn: unicodestring; mode: WORD; enc: TStreamEncoding);
         destructor Destroy; override;
         function description: unicodestring; override;
+
+        procedure Lock; override;
+        procedure Unlock; override;
     end;
 
 
@@ -153,7 +142,7 @@ type
 
     { TLSerialStream }
 
-    TLSerialStream = class(TLTargetStream)
+    TLSerialStream = class(TLStream)
     private
         port: {$IFDEF LINUX}TSerialHandle{$ELSE}THandle{$ENDIF};
         timeout: integer;
@@ -209,29 +198,6 @@ begin
     target.Unlock;
 end;
 
-{ TLTargetStream }
-
-constructor TLTargetStream.Create(trg: TStream; enc: TStreamEncoding);
-begin
-    inherited Create(trg, enc);
-    InitCriticalSection(cs);
-end;
-
-destructor TLTargetStream.Destroy;
-begin
-    DoneCriticalSection(cs);
-    inherited Destroy;
-end;
-
-procedure TLTargetStream.Lock;
-begin
-    EnterCriticalSection(cs);
-end;
-
-procedure TLTargetStream.Unlock;
-begin
-    LeaveCriticalSection(cs);
-end;
 
 { TLSerialStream }
 
@@ -357,7 +323,7 @@ end;
 constructor TLZipFile.Create(Z: TZipArchive; fn: unicodestring; mode: WORD;
     enc: TStreamEncoding);
 begin
-    archive := Z.Ref as TZipArchive;
+    archive := Z;
     file_name := fn;
     inherited Create(archive.GetFileStream(fn, mode), enc);
 end;
@@ -365,12 +331,24 @@ end;
 destructor TLZipFile.Destroy;
 begin
     archive.Release;
+    stream := nil; //при освобождении файла в архиве его поток не должен
+                    //освобождаься, поскольку им управляет TLZipFile
     inherited Destroy;
 end;
 
 function TLZipFile.description: unicodestring;
 begin
     result := '#<FILE '+archive.description+': '+file_name+'>';
+end;
+
+procedure TLZipFile.Lock;
+begin
+    archive.Lock;
+end;
+
+procedure TLZipFile.Unlock;
+begin
+    archive.Unlock;
 end;
 
 { TLInflateStream }

@@ -23,7 +23,6 @@ type
     TLProcess = class (TCountingObject)
     private
         p: TProcess;
-        pipes_cs: TRTLCriticalSection;
         function GetInputPipe: TStream;
         function GetOutputpipe: TStream;
     public
@@ -33,9 +32,6 @@ type
         constructor Run(cmd: unicodestring; dir: unicodestring = '.');
         destructor Destroy; override;
         function description: unicodestring; override;
-
-        procedure Lock;
-        procedure Unlock;
 
         procedure term;
         procedure CloseInput;
@@ -58,7 +54,6 @@ constructor TLProcess.Run(cmd: unicodestring; dir: unicodestring);
 begin
     inherited Create;
     p := TProcess.Create(nil);
-    InitCriticalSection(pipes_cs);
     {$IFDEF WINDOWS}
     p.CommandLine:=UnicodeToWinCP(cmd);
     p.CurrentDirectory:=UnicodeToWinCP(DirSep(dir));
@@ -74,7 +69,6 @@ destructor TLProcess.Destroy;
 begin
     P.Terminate(0);
     P.Free;
-    DoneCriticalSection(pipes_cs);
     inherited Destroy;
 end;
 
@@ -85,15 +79,6 @@ begin
     else result := {$IFDEF WINDOWS} WinCPtoUnicode(p.CommandLine){$ELSE} p.CommandLine{$ENDIF};
 end;
 
-procedure TLProcess.Lock;
-begin
-    EnterCriticalSection(pipes_cs);
-end;
-
-procedure TLProcess.Unlock;
-begin
-    LeaveCriticalSection(pipes_cs);
-end;
 
 procedure TLProcess.term;
 begin

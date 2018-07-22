@@ -321,8 +321,9 @@
 
 
 (log)
+(if (not (directory-exists "test_tmp")) (create-directory "test_tmp"))
 (var tests (directory "../test/*_test.lisya"))
-(assertion (= 14 (length tests)) "tests count")
+(assertion (= 15 (length tests)) "tests count")
 (for test tests (execute-file test))
 
 

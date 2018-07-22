@@ -4735,9 +4735,7 @@ try
 
     else if CP.look is TVBytes
     then
-        for i := 2 to PL.high do
-            (CP.look as TVBytes).append(eval(PL[i]) as TVBytes)
-
+        for i := 2 to PL.high do (CP.look as TVBytes).Append(eval(PL[i]) as TVBytes)
 
     else raise ELE.InvalidParameters;
 

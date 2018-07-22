@@ -53,7 +53,7 @@ var th: boolean = false;
 var th: boolean = true;
 {$ENDIF}
 
-procedure set_threads_count(n: integer);
+procedure set_threads_count(_n: integer);
 
 implementation
 
@@ -63,9 +63,13 @@ var task_cs: TRTLCriticalSection;
     task_queue: array of TValue;
     task_i: integer = 0;
 
-procedure set_threads_count(n: integer);
-var i, n_old: integer;
+procedure set_threads_count(_n: integer);
+var i, n_old, n: integer;
 begin
+    //проверка на отрицательное значение нужна на случай если sysconf
+    //вернёт -1 как сообщение об ошибке
+    if _n<0 then n := 0 else n := _n;
+
     if n<Length(threads_pool) then begin
         for i := n to high(threads_pool) do threads_pool[i].Free;
         SetLength(threads_pool, n);
@@ -84,7 +88,7 @@ function ifh_map_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
 var i,j: integer;
 begin
     //TODO: возможна утечка содержимого очереди заданий при возникновении исключения
-    if not th then try
+    if (not th) and (length(threads_pool)>1) then try
         th := true;
         result := nil;
         for i := 0 to high(threads_pool) do threads_pool[i].Proc := P;

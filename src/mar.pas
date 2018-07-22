@@ -31,13 +31,17 @@ type
     private
         ref_count: integer;
         CS: TRTLCriticalSection;
+        res_cs: TRTLCriticalSection;
     public
         constructor Create;
         function Ref: TCountingObject;
         function Release: boolean;
         function description: unicodestring; virtual; abstract;
         property refs: integer read ref_count;
+        procedure Lock; virtual;
+        procedure Unlock; virtual;
     end;
+
 
 
 implementation
@@ -150,6 +154,7 @@ constructor TCountingObject.Create;
 begin
     ref_count := 1;
     InitCriticalSection(cs);
+    InitCriticalSection(res_cs);
 end;
 
 function TCountingObject.Ref: TCountingObject;
@@ -170,10 +175,21 @@ begin
 
     if rel then begin
         DoneCriticalSection(cs);
+        DoneCriticalSection(res_cs);
         result := true;
         self.Free;
     end
     else result := false;
+end;
+
+procedure TCountingObject.Lock;
+begin
+    EnterCriticalSection(res_cs);
+end;
+
+procedure TCountingObject.Unlock;
+begin
+    LeaveCriticalSection(res_cs);
 end;
 
 
