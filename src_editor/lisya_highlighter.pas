@@ -86,7 +86,6 @@ type
     FTokenPos, FTokenEnd: Integer;
     FLineText: String;
     fInString: integer;
-    fbInString: boolean;
   public
     procedure SetLine(const NewValue: String; LineNumber: Integer); override;
     procedure Next; override;
@@ -172,7 +171,6 @@ begin
   fModOperators.Sorted := true;
 
   fInString := 0;
-  fbInString := false;
 
   // Ensure the HL reacts to changes in the attributes. Do this once, if all attributes are created
   SetAttributesOnChange(@DefHighlightChange);
@@ -247,12 +245,13 @@ begin
   if (FLineText[FTokenEnd]='"') or ((FTokenEnd=1) and (fInString=1))  then begin
     if FLineText[FTokenEnd]='"' then Inc(fTokenEnd);
     while true do begin
-        if fTokenEnd>l then begin fbInString := true; break; end;
-        if FLineText[FTokenEnd]='"' then begin fbInString:=false; break; end;
+        if fTokenEnd>l then begin fInString := 1; break; end;
+        if FLineText[FTokenEnd]='"' then begin fInString:=0; break; end;
         if FLineText[FTokenEnd]='\' then Inc(FTokenEnd);
         Inc(FTokenEnd)
     end;
     Inc(fTokenEnd);
+    if fTokenEnd>(l+1) then fTokenEnd := l+1;
   end
   else
   if FLineText[FTokenEnd] in [#9, ' '] then
@@ -289,7 +288,7 @@ var n: integer;
 begin
   // Match the text, specified by FTokenPos and FTokenEnd
 
-  if (FLineText[FTokenPos]='"') or (fInString=1) then
+  if (FLineText[FTokenPos]='"') or (FLineText[FTokenEnd-1]='"') or (fInString=1) then
     result := StringAttri
   else
 
@@ -364,7 +363,6 @@ end;
 function TSynDemoHl.GetRange: Pointer;
 begin
   // Get a storable copy of the cuurent (working) range
-  if fbInstring then fInString := 1 else fInString := 0;
   Result := Pointer(PtrInt(fInString));
 end;
 
