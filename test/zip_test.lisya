@@ -1,0 +1,32 @@
+﻿
+(fmt nil "zip ...")
+
+(block "создание архива"
+    (var z (zip:open "./test_tmp/1.zip" :MODE :WRITE))
+    (var file-data)
+    (for i 1..1000 (push file-data i))
+    (var f (ZIP:FILE z "1.txt" :WRITE))
+    (print f file-data)
+    (set f nil)
+    (set z nil))
+
+(assertion (file-exists "./test_tmp/1.zip") "zip create")
+
+(block "чтение архива"
+    (var z (ZIP:OPEN "./test_tmp/1.zip" :MODE :READ))
+    (assertion (= (ZIP:FILELIST z) \("1.txt")) "zip filelist")
+    (var file-data)
+    (for i 1..1000 (push file-data i))
+    (var f (ZIP:FILE z "1.txt"))
+    (assertion (= file-data (read f)) "zip read")
+    (set f nil)
+    (ZIP:DELETE z "1.txt")
+    (assertion (= (ZIP:FILELIST z) ()) "zip:DELETE")
+    (set z nil)
+    (delete-file "./test_tmp/1.zip"))
+
+
+
+
+(log \успешно)
+

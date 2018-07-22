@@ -131,7 +131,7 @@ procedure write_string(f: TFileStream; s: unicodestring);
 var bb: TBytes;
 begin
     bb := string_to_bytes(s, seUTF8);
-    f.Write(bb,Length(bb));
+    f.Write(bb[0],Length(bb));
     SetLength(bb, 0);
 end;
 
