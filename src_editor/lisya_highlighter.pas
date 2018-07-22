@@ -305,10 +305,6 @@ begin
     result := ModOperatorAttri
   else
 
-  if LowerCase(copy(FLineText, FTokenPos, FTokenEnd - FTokenPos)) = 'not' then
-    Result := ModOperatorAttri
-  else
-
   if sp_float(FLineText[FTokenPos..FTokenEnd-1]) or sp_integer(FLineText[FTokenPos..FTokenEnd-1]) then
     Result := NumberAttri
   else

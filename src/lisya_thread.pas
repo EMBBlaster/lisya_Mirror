@@ -71,7 +71,7 @@ function sysconf(i:cint):clong;cdecl;external name 'sysconf';
 function CPU_Count: integer;
 begin
     {$IFDEF LINUX}
-        result := sysconf(83);
+        result := sysconf(83);  // вероятно это константа _SC_NPROCESSORS_CONF или _SC_NPROCESSORS_ONLN
     {$ELSE}
         result := GetCPUCount;
     {$ENDIF}
