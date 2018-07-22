@@ -4034,11 +4034,11 @@ begin
     end;
 
     {$IFDEF MULTITHREADING}
-    //if (PL.Count>=2) and vpKeyword_THREADS_COUNT(PL.look[1]) then begin
-    //    if (PL.Count=3) and vpIntegerNotNegative(PL.look[2])
-    //    then set_threads_count(PL.I[2]);
-    //    exit;
-    //end;
+    if (PL.Count>=2) and vpKeyword_THREADS_COUNT(PL.look[1]) then begin
+        if (PL.Count=3) and vpIntegerNotNegative(PL.look[2])
+        then set_threads_count(PL.I[2]);
+        exit;
+    end;
     {$ENDIF}
 
     if params(3, vpKeyword_PRINT_LINKS) then begin
@@ -4051,6 +4051,10 @@ begin
         tmp := eval(PL[2]);
         result := separate(tmp);
         tmp.Free;
+    end;
+
+    if params(2, vpKeyword_CPU_COUNT) then begin
+        result := TVInteger.Create(CPU_Count);
     end;
 
     if result=nil then result := TVT.Create;

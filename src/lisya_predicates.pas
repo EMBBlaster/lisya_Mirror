@@ -177,6 +177,8 @@ function vpKeyword_CP1252                           (V: TValue): boolean;
 
 function vpKeyword_CP866                            (V: TValue): boolean;
 
+function vpKeyword_CPU_COUNT                        (V: TValue): boolean;
+
 function vpKeyword_CSV                              (V: TValue): boolean;
 
 function vpKeyword_DEFLATE                          (V: TValue): boolean;
@@ -797,6 +799,11 @@ end;
 function vpKeyword_CP866(V: TValue): boolean;
 begin
     result := vphKeywordNames(V, [':CP866',':DOS']);
+end;
+
+function vpKeyword_CPU_COUNT(V: TValue): boolean;
+begin
+    result := vphSymbolName(V, ':CPU-COUNT');
 end;
 
 function vpKeyword_CSV(V: TValue): boolean;

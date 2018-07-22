@@ -26,7 +26,7 @@ var uname: unicodestring;
 begin
     uname := UnicodeUpperCase(name);
     EnterCriticalSection(cs);
-    Inc(read_count);
+    //Inc(read_count);
     try
         for result := 0 to high(names) do if names[result]=uname then Exit;
         SetLength(names, Length(names)+1);
@@ -66,7 +66,7 @@ initialization
 
 finalization
     DoneCriticalSection(cs);
-    WriteLn('Символов прочитано: ', read_count);
+    //WriteLn('Символов прочитано: ', read_count);
 
 end.
 

@@ -6,7 +6,7 @@ interface
 
 uses
     {$IFDEF LINUX}
-    cwstring,
+    cwstring, ctypes,
     {$ENDIF}
     Classes, SysUtils, dlisp_eval, dlisp_values, lisya_ifh, lisya_gc, lisya_exceptions;
 
@@ -53,7 +53,8 @@ var th: boolean = false;
 var th: boolean = true;
 {$ENDIF}
 
-procedure set_threads_count(_n: integer);
+procedure set_threads_count(n: integer);
+function CPU_Count: integer;
 
 implementation
 
@@ -63,13 +64,24 @@ var task_cs: TRTLCriticalSection;
     task_queue: array of TValue;
     task_i: integer = 0;
 
-procedure set_threads_count(_n: integer);
-var i, n_old, n: integer;
-begin
-    //проверка на отрицательное значение нужна на случай если sysconf
-    //вернёт -1 как сообщение об ошибке
-    if _n<0 then n := 0 else n := _n;
+{$IFDEF LINUX}
+function sysconf(i:cint):clong;cdecl;external name 'sysconf';
+{$ENDIF}
 
+function CPU_Count: integer;
+begin
+    {$IFDEF LINUX}
+        result := sysconf(83);
+    {$ELSE}
+        result := GetCPUCount;
+    {$ENDIF}
+    if result <1 then result := 1;
+end;
+
+
+procedure set_threads_count(n: integer);
+var i, n_old: integer;
+begin
     if n<Length(threads_pool) then begin
         for i := n to high(threads_pool) do threads_pool[i].Free;
         SetLength(threads_pool, n);
@@ -81,7 +93,6 @@ begin
         for i := n_old to high(threads_pool) do
             threads_pool[i] := TEvaluationThread.Create;
     end;
-
 end;
 
 function ifh_map_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
@@ -228,7 +239,7 @@ end;
 
 initialization
     {$IFDEF MULTITHREADING}
-    set_threads_count(6);
+    set_threads_count(CPU_count);
     {$ENDIF}
     InitCriticalSection(task_cs);
     complited_event := RTLEventCreate;
