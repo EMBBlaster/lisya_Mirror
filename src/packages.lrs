@@ -113,35 +113,36 @@ LazarusResources.Add('ascii','LISYA',[
   +'ter $44C)  (character $44D)  (character $44E)  (character $44F)))'#10#9
 ]);
 LazarusResources.Add('xml','LISYA',[
-  #239#187#191'(package xml ('#10'    tag'#10'    get-tag-element'#10'    set-t'
-  +'ag-element'#10#10'    get-tag-attribute'#10'    set-tag-attribute)'#10#10#10
-  +'    (procedure find-tag-index (root name index)'#10'        "'#208#164#209
-  +#131#208#189#208#186#209#134#208#184#209#143' '#208#178#208#190#208#183#208
-  +#178#209#128#208#176#209#137#208#176#208#181#209#130' '#208#184#208#189#208
-  +#180#208#181#208#186#209#129' '#208#184#209#129#208#186#208#190#208#188#208
-  +#190#208#179#208#190' '#208#180#208#190#209#135#208#181#209#128#208#189#208
-  +#181#208#179#208#190' '#209#130#208#181#208#179#208#176' '#208#180#208#187
-  +#209#143' '#208#184#209#129#208#191#208#190#208#187#209#140#208#183#208#190
-  +#208#178#208#176#208#189#208#184#209#143#10'        '#208#178' '#208#190#208
-  +#191#208#181#209#128#208#176#209#130#208#190#209#128#208#181' ELT"'#10'     '
-  +'   (var n 0)'#10'        (for i (range 2 (length root))'#10'            (wh'
-  +'en (and (list? root/i) (= name (car root/i)))'#10'                (when (= '
-  +'n index) (break))'#10'                (set n (+ 1 n)))))'#10#10#10'    (pro'
-  +'cedure tag (name :optional index)'#10'        (default index 0)'#10'       '
-  +' (curry find-tag-index _ name index))'#10#10#10'    (procedure tag-chain (n'
-  +'ames)'#10'        (var chain)'#10'        (for n names'#10'            (pus'
-  +'h chain'#10'                (cond'#10'                    ((list? n) (curry'
-  +' find-tag-index _ n/0 n/1))'#10'                    ((string? n) (curry fin'
-  +'d-tag-index _ n 0))'#10'                    ((integer? n) n)'#10'          '
-  +'          (t (error "'#208#189#208#181#208#178#208#181#209#128#208#189#208
-  +#190#208#181' '#208#184#208#188#209#143'" n)))))'#10'        chain)'#10#10#10
-  +'    (macro get-tag-element (root :rest names)'#10'        (assemble elt /ro'
-  +'ot @(tag-chain names)))'#10#10'    (macro set-tag-element ((root :rest name'
-  +'s) V)'#10'        (assemble set (elt /root @(tag-chain names)) /V))'#10#10
-  +'    (macro get-tag-attribute (root attribute :rest names)'#10'        (asse'
-  +'mble key (elt /root @(tag-chain names) 1) /attribute))'#10#10'    (macro se'
-  +'t-tag-attribute ((root attribute :rest names) V)'#10'        (assemble set '
-  +'(key (elt /root @(tag-chain names) 1) /attribute) /V))'#10#10')'#10#10#10#10
+  #239#187#191'(package xml ('#10'    tag'#10'    get-tag-element'#10'    ;set-'
+  +'tag-element'#10#10'    get-tag-attribute'#10'    ;set-tag-attribute'#10'   '
+  +' )'#10#10#10'    (procedure find-tag-index (root name index)'#10'        "'
+  +#208#164#209#131#208#189#208#186#209#134#208#184#209#143' '#208#178#208#190
+  +#208#183#208#178#209#128#208#176#209#137#208#176#208#181#209#130' '#208#184
+  +#208#189#208#180#208#181#208#186#209#129' '#208#184#209#129#208#186#208#190
+  +#208#188#208#190#208#179#208#190' '#208#180#208#190#209#135#208#181#209#128
+  +#208#189#208#181#208#179#208#190' '#209#130#208#181#208#179#208#176' '#208
+  +#180#208#187#209#143' '#208#184#209#129#208#191#208#190#208#187#209#140#208
+  +#183#208#190#208#178#208#176#208#189#208#184#209#143#10'        '#208#178' '
+  +#208#190#208#191#208#181#209#128#208#176#209#130#208#190#209#128#208#181' EL'
+  +'T"'#10'        (var n 0)'#10'        (for i (range 2 (length root))'#10'   '
+  +'         (when (and (list? root/i) (= name (car root/i)))'#10'             '
+  +'   (when (= n index) (break))'#10'                (set n (+ 1 n)))))'#10#10
+  +#10'    (procedure tag (name :optional index)'#10'        (default index 0)'
+  +#10'        (curry find-tag-index _ name index))'#10#10#10'    (procedure ta'
+  +'g-chain (names)'#10'        (var chain)'#10'        (for n names'#10'      '
+  +'      (push chain'#10'                (cond'#10'                    ((list?'
+  +' n) (curry find-tag-index _ n/0 n/1))'#10'                    ((string? n) '
+  +'(curry find-tag-index _ n 0))'#10'                    ((integer? n) n)'#10
+  +'                    (t (error "'#208#189#208#181#208#178#208#181#209#128#208
+  +#189#208#190#208#181' '#208#184#208#188#209#143'" n)))))'#10'        chain)'
+  +#10#10#10'    (macro get-tag-element (root :rest names)'#10'        (assembl'
+  +'e elt /root @(tag-chain names)))'#10#10'    ;(macro set-tag-element ((root '
+  +':rest names) V)'#10'    ;    (assemble set (elt /root @(tag-chain names)) /'
+  +'V))'#10#10'    (macro get-tag-attribute (root attribute :rest names)'#10'  '
+  +'      (assemble key (elt /root @(tag-chain names) 1) /attribute))'#10#10'  '
+  +'  ;(macro set-tag-attribute ((root attribute :rest names) V)'#10'    ;    ('
+  +'assemble set (key (elt /root @(tag-chain names) 1) /attribute) /V))'#10#10
+  +')'#10#10#10#10
 ]);
 LazarusResources.Add('xlsx','LISYA',[
   #239#187#191'(package xlsx ('#10'    xlsx_open'#10'    )'#10'    (use xml)'#10

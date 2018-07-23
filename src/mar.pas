@@ -5,7 +5,7 @@
 interface
 
 uses
-    Classes, SysUtils;
+    Classes, SysUtils, Math;
 
 type
     TStringArray = array of unicodestring;
@@ -109,11 +109,11 @@ begin
 end;
 
 function PointerToQWORD(ptr: Pointer): QWORD;
-var d: record case byte of 0: (p: pointer); 1: (c: QWORD); end;
+var d: record case byte of 0: (p: pointer); 1: (b: array [1..SizeOf(ptr)] of Byte); end;
     i: integer;
 begin
-    d.p:=ptr;
-    result := d.c;
+    result := 0;
+    for i := 0 to high(d.b) do result := result + d.b[i]*(256**i);
 end;
 
 function DirSep(s: unicodestring): unicodestring;

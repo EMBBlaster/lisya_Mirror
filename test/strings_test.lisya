@@ -13,7 +13,7 @@
     (assertion (= \("a" "b" "c") (split-string "a b c")) "split-string 1")
     (assertion (= \("a b" " c d") (split-string "a b, c d" ",")) "split-string 2")
     (assertion (= \("a b" "c d") (split-string "a b, c d" ", ")) "split-string 3")
-    (assertion (= \("" "1" "" "2" "") (split-string "_1__2_" "_")) "split-string 4")
+    (assertion (= \("" "й" "" "2" "") (split-string "_й__2_" "_")) "split-string 4")
     )
 
 (block "trim"

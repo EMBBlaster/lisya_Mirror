@@ -1,10 +1,11 @@
 ﻿(package xml (
     tag
     get-tag-element
-    set-tag-element
+    ;set-tag-element
 
     get-tag-attribute
-    set-tag-attribute)
+    ;set-tag-attribute
+    )
 
 
     (procedure find-tag-index (root name index)
@@ -37,14 +38,14 @@
     (macro get-tag-element (root :rest names)
         (assemble elt /root @(tag-chain names)))
 
-    (macro set-tag-element ((root :rest names) V)
-        (assemble set (elt /root @(tag-chain names)) /V))
+    ;(macro set-tag-element ((root :rest names) V)
+    ;    (assemble set (elt /root @(tag-chain names)) /V))
 
     (macro get-tag-attribute (root attribute :rest names)
         (assemble key (elt /root @(tag-chain names) 1) /attribute))
 
-    (macro set-tag-attribute ((root attribute :rest names) V)
-        (assemble set (key (elt /root @(tag-chain names) 1) /attribute) /V))
+    ;(macro set-tag-attribute ((root attribute :rest names) V)
+    ;    (assemble set (key (elt /root @(tag-chain names) 1) /attribute) /V))
 
 )
 
