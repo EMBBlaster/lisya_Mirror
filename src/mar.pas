@@ -73,7 +73,7 @@ begin
         SetLength(result, Length(result)+1);
         result[high(result)] := S[p1..p2-1];
         p1 := p2+Length(separator);
-        p2 := PosU(separator, S, p1+1);
+        p2 := PosU(separator, S, p1);
     end;
     SetLength(result, Length(result)+1);
     result[high(result)] := S[p1..Length(s)];
