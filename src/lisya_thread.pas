@@ -179,7 +179,7 @@ begin
     self.fExpression := nil;
     fProc := nil;
     fParams := nil;
-    self.fflow := TEvaluationFlow.Create(nil);
+    self.fflow := TEvaluationFlow.CreatePure;
     self.fResult := nil;
     self.FreeOnTerminate := false;
     fComplitedEvent := RTLEventCreate;

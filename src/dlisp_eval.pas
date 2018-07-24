@@ -52,8 +52,10 @@ type
     TEvaluationFlow = class
         stack: TVSymbolStack;
         main_stack: TVSymbolStack;
+        f_pure_mode: boolean;
 
         constructor Create(parent_stack: TVSymbolStack);
+        constructor CreatePure;
         destructor Destroy; override;
 
         function oph_block(PL: TVList; start: integer; with_frame: boolean): TValue;
@@ -3567,6 +3569,14 @@ begin
     then main_stack := parent_stack
     else main_stack := create_base_stack;
     stack := main_stack;
+    f_pure_mode := false;
+end;
+
+constructor TEvaluationFlow.CreatePure;
+begin
+    stack := nil;
+    main_stack := nil;
+    f_pure_mode := true;
 end;
 
 destructor TEvaluationFlow.Destroy;
@@ -4919,6 +4929,7 @@ end;
 function TEvaluationFlow.op_with(PL: TVList; export_symbols: boolean): TValue;
 var i: integer;
 begin
+    if f_pure_mode then raise ELE.Create('WITH/USE in pure mode', 'internal');
     if (PL.Count<2) then raise ELE.Malformed('WITH/USE');
     for i := 1 to PL.high do
         if not (tpOrdinarySymbol(PL.look[i]) or tpString(PL.look[i]))
