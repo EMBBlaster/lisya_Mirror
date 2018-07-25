@@ -14,7 +14,7 @@ procedure ReleaseVariable(var P: PVariable);
 
 
 
-function separate(V: TValue): TValue;
+function separate(V: TValue; force_const: boolean=false): TValue;
 procedure print_links(V: TValue);
 
 
@@ -134,8 +134,6 @@ end;
 
 
 
-
-
 procedure print_links(V: TValue);
 var P: PVariable; b: TBlocks;
 begin
@@ -156,6 +154,7 @@ begin
     if V is TVProcedure then begin
         proc := V as TVProcedure;
         separate_block(proc.body);
+        separate_block(proc.rest);
     end
 
     else if V is TVList then begin
@@ -186,14 +185,14 @@ begin
 end;
 
 
-function separate(V: TValue): TValue;
+function separate(V: TValue; force_const: boolean): TValue;
 var i,j,k: integer; b,nb: TBlocks; P: PVariable;
 
     function variable_mirror(P: PVariable): PVariable;
     begin
         New(result);
         result.V := P.V.Copy;
-        result.constant:= P.constant;
+        result.constant:= P.constant or force_const;
         result.ref_count := 0;
     end;
 
@@ -229,7 +228,6 @@ begin
     Dispose(nb[0].P);
     Dispose(P);
 end;
-
 
 
 

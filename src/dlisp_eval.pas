@@ -3477,6 +3477,7 @@ begin
             oeERROR     : op('ERROR');
             oeEXECUTE_FILE: op('EXECUTE-FILE');
             oeFOR       : op('FOR');
+            oeFUNCTION  : op('FUNCTION');
             oeGOTO      : op('GOTO');
             oeIF        : op('IF');
             oeIF_NIL    : op('IF-NIL');
@@ -4798,6 +4799,15 @@ function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
 var proc: TVProcedure; sl: TVList; P: PVariable;
     mode: (forward_declaration, lambda, procedure_declaration);
     sign_pos: integer;
+    procedure proc_create;
+    begin
+        case (PL.look[0] as TVOperator).op_enum of
+            oeMACRO:    proc := TVMacro.Create;
+            oePROCEDURE:proc := TVProcedure.Create;
+            oeFUNCTION: proc := TVFunction.Create;
+        end;
+    end;
+
 begin
     result := nil;
 
@@ -4810,7 +4820,7 @@ begin
             if (PL.Count=2) and tpOrdinarySymbol(PL.look[1])
             then mode := forward_declaration
             else
-                raise ELE.Malformed('PROCEDURE or MACRO');
+                raise ELE.Malformed('PROCEDURE, FUNCTION or MACRO');
 
 try
     case mode of
@@ -4820,16 +4830,12 @@ try
             then stack.new_var(PL.SYM[1], nil, true);
             ReleaseVariable(P);
             sign_pos := 2;
-            if (PL.look[0] as TVOperator).op_enum=oeMACRO
-            then proc := TVMacro.Create
-            else proc := TVProcedure.Create;
+            proc_create;
             proc.nN := PL.SYM[1].N;
         end;
         lambda: begin
             sign_pos := 1;
-            if (PL.look[0] as TVOperator).op_enum=oeMACRO
-            then proc := TVMacro.Create
-            else proc := TVProcedure.Create;
+            proc_create;
             proc.nN := -1;
         end;
         forward_declaration: begin
@@ -4850,6 +4856,12 @@ try
     finally
         FreeAndNil(sl);
     end;
+
+    //if (PL.look[0] as TVOperator).op_enum=oeFUNCTION
+    //then begin
+    //
+    //    replace_value(proc.stack as TValue, separate(proc.stack, true));
+    //end;
 
     if mode=procedure_declaration
     then begin
@@ -5102,6 +5114,7 @@ begin
         oeERROR     : result := op_error(PL);
         oeEXECUTE_FILE: result := op_execute_file(PL);
         oeFOR       : result := op_for(PL);
+        oeFUNCTION  : result := op_procedure(PL);
         oeGOTO      : result := op_goto(PL);
         oeIF        : result := op_if(PL);
         oeIF_NIL    : result := op_if_nil(PL);

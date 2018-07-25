@@ -617,6 +617,12 @@ type
     TVMacroSymbol = class (TVProcedure)
     end;
 
+    { TVFunction }
+
+    TVFunction = class (TVProcedure)
+        function AsString: unicodestring; override;
+    end;
+
     type TEvalProc = function (V: TValue): TValue of Object;
     type TCallProc = function (V: TVList): TValue of Object;
     type TInternalFunctionBody = function (const PL: TVList; call: TCallProc): TValue;
@@ -677,6 +683,7 @@ type
             oeERROR,
             oeEXECUTE_FILE,
             oeFOR,
+            oeFUNCTION,
             oeGOTO,
             oeIF,
             oeIF_NIL,
@@ -798,6 +805,15 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVFunction }
+
+function TVFunction.AsString: unicodestring;
+begin
+    if nN<=0
+    then result := '#<FUNCTION '+sign1.AsString+'>'
+    else result := '#<FUNCTION '+symbol_uname(nN)+'>';
 end;
 
 
