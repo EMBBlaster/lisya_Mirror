@@ -4796,7 +4796,7 @@ end;
 
 
 function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
-var proc: TVProcedure; sl: TVList; P: PVariable;
+var proc: TVProcedure; sl: TVList; P: PVariable; tmp: TValue;
     mode: (forward_declaration, lambda, procedure_declaration);
     sign_pos: integer;
     procedure proc_create;
@@ -4857,11 +4857,12 @@ try
         FreeAndNil(sl);
     end;
 
-    //if (PL.look[0] as TVOperator).op_enum=oeFUNCTION
-    //then begin
-    //
-    //    replace_value(proc.stack as TValue, separate(proc.stack, true));
-    //end;
+    if (PL.look[0] as TVOperator).op_enum=oeFUNCTION
+    then begin
+        tmp := proc.stack;
+        proc.stack := separate(tmp, true) as TVSymbolStack;
+        FreeAndNil(tmp);
+    end;
 
     if mode=procedure_declaration
     then begin
@@ -5039,12 +5040,13 @@ end;
 
 function TEvaluationFlow.call_procedure(PL: TVList): TValue;
 var proc: TVProcedure; params: TVList; tmp_stack, proc_stack: TVSymbolStack;
-    tmp: TValue; V: TValues; i: integer; rest: TVList;
+    tmp: TValue; V: TValues; i: integer; rest: TVList; pure_mode: boolean;
 begin try
     tmp_stack := stack;
     params := nil;
     proc_stack := nil;
     V := nil;
+    pure_mode := f_pure_mode;
     proc := PL.look[0] as TVProcedure;
 
     proc_stack := proc.stack.Copy as TVSymbolStack;
@@ -5059,6 +5061,7 @@ begin try
     for i:=0 to high(V) do proc_stack.new_var(proc.sign1.p[i].n, V[i], true);
 
     stack := proc_stack;
+    if proc is TVFunction then f_pure_mode := true;
     result := oph_block(proc.body,0,false);
     if tpReturn(result) then begin
             tmp := (result as TVReturn).value.Copy;
@@ -5067,6 +5070,7 @@ begin try
         end;
     //todo: некорректно ведёт себя если встретился break в теле
 finally
+    f_pure_mode := pure_mode;
     stack := tmp_stack;
     params.Free;
     proc_stack.Free;
@@ -5171,6 +5175,11 @@ begin
 try
     if proc is TVMacro
     then params.Append(PL.subseq(1) as TVList)
+    else
+
+    if proc is TVFunction
+    then for i := 1 to PL.high do params.Add(eval(PL[i]))
+
     else begin
         for i := 0 to min(proc.sign1.required_count,PL.Count-1)-1 do
             params.Add(eval_link(PL.look[i+1]));
