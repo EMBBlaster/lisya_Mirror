@@ -202,46 +202,6 @@ begin
     variable := value;
 end;
 
-function bind_parameters_list(PL: TVList; sign: TVList): TVList;
-var i, opt_start, p: integer;
-    mode: TSubprogramParmetersMode;
-begin
-    //TODO: bind_parameters_list не проверяет переданный список на наличие лишнего
-
-    result := TVList.Create;
-    mode := spmReq;
-    for i := 0 to sign.Count-1 do
-        if tpKeyword(sign.look[i])
-        then begin
-            // Предполагается, что эта функция получает уже верифицированную
-            //сигнатуру
-            if vpKeyword_KEY(sign.look[i]) then mode := spmKey;
-            if vpKeyword_OPTIONAL(sign.look[i]) then mode := spmOpt;
-            if vpKeyword_REST(sign.look[i]) then mode := spmRest;
-            if vpKeyword_FLAG(sign.look[i]) then mode := spmFlag;
-            opt_start := i;
-        end
-        else
-            case mode of
-                spmReq:
-                    if i<PL.Count
-                    then result.Add(PL[i])
-                    else raise ELE.Create('insufficient parameters count', 'invalid parameters');
-                spmOpt:
-                    if (i-1)<PL.Count
-                    then result.Add(PL[i-1])
-                    else result.Add(TVList.Create);
-                spmKey: if key_pos(PL, ':'+sign.uname[i], opt_start, p)
-                    then result.Add(PL[p+1])
-                    else result.Add(TVList.Create);
-                spmRest:
-                    result.Add(PL.subseq(i-1, PL.Count));
-                spmFlag: if flag_exists(PL, ':'+sign.uname[i], opt_start)
-                    then result.add(TVT.Create)
-                    else result.add(TVList.Create);
-            end;
-end;
-
 
 function valid_sign(const PL: TVList; out E: TValue; tp: array of const): integer;
 var i,l, p: integer;
@@ -2159,7 +2119,7 @@ begin
         2: begin
             int_fun := PL.look[0] as TVInternalFunction;
             WriteLn(int_fun.AsString);
-            WriteLn(int_fun.signature.AsString);
+            WriteLn(int_fun.sign.AsString);
         end;
     end;
     result := TVT.Create;
@@ -3235,7 +3195,7 @@ end;
 
 
 const int_fun_count = 159;
-var int_fun_sign: array[1..int_fun_count] of TVList;
+var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
 
@@ -3281,7 +3241,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'OR ИЛИ';                    f:if_or;                    s:'(:rest a)'),
 (n:'XOR';                       f:if_xor;                   s:'(:rest a)'),
 (n:'NOT НЕ';                    f:if_not;                   s:'(a)'),
-(n:'EQUAL-CASE-INSENSITIVE';    f:if_equal_case_insensitive;s:'(s s)'),
+(n:'EQUAL-CASE-INSENSITIVE';    f:if_equal_case_insensitive;s:'(a b)'),
 (n:'EQUAL-SETS';                f:if_equal_sets;            s:'(a b)'),
 (n:'LENGTH-MORE';               f:if_length_more;           s:'(a b)'),
 (n:'LENGTH-LESS';               f:if_length_less;           s:'(a b)'),
@@ -3387,7 +3347,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'READ-BYTES';                f:if_read_bytes;            s:'(s count)'),
 (n:'READ-CHARACTER';            f:if_read_character;        s:'(:optional s count)'),
 (n:'READ-LINE';                 f:if_read_line;             s:'(:optional s sep)'),
-(n:'WRITE-STRING';              f:if_write_string;          s:'(s s)'),
+(n:'WRITE-STRING';              f:if_write_string;          s:'(stream s)'),
 (n:'WRITE-LINE';                f:if_write_line;            s:'(s l :optional sep)'),
 (n:'WRITE-BYTE';                f:if_write_byte;            s:'(s i)'),
 
@@ -3518,17 +3478,15 @@ begin
 end;
 
 procedure fill_int_fun_signs;
-var i: integer;
+var i: integer; sign: TVList;
 begin
-    for i := low(int_fun) to high(int_fun) do
-        int_fun_sign[i] := read_from_string(int_fun[i].s) as TVList;
+    for i := low(int_fun) to high(int_fun) do begin
+        sign := read_from_string(int_fun[i].s) as TVList;
+        int_fun_sign[i] := ifh_build_sign(sign);
+        sign.Free;
+    end;
 end;
 
-procedure free_int_fun_signs;
-var i: integer;
-begin
-    for i := low(int_fun) to high(int_fun) do int_fun_sign[i].Free;
-end;
 
 function create_base_stack: TVSymbolStack;
 var i, j: integer; fun_names: TStringArray;
@@ -3542,7 +3500,7 @@ begin
             result.new_var(
                 fun_names[j],
                 TVInternalFunction.Create(
-                        int_fun_sign[i],
+                        @(int_fun_sign[i]),
                         int_fun[i].f,
                         fun_names[j]),
                 true);
@@ -5099,16 +5057,15 @@ begin
 end;
 
 function TEvaluationFlow.call_internal(PL: TVList): TValue;
-var binded_PL, params: TVList;
+var binded_PL, params: TVList; f: TVInternalFunction;
 begin try
     binded_PL := nil;
+    f := PL.look[0] as TVInternalFunction;
     params := PL.phantom_CDR;
 
-    binded_PL := bind_parameters_list(params,
-                        (PL.look[0] as TVInternalFunction).signature);
+    binded_PL := TVList.Create(ifh_bind_params(f.sign^,params));
     result := nil;
-    result := (PL.look[0] as TVInternalFunction).body(binded_PL, call);
-
+    result := f.body(binded_PL, call);
 finally
     FreeAndNil(binded_PL);
     params.Free;
@@ -5241,7 +5198,6 @@ end;
 function TEvaluationFlow.eval(V: TValue): TValue;
 var PL: TVList;
     PV: PVariable;
-    o: TOperatorEnum;
     type_v: (selfEval, symbol, list, unexpected);
     estack: unicodestring;
 
@@ -5274,11 +5230,6 @@ begin try
         end;
 
         symbol: begin
-            //for o := low(ops) to high(ops) do
-            //    if ops[o].nN = (V as TVSymbol).N then begin
-            //        result := TVOperator.Create(ops[o].nN, o);
-            //        goto return;
-            //    end;
             result := eval_operator(V as TVSymbol);
             if result<>nil then goto return;
             try
@@ -5377,7 +5328,6 @@ initialization
 finalization
     NULL.Free;
     T.Free;
-    free_int_fun_signs;
     log_file.Free;
     DoneCriticalSection(log_cs);
     DoneCriticalSection(console_cs);

@@ -9,8 +9,6 @@ uses
     ,lisya_symbols
     ,  lisya_exceptions;
 
-type
-    TValues = array of TValue;
 
 function ifh_bind_params(const sign: TSubprogramSignature; PL: TVList): TValues;
 

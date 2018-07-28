@@ -266,6 +266,7 @@ function vpKeywordFileModeOrNIL                     (V: TValue): boolean;
 function vpKeywordTableModeOrNIL                    (V: TValue): boolean;
 
 
+
 function vpListEvenLength                           (V: TValue): boolean;
 
 function vpListHeaded_ELSE                          (V: TValue): boolean;
@@ -285,6 +286,8 @@ function vpListHeaded_THEN                          (V: TValue): boolean;
 function vpListHeaded_VALUE                         (V: TValue): boolean;
 
 function vpListHeadedByString                       (V: TValue): boolean;
+
+function vpListLength_1_2                           (V: TValue): boolean;
 
 
 function vpListKeywordValue                         (V: TValue): boolean;
@@ -1049,6 +1052,7 @@ begin
 end;
 
 
+
 function vpListEvenLength                           (V: TValue): boolean;
 begin
     result := (V is TVList) and (((V as TVList).count mod 2) = 0);
@@ -1100,6 +1104,12 @@ begin
             and ((V as TVList).Count>0)
             and ((V as TVList).look[0] is TVString);
 end;
+
+function vpListLength_1_2(V: TValue): boolean;
+begin
+    result := (V is TVList) and ((V as TVList).Count<=2) and ((V as TVList).Count>=1);
+end;
+
 
 function vpListKeywordValue                         (V: TValue): boolean;
 var i: integer;

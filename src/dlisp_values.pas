@@ -596,6 +596,7 @@ type
         //function Copy:TSubprogramSignature;
         //procedure Clear;
     end;
+    PSubprogramSignature = ^TSubprogramSignature;
 
 
     TVSubprogram = class (TValue)
@@ -659,9 +660,9 @@ type
 
     TVInternalFunction = class (TVInternalSubprogram)
     //TODO: нужно унифицировать интерфейсы операторов и внутренних функций,
-        signature: TVList;
+        sign: PSubprogramSignature;
         body: TInternalFunctionBody;
-        constructor Create(sign: TVList;
+        constructor Create(_sign: PSubprogramSignature;
                             body: TInternalFunctionBody;
                             name: unicodestring = '');
         constructor CreateEmpty;
@@ -2227,27 +2228,24 @@ end;
 
 { TVInternalFunction }
 
-constructor TVInternalFunction.Create(sign: TVList;
-                                    body: TInternalFunctionBody;
-                                    name: unicodestring = '');
+constructor TVInternalFunction.Create(_sign: PSubprogramSignature;
+    body: TInternalFunctionBody; name: unicodestring);
 begin
-    inherited Create;
-    signature := sign;
-    self.body := body;
-    self.nN := symbol_n(name);
+  inherited Create;
+  sign := _sign;
+  self.body := body;
+  self.nN := symbol_n(name);
 end;
 
 constructor TVInternalFunction.CreateEmpty;
 begin
-//
+
 end;
 
 destructor TVInternalFunction.Destroy;
 begin
     //сигнатура не должна освобождаться, поскольку все экземпляры встроенной
     //функции используют общую сигнатуру, освобождаемую при завершении программы
-
-    //signature.Free;
     inherited Destroy;
 end;
 
@@ -2256,9 +2254,9 @@ function TVInternalFunction.Copy: TValue;
 begin
     result := TVInternalFunction.CreateEmpty;
     with (result as TVInternalFunction) do begin
-        signature := self.signature;
         body := self.body;
         nN := self.nN;
+        sign := self.sign;
     end;
 end;
 
