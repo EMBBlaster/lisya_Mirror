@@ -27,7 +27,7 @@ type
         function hash: DWORD; virtual;
         function equal({%H-}V: TValue): boolean; virtual;
     end;
-    TValueList = array of TValue;
+    TValues = array of TValue;
 
     { TVInternal }
 
@@ -349,9 +349,27 @@ type
         constructor Create(free_objects: boolean);
     end;
 
+    { TListBodyA }
+
+    //{$DEFINE ARRAY_LIST}
+
+    TListBodyA = class
+        ref_count: integer;
+        phantom: boolean;
+        count: integer;
+        V: TValues;
+        constructor Create(_phantom: boolean);
+        destructor Destroy; override;
+        procedure expand(n: integer); inline;
+    end;
+
     TVList = class (TVSequence)
     private
+        {$IFDEF ARRAY_LIST}
+        fL: TListBodyA;
+        {$ELSE}
         fL: TListBody;
+        {$ENDIF}
         function GetItem(index: integer): TValue; override;
         procedure SetItem(index: integer; _V: TValue); override;
         function LookItem(index: integer): TValue; override;
@@ -367,7 +385,11 @@ type
     public
         constructor Create; overload;
         constructor Create(VL: array of TValue; free_objects: boolean = true); overload;
+        {$IFDEF ARRAY_LIST}
+        constructor Create(body: TListBodyA); overload;
+        {$ELSE}
         constructor Create(body: TListBody); overload;
+        {$ENDIF}
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
@@ -399,10 +421,11 @@ type
         procedure insert(n: integer; V: TValue);
         function POP: TValue;
         procedure Clear;
-        function ValueList: TValueList;
-        function CdrValueList: TValueList;
+        function ValueList: TValues;
+        function CdrValueList: TValues;
         function CAR: TValue;
         function CDR: TVList;
+        function phantom_CDR: TVList;
     end;
 
 
@@ -805,6 +828,28 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TListBodyA }
+
+constructor TListBodyA.Create(_phantom: boolean);
+begin
+    count := 0;
+    phantom := _phantom;
+    ref_count := 1;
+    V := nil;
+end;
+
+destructor TListBodyA.Destroy;
+var i: integer;
+begin
+    if not phantom then for i := 0 to count-1 do V[i].Free;
+    V := nil;
+end;
+
+procedure TListBodyA.expand(n: integer);
+begin
+    if n>Length(V) then SetLength(V, n{n*5 div 4});
 end;
 
 { TVFunction }
@@ -2572,14 +2617,33 @@ end;
 procedure TVList.Add(V: TValue);
 begin
     CopyOnWrite;
+    {$IFDEF ARRAY_LIST}
+    fL.expand(fL.count+1);
+    fL.V[fL.count] := V;
+    Inc(fL.count);
+    {$ELSE}
     fL.Add(V);
+    {$ENDIF}
 end;
 
 procedure TVList.Append(VL: TVList);
 var
-  i: integer;
+  i, total: integer;
 begin
     CopyOnWrite;
+    {$IFDEF ARRAY_LIST}
+    total :=  fL.count+VL.fL.count;
+    fL.expand(fL.count+VL.fL.count);
+
+    if fL.phantom
+    then
+        for i := 0 to VL.fL.count-1 do fL.V[fL.count+i] := VL.fL.V[i]
+    else begin
+        for i := 0 to VL.fL.count-1 do fL.V[fL.count+i] := VL.fL.V[i].Copy;
+        VL.Free;
+    end;
+     fL.count:= total;
+    {$ELSE}
     fL.Capacity := fL.Capacity + VL.fL.Capacity;
 
     if fL.OwnsObjects
@@ -2589,55 +2653,87 @@ begin
     end
     else
         for i := 0 to VL.fL.Count - 1 do fL.Add(VL.fL[i] as TValue);
-
+    {$ENDIF}
 end;
 
 function TVList.GetElementName(index: integer): unicodestring;
 begin
-    Assert(fL[index] is TVSymbol, 'Элемент '+IntToStr(index)+' не символ');
+    {$IFDEF ARRAY_LIST}
+    result := (fL.V[index] as TVSymbol).name;
+    {$ELSE}
+    //Assert(fL[index] is TVSymbol, 'Элемент '+IntToStr(index)+' не символ');
     result := (fL[index] as tvSymbol).name;
+    {$ENDIF}
 end;
 
 function TVList.GetElementUName(index: integer): unicodestring;
 begin
-    Assert(fL[index] is TVSymbol, 'Элемент '+IntToStr(index)+' не символ');
+    {$IFDEF ARRAY_LIST}
+    result := (fL.V[index] as TVSymbol).uname;
+    {$ELSE}
+    //Assert(fL[index] is TVSymbol, 'Элемент '+IntToStr(index)+' не символ');
     result := (fL[index] as tvSymbol).uname;
+    {$ENDIF}
 end;
 
 function TVList.GetElementI(index: integer): Int64;
 begin
-    Assert(fL[index] is TVInteger, 'Элемент '+IntToStr(index)+' не целое');
+    {$IFDEF ARRAY_LIST}
+    result := (fL.V[index] as TVInteger).fI;
+    {$ELSE}
+    //Assert(fL[index] is TVInteger, 'Элемент '+IntToStr(index)+' не целое');
     result := (fL[index] as tvInteger).fI;
+    {$ENDIF}
 end;
 
 function TVList.GetElementF(index: integer): double;
 begin
-    Assert(fL[index] is TVReal, 'Элемент '+IntToStr(index)+' не число');
+    {$IFDEF ARRAY_LIST}
+    result := (fL.V[index] as TVReal).F;
+    {$ELSE}
+    //Assert(fL[index] is TVReal, 'Элемент '+IntToStr(index)+' не число');
     result := (fL[index] as TVReal).F;
+    {$ENDIF}
 end;
 
 function TVList.GetElementS(index: integer): unicodestring;
 begin
-    Assert(fL[index] is TVString, 'Элемент '+IntToStr(index)+' не строка');
+    {$IFDEF ARRAY_LIST}
+    result := (fL.V[index] as TVString).S;
+    {$ELSE}
+    //Assert(fL[index] is TVString, 'Элемент '+IntToStr(index)+' не строка');
     result := (fL[index] as tvString).S;
+    {$ENDIF}
 end;
 
 function TVList.GetElementL(index: integer): TVList;
 begin
-    Assert(fL[index] is TVList, 'Элемент '+IntToStr(index)+' не список');
+    {$IFDEF ARRAY_LIST}
+    result := fL.V[index] as TVList;
+    {$ELSE}
+    //Assert(fL[index] is TVList, 'Элемент '+IntToStr(index)+' не список');
     result := (fL[index] as TVList);
+    {$ENDIF}
 end;
 
 function TVList.GetElementC(index: integer): COMPLEX;
 begin
-    Assert(fL[index] is TVNumber, 'Элемент '+IntToStr(index)+' не комплексное число');
+    {$IFDEF ARRAY_LIST}
+    result := (fL.V[index] as TVNumber).C;
+    {$ELSE}
+    //Assert(fL[index] is TVNumber, 'Элемент '+IntToStr(index)+' не комплексное число');
     result := (fL[index] as TVNumber).C;
+    {$ENDIF}
 end;
 
 function TVList.LookElementSYM(index: integer): TVSymbol;
 begin
-    Assert(fL[index] is TVSymbol, 'Элемент '+IntToStr(index)+' не символ');
+    {$IFDEF ARRAY_LIST}
+    result := fL.V[index] as TVSymbol;
+    {$ELSE}
+    //Assert(fL[index] is TVSymbol, 'Элемент '+IntToStr(index)+' не символ');
     result := fL[index] as TVSymbol;
+    {$ENDIF}
 end;
 
 function TVList.Count: integer;
@@ -2648,26 +2744,49 @@ end;
 procedure TVList.SetCapacity(c: integer);
 begin
     CopyOnWrite;
+    {$IFDEF ARRAY_LIST}
+    SetLength(fL.V,c);
+    {$ELSE}
     self.fL.Capacity:=c;
+    {$ENDIF}
 end;
 
 function TVList.extract(n: integer): TValue;
+var i: integer;
 begin
     CopyOnWrite;
+    {$IFDEF ARRAY_LIST}
+    result := fL.V[n];
+    for i := n+1 to fL.count-1 do fL.V[i-1] := fL.V[i];
+    Dec(fL.count);
+    {$ELSE}
     result := fL.Items[n] as TValue;
     fL.Delete(n);
+    {$ENDIF}
 end;
 
 procedure TVList.delete(n: integer);
 begin
     CopyOnWrite;
+    {$IFDEF ARRAY_LIST}
+    extract(n).Free;
+    {$ELSE}
     fL.Delete(n);
+    {$ENDIF}
 end;
 
 procedure TVList.insert(n: integer; V: TValue);
+var i: integer;
 begin
     CopyOnWrite;
+    {$IFDEF ARRAY_LIST}
+    fL.expand(fL.count+1);
+    for i := fL.count-1 downto n do fL.V[i+1] := fL.V[i];
+    fL.V[n] := V;
+    Inc(fL.count);
+    {$ELSE}
     fl.Insert(n, V);
+    {$ENDIF}
 end;
 
 function TVList.Copy: TValue;
@@ -2685,7 +2804,11 @@ begin
     else begin
         result := '(';
         for i := 0 to fL.Count-1 do
+            {$IFDEF ARRAY_LIST}
+            result := result + fL.V[i].AsString + ' ';
+            {$ELSE}
             result := result + (fL[i] as TValue).AsString() + ' ';
+            {$ENDIF}
         result[length(result)]:=')';
     end;
 end;
@@ -2695,7 +2818,11 @@ var h: DWORD; i: integer;
 begin
     result := 10006;
     for i := 0 to high do begin
+        {$IFDEF ARRAY_LIST}
+        h := fL.V[i].hash;
+        {$ELSE}
         h := (fL[i] as TValue).hash;
+        {$ENDIF}
         result := crc32(result, @h, SizeOf(h));
     end;
 end;
@@ -2714,51 +2841,87 @@ begin
     if not result then Exit;
 
     for i := 0 to high do begin
+        {$IFDEF ARRAY_LIST}
+        result := fL.V[i].equal(VL.look[i]);
+        {$ELSE}
         result := look[i].equal(VL.look[i]);
+        {$ENDIF}
         if not result then Exit;
     end;
 end;
 
 constructor TVList.Create;
 begin
-  fL := TListBody.Create(true);
+    {$IFDEF ARRAY_LIST}
+    fL := TListBodyA.Create(false);
+    {$ELSE}
+    fL := TListBody.Create(true);
+    {$ENDIF}
 end;
 
 constructor TVList.Create(VL: array of TValue; free_objects: boolean);
 var i :integer;
 begin
+    {$IFDEF ARRAY_LIST}
+    fL := TListBodyA.Create(not free_objects);
+    SetLength(fL.V, Length(VL));
+    for i := 0 to Length(VL)-1 do fL.V[i] := VL[i];
+    fL.Count := Length(VL);
+    {$ELSE}
     fL := TListBody.Create(free_objects);
     fL.Capacity:=length(VL);
     for i:=0 to Length(VL)-1 do fL.Add(VL[i]);
+    {$ENDIF}
 end;
 
+{$IFDEF ARRAY_LIST}
+constructor TVList.Create(body: TListBodyA);
+begin
+    fL := body;
+end;
+{$ELSE}
 constructor TVList.Create(body: TListBody);
 begin
     fL := body;
 end;
+{$ENDIF}
 
 
 destructor TVList.Destroy;
 begin
     Dec(fl.ref_count);
-    if fL.ref_count=0 then fL.Free;
+    if fL.ref_count=0 then
+        fL.Free;
     inherited;
 end;
 
 function TVList.GetItem(index: integer): TValue;
 begin
+    {$IFDEF ARRAY_LIST}
+    result := fL.V[index].copy;
+    {$ELSE}
     result := (fL[Index] as TValue).Copy;
+    {$ENDIF}
 end;
 
 procedure TVList.SetItem(index: integer; _V: TValue);
 begin
     CopyOnWrite;
+    {$IFDEF ARRAY_LIST}
+    if not fL.phantom then fL.V[index].Free;
+    fL.V[index] := _V;
+    {$ELSE}
     fL[Index] := _V;
+    {$ENDIF}
 end;
 
 function TVList.LookItem(index: integer): TValue;
 begin
+    {$IFDEF ARRAY_LIST}
+    result := fL.V[index];
+    {$ELSE}
     result := (fL[Index] as TValue);
+    {$ENDIF}
 end;
 
 function TVList.subseq(istart: integer; iend: integer = -1): TValue;
@@ -2766,13 +2929,33 @@ var i: integer;
 begin
     if iend<0 then iend := fL.Count;
     result := TVList.Create;
+    {$IFDEF ARRAY_LIST}
+    SetLength((result as TVList).fL.V, iend - istart);
+    (result as TVList).fL.count := iend - istart;
+    for i := istart to iend - 1 do
+        (result as TVList).fL.V[i-istart] := fL.V[i].Copy;
+    {$ELSE}
     (result as TVList).fL.Capacity := iend - istart;
     for i := istart to iend - 1 do
         (result as TVList).fL.Add((fL[i] as TValue).Copy);
+    {$ENDIF}
 end;
 
-
 function TVList.CopyOnWrite: boolean;
+{$IFDEF ARRAY_LIST}
+var i: integer; fL_old: TListBodyA;
+begin
+    if fL.ref_count>1 then begin
+        fL_old := fL;
+        fL := TListBodyA.Create(false);
+        SetLength(fL.V, fL_old.count);
+        fL.count:=fL_old.count;
+        for i := 0 to fL_old.Count-1 do fL.V[i] := fL_old.V[i].copy;
+        Dec(fL_old.ref_count);
+        result := true;
+    end
+    else result := false;
+{$ELSE}
 var i: integer; fL_old: TListBody;
 begin
     if fL.ref_count>1 then begin
@@ -2782,51 +2965,101 @@ begin
         for i := 0 to fL_old.Count-1 do fL.Add((fL_old[i] as TValue).Copy);
         Dec(fL_old.ref_count);
         if fL_old.ref_count<=0 then fL_old.Free;
+        //TODO: лишняя проверка здесь количество ссылок не может быть меньше единицы
         result := true;
     end
     else result := false;
+{$ENDIF}
 end;
+
 
 function TVList.POP: TValue;
 begin
+    {$IFDEF ARRAY_LIST}
+    result := extract(fL.count-1);
+    {$ELSE}
     CopyOnWrite;
     result := (fL.Last as TValue).Copy();
     fL.Delete(fL.Count-1);
+    {$ENDIF}
 end;
 
 procedure TVList.Clear;
-begin
-    CopyOnWrite;
-    fL.Clear;
-end;
-
-function TVList.ValueList: TValueList;
 var i: integer;
 begin
-    setLength(result, fL.Count);
-    for i:=0 to fL.Count-1 do result[i] := (fL[i] as TValue)
+    CopyOnWrite;
+    {$IFDEF ARRAY_LIST}
+    if not fL.phantom then for i := 0 to fL.count-1 do fL.V[i].Free;
+    fL.count:=0;
+    fL.V := nil;
+    {$ELSE}
+    fL.Clear;
+    {$ENDIF}
 end;
 
-function TVList.CdrValueList: TValueList;
+function TVList.ValueList: TValues;
+var i: integer;
+begin
+    {$IFDEF ARRAY_LIST}
+    result := system.copy(fL.V);
+    setLength(result, fL.Count);
+    {$ELSE}
+    setLength(result, fL.Count);
+    for i:=0 to fL.Count-1 do result[i] := (fL[i] as TValue)
+    {$ENDIF}
+end;
+
+function TVList.CdrValueList: TValues;
 var i: integer;
 begin
     setLength(result, fL.Count-1);
+    {$IFDEF ARRAY_LIST}
+    for i:=1 to fL.Count-1 do result[i-1] := fL.V[i];
+    {$ELSE}
     for i:=1 to fL.Count-1 do result[i-1] := (fL[i] as TValue)
+    {$ENDIF}
 end;
 
 function TVList.CAR: TValue;
 begin
     if fL.Count=0
     then result := TVList.Create
-    else result := (fL[0] as TValue).Copy();
+    else
+        {$IFDEF ARRAY_LIST}
+        result := fL.V[0].copy;
+        {$ELSE}
+        result := (fL[0] as TValue).Copy();
+        {$ENDIF}
 end;
 
 function TVList.CDR: TVList;
 var i: integer;
 begin
     result := TVList.Create;
+    {$IFDEF ARRAY_LIST}
+    SetLength(result.fL.V, fL.Count-1);
+    for i:=1 to fL.Count-1 do result.fL.V[i-1] := fL.V[i].Copy;
+    result.fL.count := fL.count-1;
+    {$ELSE}
     result.fL.Capacity:= fL.Count - 1;
     for i:=1 to fL.Count-1 do result.Add((fL[i] as TValue).Copy());
+    {$ENDIF}
+
+end;
+
+function TVList.phantom_CDR: TVList;
+var i: integer;
+begin
+    result := TVList.Create;
+    {$IFDEF ARRAY_LIST}
+    result.fL.phantom:=true;
+    SetLength(result.fL.V, fL.Count-1);
+    for i:=1 to fL.Count-1 do result.fL.V[i-1] := fL.V[i];
+    result.fL.count := fL.count-1;
+    {$ELSE}
+    result.fL.Capacity:= fL.Count - 1;
+    for i:=1 to fL.Count-1 do result.Add((fL[i] as TValue).Copy());
+    {$ENDIF}
 end;
 
 

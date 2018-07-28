@@ -56,8 +56,7 @@ interface
 
 uses
   Classes, SysUtils, Graphics, SynEditTypes, SynEditHighlighter
-  ,lisya_string_predicates in '../src/lisya_string_predicates.pas'
-  , SynEditHighlighterFoldBase;
+  ,lisya_string_predicates in '../src/lisya_string_predicates.pas';
 
 
 type
@@ -65,7 +64,7 @@ type
   { TSynDemoHl }
 
 
-  TSynDemoHl = class(TSynCustomHighlighter)
+  TSynLisya = class(TSynCustomHighlighter)
   private
     fOperators: TStringList;
     fModOperators: TStringList;
@@ -125,7 +124,7 @@ begin
 
 end;
 
-constructor TSynDemoHl.Create(AOwner: TComponent);
+constructor TSynLisya.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
@@ -177,45 +176,45 @@ begin
   SetAttributesOnChange(@DefHighlightChange);
 end;
 
-destructor TSynDemoHl.Destroy;
+destructor TSynLisya.Destroy;
 begin
     fOperators.Free;
     fModOperators.Free;
     inherited Destroy;
 end;
 
-procedure TSynDemoHl.SetOperatorAttri(AValue: TSynHighlighterAttributes);
+procedure TSynLisya.SetOperatorAttri(AValue: TSynHighlighterAttributes);
 begin
     fOperatorAttri.Assign(AValue);
 end;
 
-procedure TSynDemoHl.SetModOperatorAttri(AValue: TSynHighlighterAttributes);
+procedure TSynLisya.SetModOperatorAttri(AValue: TSynHighlighterAttributes);
 begin
     fModOperatorAttri.Assign(AValue);
 end;
 
-procedure TSynDemoHl.SetStringAttri(AValue: TSynHighlighterAttributes);
+procedure TSynLisya.SetStringAttri(AValue: TSynHighlighterAttributes);
 begin
     fStringAttri.Assign(AValue);
 end;
 
-procedure TSynDemoHl.SetNumberAttri(AValue: TSynHighlighterAttributes);
+procedure TSynLisya.SetNumberAttri(AValue: TSynHighlighterAttributes);
 begin
     fNumberAttri.Assign(AValue);
 end;
 
-procedure TSynDemoHl.SetIdentifierAttri(AValue: TSynHighlighterAttributes);
+procedure TSynLisya.SetIdentifierAttri(AValue: TSynHighlighterAttributes);
 begin
   fIdentifierAttri.Assign(AValue);
 end;
 
-procedure TSynDemoHl.SetCommentAttri(AValue: TSynHighlighterAttributes);
+procedure TSynLisya.SetCommentAttri(AValue: TSynHighlighterAttributes);
 begin
   fCommentAttri.Assign(AValue);
 end;
 
 
-procedure TSynDemoHl.SetLine(const NewValue: String; LineNumber: Integer);
+procedure TSynLisya.SetLine(const NewValue: String; LineNumber: Integer);
 begin
   inherited;
   FLineText := NewValue;
@@ -224,7 +223,7 @@ begin
   Next;
 end;
 
-procedure TSynDemoHl.Next;
+procedure TSynLisya.Next;
 var
   l: Integer;
 begin
@@ -273,18 +272,18 @@ begin
     while (FTokenEnd <= l) and not(FLineText[FTokenEnd] in [#9, ' ','(',')',';']) do inc (FTokenEnd)
 end;
 
-function TSynDemoHl.GetEol: Boolean;
+function TSynLisya.GetEol: Boolean;
 begin
   Result := FTokenPos > length(FLineText);
 end;
 
-procedure TSynDemoHl.GetTokenEx(out TokenStart: PChar; out TokenLength: integer);
+procedure TSynLisya.GetTokenEx(out TokenStart: PChar; out TokenLength: integer);
 begin
   TokenStart := @FLineText[FTokenPos];
   TokenLength := FTokenEnd - FTokenPos;
 end;
 
-function TSynDemoHl.GetTokenAttribute: TSynHighlighterAttributes;
+function TSynLisya.GetTokenAttribute: TSynHighlighterAttributes;
 var n: integer;
 begin
   // Match the text, specified by FTokenPos and FTokenEnd
@@ -312,17 +311,17 @@ begin
   Result := IdentifierAttri;
 end;
 
-function TSynDemoHl.GetToken: String;
+function TSynLisya.GetToken: String;
 begin
   Result := copy(FLineText, FTokenPos, FTokenEnd - FTokenPos);
 end;
 
-function TSynDemoHl.GetTokenPos: Integer;
+function TSynLisya.GetTokenPos: Integer;
 begin
   Result := FTokenPos - 1;
 end;
 
-function TSynDemoHl.GetDefaultAttribute(Index: integer): TSynHighlighterAttributes;
+function TSynLisya.GetDefaultAttribute(Index: integer): TSynHighlighterAttributes;
 begin
   // Some default attributes
   case Index of
@@ -333,7 +332,7 @@ begin
   end;
 end;
 
-function TSynDemoHl.GetTokenKind: integer;
+function TSynLisya.GetTokenKind: integer;
 var
   a: TSynHighlighterAttributes;
 begin
@@ -348,7 +347,7 @@ begin
   if a = fCommentAttri then Result := 6;
 end;
 
-procedure TSynDemoHl.SetRange(Value: Pointer);
+procedure TSynLisya.SetRange(Value: Pointer);
 begin
   // Set the current range (for current line)
   // The value is provided from an internal storage, where it was kept since the last scan
@@ -356,12 +355,12 @@ begin
   fInString := PtrInt(Value);
 end;
 
-procedure TSynDemoHl.ResetRange;
+procedure TSynLisya.ResetRange;
 begin
   fInString := 0;
 end;
 
-function TSynDemoHl.GetRange: Pointer;
+function TSynLisya.GetRange: Pointer;
 begin
   // Get a storable copy of the cuurent (working) range
   Result := Pointer(PtrInt(fInString));

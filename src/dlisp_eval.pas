@@ -4034,6 +4034,7 @@ begin
         if (PL.Count=3) and vpIntegerNotNegative(PL.look[2])
         then stack.Print(PL.I[2])
         else stack.Print;
+        result := TVT.Create;
         exit;
     end;
 
@@ -5088,13 +5089,17 @@ function TEvaluationFlow.call_internal(PL: TVList): TValue;
 var binded_PL, params: TVList;
 begin try
     binded_PL := nil;
-    params := PL.CDR;
+    params := PL.phantom_CDR;
+   // WriteLn('1>',params.AsString);
     binded_PL := bind_parameters_list(params,
                         (PL.look[0] as TVInternalFunction).signature);
+   //  WriteLn('2>',params.AsString);
     result := nil;
     result := (PL.look[0] as TVInternalFunction).body(binded_PL, call);
+
 finally
     FreeAndNil(binded_PL);
+    // WriteLn('3>',params.AsString);
     params.Free;
 end;
 end;
@@ -5201,7 +5206,9 @@ begin try
     //TODO: много лишних копирований при вызове внутренних функций
     PLI := TVList.Create([PL[0]]);
     PLI.SetCapacity(PL.Count);
+
     for i := 1 to PL.high do PLI.Add(eval(PL[i]));
+
     result := call(PLI);
 finally
     PLI.Free;

@@ -77,7 +77,7 @@ implementation
 
 procedure Tmain_form.FormCreate(Sender: TObject);
 begin
-  SynEdit1.Highlighter := TSynDemoHl.Create(Self);
+  SynEdit1.Highlighter := TSynLisya.Create(Self);
   if paramCount>0 then begin
         OpenDialog1.Filename := paramStr(1);
         SaveDialog1.FileName := paramStr(1);
