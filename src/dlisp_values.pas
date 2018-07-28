@@ -351,7 +351,7 @@ type
 
     { TListBodyA }
 
-    //{$DEFINE ARRAY_LIST}
+    {$DEFINE ARRAY_LIST}
 
     TListBodyA = class
         ref_count: integer;

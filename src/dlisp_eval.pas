@@ -124,10 +124,12 @@ type
         function eval(V: TValue): TValue;
     end;
 
+function eval_operator(s: TVSymbol): TVOperator;
+
 implementation
 
 {$IFDEF MULTITHREADING}
-uses lisya_thread;
+uses lisya_thread, lisya_optimizer;
 {$ENDIF}
 
 
@@ -3504,6 +3506,17 @@ begin
         end
 end;
 
+function eval_operator(s: TVSymbol): TVOperator;
+var o: TOperatorEnum;
+begin
+    result := nil;
+    for o := low(ops) to high(ops) do
+        if ops[o].nN = s.N then begin
+            result := TVOperator.Create(ops[o].nN, o);
+            Exit;
+        end;
+end;
+
 procedure fill_int_fun_signs;
 var i: integer;
 begin
@@ -5090,16 +5103,14 @@ var binded_PL, params: TVList;
 begin try
     binded_PL := nil;
     params := PL.phantom_CDR;
-   // WriteLn('1>',params.AsString);
+
     binded_PL := bind_parameters_list(params,
                         (PL.look[0] as TVInternalFunction).signature);
-   //  WriteLn('2>',params.AsString);
     result := nil;
     result := (PL.look[0] as TVInternalFunction).body(binded_PL, call);
 
 finally
     FreeAndNil(binded_PL);
-    // WriteLn('3>',params.AsString);
     params.Free;
 end;
 end;
@@ -5263,11 +5274,13 @@ begin try
         end;
 
         symbol: begin
-            for o := low(ops) to high(ops) do
-                if ops[o].nN = (V as TVSymbol).N then begin
-                    result := TVOperator.Create(ops[o].nN, o);
-                    goto return;
-                end;
+            //for o := low(ops) to high(ops) do
+            //    if ops[o].nN = (V as TVSymbol).N then begin
+            //        result := TVOperator.Create(ops[o].nN, o);
+            //        goto return;
+            //    end;
+            result := eval_operator(V as TVSymbol);
+            if result<>nil then goto return;
             try
                 PV := nil;
                 PV := stack.find_ref(V as TVSymbol);

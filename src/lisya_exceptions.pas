@@ -17,6 +17,7 @@ type
         constructor InvalidParameters;
         constructor Create(msg: unicodestring; ec: unicodestring=''; es: unicodestring='');
         constructor Malformed(msg: unicodestring);
+        constructor Restricted(msg: unicodestring);
         constructor Stream(msg: unicodestring);
         destructor Destroy; override;
     end;
@@ -44,6 +45,12 @@ end;
 constructor ELisyaError.Malformed(msg: unicodestring);
 begin
     inherited Create('malformed '+msg);
+    EClass := 'syntax';
+end;
+
+constructor ELisyaError.Restricted(msg: unicodestring);
+begin
+    inherited Create('restricted '+msg);
     EClass := 'syntax';
 end;
 
