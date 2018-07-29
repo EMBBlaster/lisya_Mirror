@@ -2625,22 +2625,18 @@ begin
 end;
 
 procedure TVList.Append(VL: TVList);
-var
-  i, total: integer;
 begin
     CopyOnWrite;
     {$IFDEF ARRAY_LIST}
-    total :=  fL.count+VL.fL.count;
     fL.expand(fL.count+VL.fL.count);
+    move(VL.fL.V[0],fL.V[fL.count],SizeOf(TValue)*VL.fL.count);
+    fL.count:= fL.Count+VL.fL.count;
 
-    if fL.phantom
-    then
-        for i := 0 to VL.fL.count-1 do fL.V[fL.count+i] := VL.fL.V[i]
-    else begin
-        for i := 0 to VL.fL.count-1 do fL.V[fL.count+i] := VL.fL.V[i].Copy;
+    if not fL.phantom
+    then begin
+        VL.fL.phantom:=true;
         VL.Free;
     end;
-     fL.count:= total;
     {$ELSE}
     fL.Capacity := fL.Capacity + VL.fL.Capacity;
 
@@ -2787,8 +2783,12 @@ begin
     {$ENDIF}
 end;
 
+//var list_copy_count: integer=0;
+//  list_copy_on_write_count: integer=0;
+
 function TVList.Copy: TValue;
 begin
+    //inc(list_copy_count);
     Inc(fL.ref_count);
     result := TVList.Create(fL);
 end;
@@ -2858,12 +2858,13 @@ begin
 end;
 
 constructor TVList.Create(VL: array of TValue; free_objects: boolean);
-var i :integer;
+//var i :integer;
 begin
     {$IFDEF ARRAY_LIST}
     fL := TListBodyA.Create(not free_objects);
     SetLength(fL.V, Length(VL));
-    for i := 0 to Length(VL)-1 do fL.V[i] := VL[i];
+    move(VL[0],fL.V[0],sizeOf(TValue)*Length(VL));
+    //for i := 0 to Length(VL)-1 do fL.V[i] := VL[i];
     fL.Count := Length(VL);
     {$ELSE}
     fL := TListBody.Create(free_objects);
@@ -2950,6 +2951,7 @@ begin
         fL.count:=fL_old.count;
         for i := 0 to fL_old.Count-1 do fL.V[i] := fL_old.V[i].copy;
         Dec(fL_old.ref_count);
+        //inc(list_copy_on_write_count);
         result := true;
     end
     else result := false;
@@ -3075,4 +3077,5 @@ finalization
     kwFLAG.Free;
     _.Free;
 
+    //WriteLn(list_copy_on_write_count,'/',list_copy_count);
 end.  //3477 3361 3324 3307 2938  2911 2988
