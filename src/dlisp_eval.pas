@@ -85,6 +85,7 @@ type
         function op_error(PL: TVList): TValue;
         function op_execute_file(PL: TVList): TValue;
         function op_for(PL: TVList): TValue;
+        function op_function(PL: TVList): TValue;
         function op_goto(PL: TVList): TValue;
         function op_if(PL: TVList): TValue;
         function op_if_nil(PL: TVList): TValue;
@@ -107,7 +108,7 @@ type
 
 
         function extract_body_symbols(body: TVList): TVList;
-        procedure fill_subprogram_stack(sp: TVProcedure; symbols: TVList);
+        procedure fill_subprogram_stack(sp: TVRoutine; symbols: TVList);
 
         function call(PL: TVList): TValue;
         function call_procedure(PL: TVList): TValue; //inline;
@@ -1538,16 +1539,16 @@ end;
 
 
 function if_curry               (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; f: TVProcedure; bind: TValues;
+var i: integer; f: TVRoutine; bind: TValues;
 begin
     case params_is(PL, result, [
-        tpProcedure, tpList]) of
+        tpRoutine, tpList]) of
         1: try
-            bind := ifh_bind_params((PL.look[0] as TVProcedure).sign1, PL.L[1]);
+            bind := ifh_bind_params((PL.look[0] as TVRoutine).sign1, PL.L[1]);
             result := PL[0];
-            f := result as TVProcedure;
+            f := result as TVRoutine;
             f.nN := 0;
-            f.sign1.p := system.Copy((PL.look[0] as TVProcedure).sign1.p);
+            f.sign1.p := system.Copy((PL.look[0] as TVRoutine).sign1.p);
 
             for i := high(bind) downto 0 do begin
                 if vpSymbol__(bind[i])
@@ -2104,13 +2105,13 @@ begin
 end;
 
 function if_documentation       (const PL: TVList; {%H-}call: TCallProc): TValue;
-var proc: TVProcedure; int_fun: TVInternalFunction;
+var proc: TVRoutine; int_fun: TVInternalFunction;
 begin
     case params_is(PL, result, [
-        tpProcedure,
+        tpRoutine,
         tpInternalFunction]) of
         1: begin
-            proc := PL.look[0] as TVProcedure;
+            proc := PL.look[0] as TVRoutine;
             WriteLn(proc.AsString);
             WriteLn(proc.sign1.AsString);
             if tpString(proc.body.look[0]) then WriteLn(proc.body.look[0].AsString);
@@ -4624,7 +4625,7 @@ begin
 end;
 
 function TEvaluationFlow.op_macro_symbol(PL: TVList): TValue;
-var proc: TVProcedure; sl: TVList;
+var proc: TVRoutine; sl: TVList;
 begin
     //TODO: макросимвол не поддерживает чистый лямбда режим
     result := nil;
@@ -4767,15 +4768,15 @@ begin
 end;
 
 
-function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
-var proc: TVProcedure; sl: TVList; P: PVariable; tmp: TValue;
+function TEvaluationFlow.op_function                (PL: TVList): TValue;
+var proc: TVRoutine; sl: TVList; P: PVariable; tmp: TValue;
     mode: (forward_declaration, lambda, procedure_declaration);
     sign_pos: integer;
     procedure proc_create;
     begin
         case (PL.look[0] as TVOperator).op_enum of
             oeMACRO:    proc := TVMacro.Create;
-            oePROCEDURE:proc := TVProcedure.Create;
+            oePROCEDURE:proc := TVRoutine.Create;
             oeFUNCTION: proc := TVFunction.Create;
         end;
     end;
@@ -4792,7 +4793,7 @@ begin
             if (PL.Count=2) and tpOrdinarySymbol(PL.look[1])
             then mode := forward_declaration
             else
-                raise ELE.Malformed('PROCEDURE, FUNCTION or MACRO');
+                raise ELE.Malformed('FUNCTION');
 
 try
     case mode of
@@ -4835,6 +4836,81 @@ try
         proc.stack := separate(tmp, true) as TVSymbolStack;
         FreeAndNil(tmp);
     end;
+
+    if mode=procedure_declaration
+    then begin
+        P := stack.find_ref_or_nil(PL.SYM[1]);
+        replace_value(P.V, result.Copy);
+        ReleaseVariable(P);
+    end;
+
+except
+    FreeAndNil(result); raise;
+end;
+end;
+
+
+function TEvaluationFlow.op_procedure               (PL: TVList): TValue;
+var proc: TVRoutine; sl: TVList; P: PVariable;
+    mode: (forward_declaration, lambda, procedure_declaration);
+    sign_pos: integer;
+    procedure proc_create;
+    begin
+        case (PL.look[0] as TVOperator).op_enum of
+            oeMACRO:    proc := TVMacro.Create;
+            oePROCEDURE:proc := TVProcedure.Create;
+        end;
+    end;
+
+begin
+    result := nil;
+
+    if (PL.count>=3) and tpOrdinarySymbol(PL.look[1]) and tpList(PL.look[2])
+    then mode := procedure_declaration
+    else
+        if (PL.count>=2) and tpList(PL.look[1])
+        then mode := lambda
+        else
+            if (PL.Count=2) and tpOrdinarySymbol(PL.look[1])
+            then mode := forward_declaration
+            else
+                raise ELE.Malformed('PROCEDURE, or MACRO');
+
+try
+    case mode of
+        procedure_declaration: begin
+            P := stack.find_ref_or_nil(PL.SYM[1]);
+            if (P=nil) or not (P.V is TVProcedureForwardDeclaration)
+            then stack.new_var(PL.SYM[1], nil, true);
+            ReleaseVariable(P);
+            sign_pos := 2;
+            proc_create;
+            proc.nN := PL.SYM[1].N;
+        end;
+        lambda: begin
+            sign_pos := 1;
+            proc_create;
+            proc.nN := -1;
+        end;
+        forward_declaration: begin
+            stack.new_var(PL.SYM[1].N, TVProcedureForwardDeclaration.Create, true);
+            result := TVT.Create;
+            Exit;
+        end;
+    end;
+
+    result := proc;
+    proc.sign1 := ifh_build_sign(PL.L[sign_pos]);
+    proc.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
+    proc.stack := TVSymbolStack.Create(nil);
+    try
+        sl := extract_body_symbols(proc.body);
+        fill_subprogram_stack(proc, sl);
+        proc.rest := TVList.Create;
+    finally
+        FreeAndNil(sl);
+    end;
+
 
     if mode=procedure_declaration
     then begin
@@ -4978,8 +5054,7 @@ begin
 
 end;
 
-procedure TEvaluationFlow.fill_subprogram_stack(sp: TVProcedure;
-    symbols: TVList);
+procedure TEvaluationFlow.fill_subprogram_stack(sp: TVRoutine; symbols: TVList);
 var i: integer; P: PVariable;
 begin
     //эта процедура заполняет стэк подпрограммы, ссылками на переменные текущей
@@ -5000,6 +5075,8 @@ begin
    head := PL.look[0];
    if head.ClassType = TVProcedure then result := call_procedure(PL)
    else
+   if head.ClassType = TVMacro then result := call_procedure(PL)
+   else
    if head.ClassType = TVInternalFunction then result := call_internal(PL)
    else
    if head.ClassType = TVPredicate then result := call_predicate(PL)
@@ -5011,15 +5088,14 @@ end;
 
 
 function TEvaluationFlow.call_procedure(PL: TVList): TValue;
-var proc: TVProcedure; params: TVList; tmp_stack, proc_stack: TVSymbolStack;
-    tmp: TValue; V: TValues; i: integer; rest: TVList; pure_mode: boolean;
+var proc: TVRoutine; params: TVList; tmp_stack, proc_stack: TVSymbolStack;
+    tmp: TValue; V: TValues; i: integer; rest: TVList;
 begin try
     tmp_stack := stack;
     params := nil;
     proc_stack := nil;
     V := nil;
-    pure_mode := f_pure_mode;
-    proc := PL.look[0] as TVProcedure;
+    proc := PL.look[0] as TVRoutine;
 
     proc_stack := proc.stack.Copy as TVSymbolStack;
     params := PL.CDR;
@@ -5033,7 +5109,6 @@ begin try
     for i:=0 to high(V) do proc_stack.new_var(proc.sign1.p[i].n, V[i], true);
 
     stack := proc_stack;
-    if proc is TVFunction then f_pure_mode := true;
     result := oph_block(proc.body,0,false);
     if tpReturn(result) then begin
             tmp := (result as TVReturn).value.Copy;
@@ -5042,7 +5117,6 @@ begin try
         end;
     //todo: некорректно ведёт себя если встретился break в теле
 finally
-    f_pure_mode := pure_mode;
     stack := tmp_stack;
     params.Free;
     proc_stack.Free;
@@ -5091,7 +5165,7 @@ begin
         oeERROR     : result := op_error(PL);
         oeEXECUTE_FILE: result := op_execute_file(PL);
         oeFOR       : result := op_for(PL);
-        oeFUNCTION  : result := op_procedure(PL);
+        oeFUNCTION  : result := op_function(PL);
         oeGOTO      : result := op_goto(PL);
         oeIF        : result := op_if(PL);
         oeIF_NIL    : result := op_if_nil(PL);
@@ -5138,21 +5212,16 @@ end;
 
 
 function TEvaluationFlow.procedure_call(PL: TVList): TValue;
-var proc: TVProcedure; params: TVList;
+var proc: TVRoutine; params: TVList;
     i: integer;
 begin
-    proc := PL.look[0] as TVProcedure;
+    proc := PL.look[0] as TVRoutine;
     params := TVList.Create([PL[0]]);
     params.SetCapacity(PL.Count);
     result := nil;
 try
     if proc is TVMacro
     then params.Append(PL.subseq(1) as TVList)
-    else
-
-    if proc is TVFunction
-    then for i := 1 to PL.high do params.Add(eval(PL[i]))
-
     else begin
         for i := 0 to min(proc.sign1.required_count,PL.Count-1)-1 do
             params.Add(eval_link(PL.look[i+1]));
@@ -5197,6 +5266,7 @@ end;
 
 function TEvaluationFlow.eval(V: TValue): TValue;
 var PL: TVList;
+    head: TValue;
     PV: PVariable;
     type_v: (selfEval, symbol, list, unexpected);
     estack: unicodestring;
@@ -5255,26 +5325,29 @@ begin try
 
         list: begin
             (V as TVList)[0] := eval((V as TVList)[0]);
+            head := (V as TVList).look[0];
 
-            if tpInternalFunction((V as TVList).look[0])
+            if tpInternalFunction(head)
             then result := eval_parameters(call_internal, V as TVList)
             else
 
-            if tpPredicate((V as TVList).look[0])
+            if tpPredicate(head)
             then result := eval_parameters(call_predicate, V as TVList)
             else
 
-            if tpOperator((V as TVList).look[0])
+            if tpOperator(head)
             then result := call_operator(V as TVList)
-
             else
-                if (V as TVList).look[0] is TVProcedure
-                then begin
-                    if (V as TVList).look[0] is TVMacro
-                    then result := eval(procedure_call(V as TVList))
-                    else result := procedure_call(V as TVList);
-                end
-                else raise ELE.Create((V as TVList).look[0].AsString+' is not subprogram');
+
+            if tpProcedure(head)
+            then result := procedure_call(V as TVList)
+            else
+
+            if tpMacro(head)
+            then result := eval(procedure_call(V as TVList))
+            else
+
+            raise ELE.Create(head.AsString+' is not subprogram');
         end;
 
         unexpected: raise ELE.Create('невычисляемый параметр');
@@ -5334,4 +5407,4 @@ finalization
 
 
 end.
-//4576 4431 4488 4643 4499 4701 5166 5096 5104
+//4576 4431 4488 4643 4499 4701 5166 5096 5104 5337

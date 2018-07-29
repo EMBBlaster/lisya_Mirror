@@ -613,9 +613,9 @@ type
         function Copy(): TValue; override;
     end;
 
-    { TVProcedure }
+    { TVRoutine }
 
-    TVProcedure = class (TVSubprogram)
+    TVRoutine = class (TVSubprogram)
         sign1: TSubprogramSignature;
         stack: TVSymbolStack;
         rest: TVList;
@@ -623,14 +623,22 @@ type
         constructor Create;
         destructor Destroy; override;
         function Copy(): TValue; override;
-        function AsString(): unicodestring; override;
         function hash: DWORD; override;
         function equal(V: TValue): boolean; override;
     end;
 
+    TVProcedure = class (TVRoutine)
+        function AsString: unicodestring; override;
+    end;
+
+    TVFunction = class (TVRoutine)
+        function AsString: unicodestring; override;
+    end;
+
+
     { TVMacro }
 
-    TVMacro = class (TVProcedure)
+    TVMacro = class (TVRoutine)
         //макрос является обычной функцией за тем исключением, что
         //возвращаемый им результат выполняется в месте вызова
         //данный клас нужен, только для того, чтобы eval мог отличить макрос
@@ -638,14 +646,9 @@ type
         function AsString: unicodestring; override;
     end;
 
-    TVMacroSymbol = class (TVProcedure)
+    TVMacroSymbol = class (TVRoutine)
     end;
 
-    { TVFunction }
-
-    TVFunction = class (TVProcedure)
-        function AsString: unicodestring; override;
-    end;
 
     type TEvalProc = function (V: TValue): TValue of Object;
     type TCallProc = function (V: TVList): TValue of Object;
@@ -829,6 +832,15 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVProcedure }
+
+function TVProcedure.AsString: unicodestring;
+begin
+    if nN<=0
+    then result := '#<PROCEDURE '+sign1.AsString+'>'
+    else result := '#<PROCEDURE '+symbol_uname(nN)+'>';
 end;
 
 { TListBodyA }
@@ -2291,9 +2303,9 @@ begin
 end;
 
 
-{ TVProcedure }
+{ TVRoutine }
 
-constructor TVProcedure.Create;
+constructor TVRoutine.Create;
 begin
     inherited;
     body := nil;
@@ -2304,7 +2316,7 @@ begin
     sign1.required_count:=0;
 end;
 
-destructor TVProcedure.Destroy;
+destructor TVRoutine.Destroy;
 begin
     stack.Free;
     body.Free;
@@ -2314,37 +2326,31 @@ begin
 end;
 
 
-function TVProcedure.Copy: TValue;
+function TVRoutine.Copy: TValue;
 begin
     //TODO: копирование процедуры ненадёжно может приводить к утечкам
 
     result := self.ClassType.Create as TValue;
 
-    (result as TVProcedure).body := body.Copy() as TVList;
-    (result as TVProcedure).stack := stack.Copy as TVSymbolStack;
-    (result as TVProcedure).sign1 := sign1;
-    (result as TVProcedure).nN := nN;
-    (result as TVProcedure).rest := rest.Copy as TVList;
+    (result as TVRoutine).body := body.Copy() as TVList;
+    (result as TVRoutine).stack := stack.Copy as TVSymbolStack;
+    (result as TVRoutine).sign1 := sign1;
+    (result as TVRoutine).nN := nN;
+    (result as TVRoutine).rest := rest.Copy as TVList;
 end;
 
-function TVProcedure.AsString: unicodestring;
-begin
-    if nN<=0
-    then result := '#<PROCEDURE '+sign1.AsString+'>'
-    else result := '#<PROCEDURE '+symbol_uname(nN)+'>';
-end;
 
-function TVProcedure.hash: DWORD;
+function TVRoutine.hash: DWORD;
 begin
     result := (body.hash div 2);//TODO: хэш от процедур вычисляется без учёта сигнатуры
 end;
 
-function TVProcedure.equal(V: TValue): boolean;
-var proc: TVProcedure;
+function TVRoutine.equal(V: TValue): boolean;
+var proc: TVRoutine;
 begin
     result := self.ClassType=V.ClassType;
     if not result then Exit;
-    proc := V as TVProcedure;
+    proc := V as TVRoutine;
     //TODO: равенство процедур вычисляется без учёта сигнатуры
     result := //sign.equal(proc.sign)
         //and
@@ -2858,13 +2864,11 @@ begin
 end;
 
 constructor TVList.Create(VL: array of TValue; free_objects: boolean);
-//var i :integer;
 begin
     {$IFDEF ARRAY_LIST}
     fL := TListBodyA.Create(not free_objects);
     SetLength(fL.V, Length(VL));
     move(VL[0],fL.V[0],sizeOf(TValue)*Length(VL));
-    //for i := 0 to Length(VL)-1 do fL.V[i] := VL[i];
     fL.Count := Length(VL);
     {$ELSE}
     fL := TListBody.Create(free_objects);
@@ -3078,4 +3082,4 @@ finalization
     _.Free;
 
     //WriteLn(list_copy_on_write_count,'/',list_copy_count);
-end.  //3477 3361 3324 3307 2938  2911 2988
+end.  //3477 3361 3324 3307 2938  2911 2988 3079

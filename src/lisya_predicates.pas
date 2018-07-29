@@ -77,6 +77,8 @@ function tpListOfSymbols                            (V: TValue): boolean;
 
 function tpListOrSymbol                             (V: TValue): boolean;
 
+function tpMacro                                    (V: TValue): boolean;
+
 function tpNIL                                      (V: TValue): boolean;
 
 function tpNumber                                   (V: TValue): boolean;
@@ -89,6 +91,8 @@ function tpPredicate                                (V: TValue): boolean;
 
 function tpProcedure                                (V: TValue): boolean;
 
+function tpRoutine                                  (V: TValue): boolean;
+
 function tpProcessPointer                           (V: TValue): boolean;
 
 function tpRange                                    (V: TValue): boolean;
@@ -97,7 +101,7 @@ function tpReal                                     (V: TValue): boolean;
 
 function tpRecord                                   (V: TValue): boolean;
 
-function tpReferenceOnly                            (V: TValue): boolean;
+//function tpReferenceOnly                            (V: TValue): boolean;
 
 function tpReturn                                   (V: TValue): boolean;
 
@@ -517,6 +521,11 @@ begin
     result := (V is TVList) or (V is TVSymbol);
 end;
 
+function tpMacro(V: TValue): boolean;
+begin
+    result := V is TVMacro;
+end;
+
 function tpNIL(V:  TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).Count=0);
@@ -547,6 +556,12 @@ begin
     result := V is TVProcedure;
 end;
 
+function tpRoutine(V: TValue): boolean;
+begin
+    result := V is TVRoutine;
+end;
+
+
 function tpProcessPointer(V: TValue): boolean;
 begin
     result := V is TVProcessPointer;
@@ -567,10 +582,10 @@ begin
     result := V is TVRecord;
 end;
 
-function tpReferenceOnly(V: TValue): boolean;
-begin
-    result := V is TVProcedure;
-end;
+//function tpReferenceOnly(V: TValue): boolean;
+//begin
+//    result := V is TVProcedure;
+//end;
 
 function tpReturn(V: TValue): boolean;
 begin

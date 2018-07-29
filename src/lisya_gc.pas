@@ -32,7 +32,7 @@ procedure extract_block_links(var l: TLinks; V: TValue);
     procedure add_link(from_: PPVariable); inline;
     begin SetLength(l, Length(l)+1); l[high(l)] := from_; end;
 
-var proc: TVProcedure; ls: TVList; rec: TVRecord; ht: TVHashTable;
+var proc: TVRoutine; ls: TVList; rec: TVRecord; ht: TVHashTable;
     ret: TVReturn; CP: TVChainPointer; ss: TVSymbolStack;
     i: integer;
 begin
@@ -41,8 +41,8 @@ begin
         for i := 0 to high(ss.stack) do add_link(@ss.stack[i].V);
     end
 
-    else if V is TVProcedure then begin
-        proc := V as TVProcedure;
+    else if V is TVRoutine then begin
+        proc := V as TVRoutine;
         extract_block_links(l, proc.stack);
         extract_block_links(l, proc.body);
     end
@@ -148,11 +148,11 @@ end;
 
 
 procedure separate_block(V: TValue);
-var proc: TVProcedure; ls: TVList; rec: TVRecord; ht: TVHashTable; ret: TVReturn;
+var proc: TVRoutine; ls: TVList; rec: TVRecord; ht: TVHashTable; ret: TVReturn;
     i: integer;
 begin
-    if V is TVProcedure then begin
-        proc := V as TVProcedure;
+    if V is TVRoutine then begin
+        proc := V as TVRoutine;
         separate_block(proc.body);
         separate_block(proc.rest);
     end
@@ -250,15 +250,15 @@ var vars, links: array of PVariable;
     end;
 
     procedure add_node(P: PVariable);
-    var proc: TVProcedure; i: integer;
+    var proc: TVRoutine; i: integer;
     begin
         if not registered_node(P) then begin
             SetLength(vars, length(vars)+1);
             vars[high(vars)]:=P;
 
-            proc := P.V as TVProcedure;
+            proc := P.V as TVRoutine;
             for i:=0 to high(proc.stack.stack) do begin
-                if (proc.stack.stack[i].V<>nil) and tpProcedure(proc.stack.stack[i].V.V)
+                if (proc.stack.stack[i].V<>nil) and tpRoutine(proc.stack.stack[i].V.V)
                 then begin
                     add_node(proc.stack.stack[i].V);
                     add_link(proc.stack.stack[i].V);
@@ -270,7 +270,7 @@ var vars, links: array of PVariable;
 begin
     result := false;
 
-    if not tpProcedure(P.V) then Exit;
+    if not tpRoutine(P.V) then Exit;
 
     add_link(P);
     add_node(P);
@@ -319,7 +319,7 @@ begin
         if P=nil then Exit;
         if P.ref_count=1 then begin P.V.Free; Dispose(P); Exit; end;
         if P.ref_count<0 then Exit;
-        if tpProcedure(P.V) and ReleaseRecursiveProcedure(P) then Exit;
+        if tpRoutine(P.V) and ReleaseRecursiveProcedure(P) then Exit;
         Dec(P.ref_count);
     finally
         P := nil;
