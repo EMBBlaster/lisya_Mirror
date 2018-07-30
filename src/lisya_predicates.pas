@@ -41,6 +41,8 @@ function tpDateTime                                 (V: TValue): boolean;
 
 function tpFloat                                    (V: TValue): boolean;
 
+function tpFunction                                 (V: TValue): boolean;
+
 function tpGoto                                     (V: TValue): boolean;
 
 function tpHashTable                                (V: TValue): boolean;
@@ -429,6 +431,11 @@ end;
 function tpFloat(V: TValue): boolean;
 begin
     result := V is TVFloat;
+end;
+
+function tpFunction(V: TValue): boolean;
+begin
+    result := V is TVFunction;
 end;
 
 function tpGoto(V: TValue): boolean;

@@ -613,6 +613,12 @@ type
         function Copy(): TValue; override;
     end;
 
+    { TVFunctionForwardDeclaration }
+
+    TVFunctionForwardDeclaration = class (TValue)
+        function Copy(): TValue; override;
+    end;
+
     { TVRoutine }
 
     TVRoutine = class (TVSubprogram)
@@ -832,6 +838,13 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVFunctionForwardDeclaration }
+
+function TVFunctionForwardDeclaration.Copy: TValue;
+begin
+    result := TVFunctionForwardDeclaration.Create;
 end;
 
 { TVProcedure }

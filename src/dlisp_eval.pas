@@ -4769,23 +4769,15 @@ end;
 
 
 function TEvaluationFlow.op_function                (PL: TVList): TValue;
-var proc: TVRoutine; sl: TVList; P: PVariable; tmp: TValue;
-    mode: (forward_declaration, lambda, procedure_declaration);
+var fun: TVFunction; sl: TVList; P: PVariable; tmp: TValue;
+    mode: (forward_declaration, lambda, function_declaration);
     sign_pos: integer;
-    procedure proc_create;
-    begin
-        case (PL.look[0] as TVOperator).op_enum of
-            oeMACRO:    proc := TVMacro.Create;
-            oePROCEDURE:proc := TVRoutine.Create;
-            oeFUNCTION: proc := TVFunction.Create;
-        end;
-    end;
 
 begin
     result := nil;
 
     if (PL.count>=3) and tpOrdinarySymbol(PL.look[1]) and tpList(PL.look[2])
-    then mode := procedure_declaration
+    then mode := function_declaration
     else
         if (PL.count>=2) and tpList(PL.look[1])
         then mode := lambda
@@ -4797,19 +4789,19 @@ begin
 
 try
     case mode of
-        procedure_declaration: begin
+        function_declaration: begin
             P := stack.find_ref_or_nil(PL.SYM[1]);
             if (P=nil) or not (P.V is TVProcedureForwardDeclaration)
             then stack.new_var(PL.SYM[1], nil, true);
             ReleaseVariable(P);
             sign_pos := 2;
-            proc_create;
-            proc.nN := PL.SYM[1].N;
+            fun := TVFunction.Create;
+            fun.nN := PL.SYM[1].N;
         end;
         lambda: begin
             sign_pos := 1;
-            proc_create;
-            proc.nN := -1;
+            fun := TVFunction.Create;
+            fun.nN := -1;
         end;
         forward_declaration: begin
             stack.new_var(PL.SYM[1].N, TVProcedureForwardDeclaration.Create, true);
@@ -4818,26 +4810,21 @@ try
         end;
     end;
 
-    result := proc;
-    proc.sign1 := ifh_build_sign(PL.L[sign_pos]);
-    proc.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
-    proc.stack := TVSymbolStack.Create(nil);
+    result := fun;
+    fun.sign1 := ifh_build_sign(PL.L[sign_pos]);
+    fun.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
+    inplace_operators(fun.body);
+    fun.stack := TVSymbolStack.Create(nil);
     try
-        sl := extract_body_symbols(proc.body);
-        fill_subprogram_stack(proc, sl);
-        proc.rest := TVList.Create;
+        sl := extract_body_symbols(fun.body);
+        fill_subprogram_stack(fun, sl);
+        fun.rest := TVList.Create;
     finally
         FreeAndNil(sl);
     end;
 
-    if (PL.look[0] as TVOperator).op_enum=oeFUNCTION
-    then begin
-        tmp := proc.stack;
-        proc.stack := separate(tmp, true) as TVSymbolStack;
-        FreeAndNil(tmp);
-    end;
 
-    if mode=procedure_declaration
+    if mode=function_declaration
     then begin
         P := stack.find_ref_or_nil(PL.SYM[1]);
         replace_value(P.V, result.Copy);
@@ -4902,6 +4889,7 @@ try
     result := proc;
     proc.sign1 := ifh_build_sign(PL.L[sign_pos]);
     proc.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
+    inplace_operators(proc.body);
     proc.stack := TVSymbolStack.Create(nil);
     try
         sl := extract_body_symbols(proc.body);
@@ -5077,6 +5065,8 @@ begin
    else
    if head.ClassType = TVMacro then result := call_procedure(PL)
    else
+   if head.ClassType = TVFunction then result := call_procedure(PL)
+   else
    if head.ClassType = TVInternalFunction then result := call_internal(PL)
    else
    if head.ClassType = TVPredicate then result := call_predicate(PL)
@@ -5222,12 +5212,19 @@ begin
 try
     if proc is TVMacro
     then params.Append(PL.subseq(1) as TVList)
-    else begin
+    else
+
+    if proc is TVProcedure
+    then begin
         for i := 0 to min(proc.sign1.required_count,PL.Count-1)-1 do
             params.Add(eval_link(PL.look[i+1]));
         for i := min(proc.sign1.required_count,PL.Count-1) to PL.high-1 do
             params.Add(eval(PL[i+1]));
-    end;
+    end
+    else
+
+    if proc is TVFunction
+    then for i := 1 to PL.high do params.Add(eval(PL[i]));
 
     result := call_procedure(params);
 finally
@@ -5340,6 +5337,10 @@ begin try
             else
 
             if tpProcedure(head)
+            then result := procedure_call(V as TVList)
+            else
+
+            if tpFunction(head)
             then result := procedure_call(V as TVList)
             else
 
