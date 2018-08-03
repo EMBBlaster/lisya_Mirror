@@ -120,7 +120,35 @@ begin
     finally
         th := false;
     end
-    else result := ifh_map(call, P, PL, 0, PL.L[0].high);
+    else result := ifh_map(call, P, PL);
+end;
+
+function ifh_reject_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
+var i,j: integer;
+begin
+    //TODO: возможна утечка содержимого очереди заданий при возникновении исключения
+    if (not th) and (length(threads_pool)>1) then try
+        th := true;
+        result := nil;
+        for i := 0 to high(threads_pool) do threads_pool[i].Proc := P;
+        SetLength(task_queue, PL.L[0].Count);
+        task_i := 0;
+        for i := 0 to high(task_queue) do begin
+            task_queue[i] := TVList.Create();
+            for j := 0 to PL.high do
+                (task_queue[i] as TVList).Add(separate(PL.L[j].look[i]));
+        end;
+        for i := 0 to high(threads_pool) do threads_pool[i].Run;
+        for i := 0 to high(threads_pool) do threads_pool[i].WaitEnd;
+        result := TVList.Create;
+        result.SetCapacity(Length(task_queue));
+        for i := 0 to high(task_queue) do result.Add(task_queue[i]);
+        SetLength(task_queue, 0);
+        for i := 0 to high(threads_pool) do threads_pool[i].fProc := nil;
+    finally
+        th := false;
+    end
+    else result := ifh_map(call, P, PL);
 end;
 
 function  NextTask(out tn: integer): boolean;

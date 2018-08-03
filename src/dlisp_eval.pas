@@ -1639,8 +1639,7 @@ begin
         2: result := ifh_map(
                 call,
                 PL.look[0] as TVSubprogram,
-                PL.L[1],
-                0, PL.L[1].L[0].high); //эти параметры рудимент многопоточности
+                PL.L[1]);
     end;
 end;
 
