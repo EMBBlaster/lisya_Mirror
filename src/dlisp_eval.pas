@@ -2515,6 +2515,22 @@ begin
     end;
 end;
 
+function if_read_float_single   (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpStreamPointerActive]) of
+        1: result := TVFloat.Create((PL.look[0] as TVStreamPointer).body.read_single);
+    end;
+end;
+
+function if_read_float_double   (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpStreamPointerActive]) of
+        1: result := TVFloat.Create((PL.look[0] as TVStreamPointer).body.read_double);
+    end;
+end;
+
 function if_read_bytes          (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -3195,7 +3211,7 @@ begin
 end;
 
 
-const int_fun_count = 159;
+const int_fun_count = 161;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3345,6 +3361,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'STREAM-LENGTH';             f:if_stream_length;         s:'(s :optional l)'),
 (n:'STREAM-ENCODING';           f:if_stream_encoding;       s:'(s :optional e)'),
 (n:'READ-BYTE';                 f:if_read_byte;             s:'(s)'),
+(n:'READ-FLOAT-SINGLE';         f:if_read_float_single;     s:'(s)'),
+(n:'READ-FLOAT-DOUBLE';         f:if_read_float_double;     s:'(s)'),
 (n:'READ-BYTES';                f:if_read_bytes;            s:'(s count)'),
 (n:'READ-CHARACTER';            f:if_read_character;        s:'(:optional s count)'),
 (n:'READ-LINE';                 f:if_read_line;             s:'(:optional s sep)'),
@@ -4165,37 +4183,33 @@ begin
     try
         sym_estack := TVSymbol.Create('EXCEPTION-STACK');
         P := nil;
-        P := stack.find_ref_or_nil(sym_estack);
+        P := stack.find_ref_or_nil1(sym_estack);
         if (p<>nil) and tpString(p.V)
-        then sstack := (P.V as TVString).S
-        else sstack := '';
+        then sstack := (P.V as TVString).S;
     finally
         sym_estack.Free;
-        ReleaseVariable(P);
     end;
 
     if PL.Count=1 then try
         sym_eclass := TVSymbol.Create('EXCEPTION-CLASS');
         P := nil;
-        P := stack.find_ref_or_nil(sym_eclass);
+        P := stack.find_ref_or_nil1(sym_eclass);
         if (p<>nil) and tpString(p.V)
         then sclass := (P.V as TVString).S
         else raise ELE.Create('exception not found','syntax');
     finally
         sym_eclass.Free;
-        ReleaseVariable(P);
     end;
 
     if PL.Count=1 then try
         sym_emsg := TVSymbol.Create('EXCEPTION-MESSAGE');
         P := nil;
-        P := stack.find_ref_or_nil(sym_emsg);
+        P := stack.find_ref_or_nil1(sym_emsg);
         if (p<>nil) and tpString(p.V)
         then smsg := (P.V as TVString).S
         else raise ELE.Create('exception not found','syntax');
     finally
         sym_emsg.Free;
-        ReleaseVariable(P);
     end;
 
     raise ELE.Create(smsg, sclass, sstack);
@@ -4790,10 +4804,9 @@ begin
 try
     case mode of
         function_declaration: begin
-            P := stack.find_ref_or_nil(PL.SYM[1]);
+            P := stack.find_ref_or_nil1(PL.SYM[1]);
             if (P=nil) or not (P.V is TVProcedureForwardDeclaration)
             then stack.new_var(PL.SYM[1], nil, true);
-            ReleaseVariable(P);
             sign_pos := 2;
             fun := TVFunction.Create;
             fun.nN := PL.SYM[1].N;
@@ -4816,7 +4829,10 @@ try
     inplace_operators(fun.body);
     fun.stack := TVSymbolStack.Create(nil);
     try
-        sl := extract_body_symbols(fun.body);
+        sl := lisya_optimizer.extract_body_symbols(fun.body,PL.L[sign_pos]);
+        //WriteLn(fun.body.AsString);
+        //WriteLn(sl.AsString);
+              //   extract_body_symbols(fun.body);
         fill_subprogram_stack(fun, sl);
         fun.rest := TVList.Create;
     finally
@@ -4826,9 +4842,8 @@ try
 
     if mode=function_declaration
     then begin
-        P := stack.find_ref_or_nil(PL.SYM[1]);
+        P := stack.find_ref_or_nil1(PL.SYM[1]);
         replace_value(P.V, result.Copy);
-        ReleaseVariable(P);
     end;
 
 except
@@ -4866,10 +4881,9 @@ begin
 try
     case mode of
         procedure_declaration: begin
-            P := stack.find_ref_or_nil(PL.SYM[1]);
+            P := stack.find_ref_or_nil1(PL.SYM[1]);
             if (P=nil) or not (P.V is TVProcedureForwardDeclaration)
             then stack.new_var(PL.SYM[1], nil, true);
-            ReleaseVariable(P);
             sign_pos := 2;
             proc_create;
             proc.nN := PL.SYM[1].N;
@@ -4889,7 +4903,7 @@ try
     result := proc;
     proc.sign1 := ifh_build_sign(PL.L[sign_pos]);
     proc.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
-    inplace_operators(proc.body);
+    inplace_operators(proc.body); //оптимизация необязательна
     proc.stack := TVSymbolStack.Create(nil);
     try
         sl := extract_body_symbols(proc.body);
@@ -4902,9 +4916,8 @@ try
 
     if mode=procedure_declaration
     then begin
-        P := stack.find_ref_or_nil(PL.SYM[1]);
+        P := stack.find_ref_or_nil1(PL.SYM[1]);
         replace_value(P.V, result.Copy);
-        ReleaseVariable(P);
     end;
 
 except
@@ -5007,8 +5020,19 @@ begin
     result := TVT.Create;
 end;
 
+
+
 function TEvaluationFlow.extract_body_symbols(body: TVList): TVList;
 var i: integer; tmp: TVList;
+    stack: TIntegers;
+    function in_stack(s: TVSymbol): boolean;
+    var i: integer;
+    begin
+        result := true;
+        for i := high(stack) downto 0 do if stack[i]=S.N then Exit;
+        result := false;
+    end;
+
     function is_op_name(name: unicodestring): boolean;
     var i: TOperatorEnum;
     begin
@@ -5016,6 +5040,8 @@ var i: integer; tmp: TVList;
         for i := low(ops) to high(ops) do if ops[i].n = name then exit;
         result := false;
     end;
+
+
 
 begin
     //эта функция должна извлекать из тела процедуры или функции список,
@@ -5052,8 +5078,8 @@ begin
     //В противном случае возникнет ошибка symbol not bound
 
     for i := 0 to symbols.High do begin
-        P := stack.find_ref_or_nil(symbols.SYM[i]);
-        if P<> nil then sp.stack.new_ref(symbols.SYM[i], P);
+        P := stack.find_ref_or_nil1(symbols.SYM[i]);
+        if P<> nil then sp.stack.new_ref(symbols.SYM[i], RefVariable(P));
     end;
 end;
 

@@ -41,6 +41,8 @@ type
       function read_byte: byte;
       function read_bytes(var bb: TBytes; count: integer): boolean;
       function read_DWORD: DWORD;
+      function read_single: single;
+      function read_double: double;
 
       function read_character: unicodechar; overload;
       function read_character(out ch: unicodechar): boolean; overload;
@@ -670,6 +672,20 @@ var bb: array[1..4] of byte;
 begin
     ReadBytes(bb, 4, true);
     result := bb[1]+bb[2]*256+bb[3]*256*256+bb[4]*256*256*256;
+end;
+
+function TLStream.read_single: single;
+var d: record case byte of 0: (s: single); 1: (b: array [1..SizeOf(single)] of Byte); end;
+begin
+    ReadBytes(d.b[1], SizeOf(single), true);
+    result := d.s;
+end;
+
+function TLStream.read_double: double;
+var d: record case byte of 0: (d: double); 1: (b: array [1..SizeOf(double)] of Byte); end;
+begin
+    ReadBytes(d.b[1], SizeOf(double), true);
+    result := d.d;
 end;
 
 

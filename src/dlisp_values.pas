@@ -191,7 +191,8 @@ type
         property uname: unicodestring read fGetUname;
         property N: integer read fN;
 
-        constructor Create(S: unicodestring);
+        constructor Create(S: unicodestring); overload;
+        constructor Create(N: integer); overload;
         constructor Gensym;
         constructor CreateEmpty;
         destructor Destroy; override;
@@ -577,7 +578,7 @@ type
         procedure new_ref(name: unicodestring; P: PVariable); overload;
         procedure new_ref(symbol: TVSymbol; P: PVariable); overload;
 
-        function find_ref_or_nil(symbol: TVSymbol): PVariable;
+        function find_ref_or_nil1(symbol: TVSymbol): PVariable;
     end;
 
 
@@ -1988,13 +1989,13 @@ begin
     stack[high(stack)].V := P;
 end;
 
-function TVSymbolStack.find_ref_or_nil(symbol: TVSymbol): PVariable;
+function TVSymbolStack.find_ref_or_nil1(symbol: TVSymbol): PVariable;
 var i: integer;
 begin
     result := nil;
     for i := high(stack) downto 0 do
         if stack[i].N=symbol.N then begin
-            result := RefVariable(stack[i].V);
+            result := stack[i].V;
             exit;
         end;
 end;
@@ -2622,6 +2623,12 @@ constructor TVSymbol.Create(S: unicodestring);
 begin
     fname := S;
     fN := symbol_n(fname);
+end;
+
+constructor TVSymbol.Create(N: integer);
+begin
+    fname := symbol_uname(N);
+    fN := N;
 end;
 
 destructor TVSymbol.Destroy;

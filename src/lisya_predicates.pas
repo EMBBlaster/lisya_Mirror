@@ -298,19 +298,31 @@ function vpListLength_1_2                           (V: TValue): boolean;
 
 function vpListKeywordValue                         (V: TValue): boolean;
 
+function vpListLambdaExpression                     (V: TValue): boolean;
+
 function vpListOfByte                               (V: Tvalue): boolean;
 
 function vpListOfListsEqualLength                   (V: TValue): boolean;
 
 function vpListOfSymbolValuePairs                   (V: TValue): boolean;
 
+function vpListRoutineExpression                    (V: TValue): boolean;
+
 function vpListSymbolValue                          (V: TValue): boolean;
+
+function vpListVariableExpression                   (V: TValue): boolean;
 
 function vpListWithLastList                         (V: TValue): boolean;
 
 
 function vpNumberNotZero                            (V: TValue): boolean;
 
+
+function vpOperatorVarDeclaration                   (V: TValue): boolean;
+
+function vpOperatorVarOrConst                       (V: TValue): boolean;
+
+function vpOperatorRoutine                          (V: TValue): boolean;
 
 
 function vpRangeNotNegative                         (V: TValue): boolean;
@@ -1145,6 +1157,17 @@ begin
             end;
 end;
 
+function vpListLambdaExpression(V: TValue): boolean;
+var L: TVList;
+begin
+    result := V is TVList;
+    if not result then Exit;
+    L := V as TVList;
+    result := (L.Count>=2) and (L.look[0] is TVOperator)
+        and ((L.look[0] as TVOperator).op_enum in [oePROCEDURE, oeFUNCTION, oeMACRO])
+        and tpList(L.look[1]);
+end;
+
 function vpListOfByte                               (V: Tvalue): boolean;
 begin
     result := tphListOf(V, vpIntegerByte);
@@ -1186,6 +1209,18 @@ begin
     result := true;
 end;
 
+function vpListRoutineExpression(V: TValue): boolean;
+var L: TVList;
+begin
+    result := V is TVList;
+    if not result then Exit;
+    L := V as TVList;
+    result := (L.Count>=3) and (L.look[0] is TVOperator)
+        and ((L.look[0] as TVOperator).op_enum in [oePROCEDURE, oeFUNCTION, oeMACRO])
+        and tpOrdinarySymbol(L.look[1])
+        and tpList(L.look[2]);
+end;
+
 function vpListSymbolValue                          (V: TValue): boolean;
 var i: integer;
 begin
@@ -1196,6 +1231,18 @@ begin
                 result := false;
                 exit;
             end;
+end;
+
+function vpListVariableExpression(V: TValue): boolean;
+var L: TVList;
+begin
+    result := V is TVList;
+    if not result then Exit;
+    L := V as TVList;
+    result := (L.Count>=2) and (L.look[0] is TVOperator)
+        and ((L.look[0] as TVOperator).op_enum in [oeCONST, oeVAR, oeMACRO_SYMBOL])
+        and tpOrdinarySymbol(L.look[1])
+        and tpList(L.look[2]);
 end;
 
 function vpListWithLastList(V: TValue): boolean;
@@ -1211,6 +1258,24 @@ begin
     result := (V is TVNumber) and not ((V as TVNumber).C = _0);
 end;
 
+function vpOperatorVarDeclaration(V: TValue): boolean;
+begin
+    result := (V is TVOperator)
+        and ((V as TVOperator).op_enum in
+            [oeVAR, oeCONST, oePROCEDURE, oeMACRO, oeMACRO_SYMBOL, oeFUNCTION]);
+end;
+
+function vpOperatorVarOrConst(V: TValue): boolean;
+begin
+    result := (V is TVOperator) and ((V as TVOperator).op_enum in [oeVAR, oeCONST]);
+end;
+
+function vpOperatorRoutine(V: TValue): boolean;
+begin
+    result := (V is TVOperator)
+        and ((V as TVOperator).op_enum in
+            [oePROCEDURE, oeMACRO, oeMACRO_SYMBOL, oeFUNCTION]);
+end;
 
 function vpRangeNotNegative                         (V: TValue): boolean;
 begin
