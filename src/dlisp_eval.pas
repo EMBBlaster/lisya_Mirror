@@ -1585,37 +1585,20 @@ begin
 end;
 
 
-function ifh_filter(const PL: TVList; call: TCallProc; P: TTypePredicate): TValue; inline;
-var expr: TVList; c: TValue; i: integer;
+function if_filter              (const PL: TVList; call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpSubprogram, tpList]) of
-        1: try
-            c := nil;
-            result := TVList.Create;
-            expr := TVList.Create([PL[0],nil]);
-            for i := 0 to PL.L[1].high do begin
-                expr[1] := PL.L[1][i];
-                c := call(expr);
-                if P(c) then (result as TVList).Add(PL.L[1][i]);
-                FreeAndNil(c);
-            end;
-        finally
-            expr.Free;
-            c.Free;
-        end;
+        1: result := ifh_filter(PL, call, tpTrue);
     end;
-end;
-
-
-function if_filter              (const PL: TVList; call: TCallProc): TValue;
-begin
-    result := ifh_filter(PL, call, tpTrue);
 end;
 
 function if_reject              (const PL: TVList; call: TCallProc): TValue;
 begin
-    result := ifh_filter(PL, call, tpNIL);
+    case params_is(PL, result, [
+        tpSubprogram, tpList]) of
+        1: result := ifh_filter(PL, call, tpNIL);
+    end;
 end;
 
 function if_fold                (const PL: TVList; call: TCallProc): TValue;
@@ -1652,7 +1635,7 @@ begin
         2: result := ifh_map_th(
                 call,
                 PL.look[0] as TVSubprogram,
-                PL.L[1]); //эти параметры рудимент многопоточности
+                PL.L[1]);
     end;
 end;
 

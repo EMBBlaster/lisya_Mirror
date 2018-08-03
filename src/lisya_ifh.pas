@@ -29,6 +29,7 @@ function ifh_intersection       (const L: TVList): TVList;
 function ifh_set_include        (const A, B: TVList): boolean;
 
 function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
+function ifh_filter(const PL: TVList; call: TCallProc; P: TTypePredicate): TValue; inline;
 function ifh_fold(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
 
 function ifh_like (str1, str2: unicodestring): integer;
@@ -377,6 +378,23 @@ finally
     expr.Free;
 end;
 end;
+//------------------------------------------------------------------------------
+function ifh_filter(const PL: TVList; call: TCallProc; P: TTypePredicate): TValue; inline;
+var expr: TVList; c: TValue; i: integer;
+begin try
+    c := nil;
+    result := TVList.Create;
+    expr := TVList.Create([PL[0],nil]);
+    for i := 0 to PL.L[1].high do begin
+        expr[1] := PL.L[1][i];
+        c := call(expr);
+        if P(c) then (result as TVList).Add(PL.L[1][i]);
+        FreeAndNil(c);
+    end;
+finally
+    expr.Free;
+    c.Free;
+end;end;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// строки /////////////////////////////////////////////////////////////////////
