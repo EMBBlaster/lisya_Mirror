@@ -789,6 +789,22 @@ begin
     end;
 end;
 
+function if_fractional          (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal]) of
+        1: result := TVFloat.Create(frac(PL.F[0]));
+    end;
+end;
+
+function if_integer             (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal]) of
+        1: result := TVInteger.Create(round(int(PL.F[0])));
+    end;
+end;
+
 function if_range               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -3211,7 +3227,7 @@ begin
 end;
 
 
-const int_fun_count = 161;
+const int_fun_count = 163;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3233,7 +3249,9 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'ARCCOS';                    f:if_arccos;                s:'(a)'),
 (n:'TAN';                       f:if_tan;                   s:'(a)'),
 (n:'ARCTAN';                    f:if_arctan;                s:'(a)'),
-(n:'ROUND';                     f:if_round;                 s:'(a)'),
+(n:'ROUND';                     f:if_round;                 s:'(a :optional n)'),
+(n:'FRACTIONAL';                f:if_fractional;            s:'(a)'),
+(n:'INTEGER';                   f:if_integer;               s:'(a)'),
 (n:'RANGE';                     f:if_range;                 s:'(l :optional h)'),
 (n:'SYMBOL';                    f:if_symbol;                s:'(:optional n)'),
 (n:'RANDOM';                    f:if_random;                s:'(:optional r)'),
