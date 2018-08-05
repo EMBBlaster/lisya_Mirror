@@ -75,7 +75,7 @@ begin
     if result then ss := unicodechar(StrToInt(s[2..Length(s)]));
 end;
 
-function str_is_datetime(s: unicodestring; out dt: TDateTime): boolean;
+function str_is_datetime1(s: unicodestring; out dt: TDateTime): boolean;
 var year, month, day, hours, minutes, seconds, milliseconds: word;
 begin try
     result := false;
@@ -132,6 +132,27 @@ begin
     if sp_time_msec(s) then milliseconds := StrToInt(s[p+7..p+9]);
     dt := hours/24+minutes/(24*60)+seconds/(24*60*60)+milliseconds/(24*60*60*1000);
     if s[1]='-' then dt := -dt;
+end;
+
+function str_is_datetime(s: unicodestring; out dt: TDateTime): boolean;
+var year, month, day: word;
+    d: TDateTime;
+begin try
+    result := sp_date_time(s);
+    if not result then exit;
+
+    year := StrToInt(s[1..4]);
+    month := StrToInt(s[6..7]);
+    day := StrToInt(s[9..10]);
+    dt := EncodeDate(year, month, day);
+
+    if str_is_time(s[12..Length(s)],d) then dt := dt+d;
+except
+    on E:EConvertError do begin
+        result := false;
+        raise ELE.Create('invalid date-time '+s,'!'+E.ClassName+'!');
+    end;
+end;
 end;
 
 function str_is_elt_call(s: unicodestring; out elt: TStringList): boolean;

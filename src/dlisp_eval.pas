@@ -3437,7 +3437,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 );
 
 
-const predicates: array[1..20] of record n: unicodestring; f: TTypePredicate; end = (
+const predicates: array[1..21] of record n: unicodestring; f: TTypePredicate; end = (
 (n:'T';                    f:tpT),
 (n:'NIL';                  f:tpNIL),
 (n:'TRUE';                 f:tpTRUE),
@@ -3446,6 +3446,7 @@ const predicates: array[1..20] of record n: unicodestring; f: TTypePredicate; en
 (n:'INTEGER';              f:tpInteger),
 (n:'FLOAT';                f:tpFloat),
 (n:'DURATION';             f:tpDuration),
+(n:'DATE-TIME';            f:tpDateTime),
 (n:'COMPLEX';              f:tpComplex),
 (n:'ATOM';                 f:tpAtom),
 (n:'SUBPROGRAM';           f:tpSubprogram),

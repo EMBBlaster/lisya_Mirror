@@ -1654,8 +1654,23 @@ begin
 end;
 
 function TVDateTime.AsString(): unicodestring;
+var year,month,day,hour,minute,second, ms: WORD;
+    function dd(i: integer): unicodestring;
+    begin
+        result := IntToStr(i);
+        if Length(result)=1 then result := '0'+result;
+    end;
+    function ddd(i: integer): unicodestring;
+    begin
+        result := IntToStr(i);
+        if Length(result)=2 then result := '0'+result;
+        if Length(result)=1 then result := '00'+result;
+    end;
 begin
-    result := AsSQLDateTime;
+    DecodeDate(fDT, year, month, day);
+    DecodeTime(fDT, hour, minute, second, ms);
+    result := IntToStr(Year)+'.'+dd(month)+'.'+dd(day)+
+        '_'+dd(hour)+':'+dd(minute)+':'+dd(second)+'.'+ddd(ms);
 end;
 
 function TVDateTime.hash: DWORD;
