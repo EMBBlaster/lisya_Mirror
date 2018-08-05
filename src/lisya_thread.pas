@@ -10,7 +10,8 @@ uses
     {$ENDIF}
     Classes, SysUtils, dlisp_eval, dlisp_values, lisya_ifh, lisya_gc
     , lisya_exceptions
-    , lisya_predicates;
+    , lisya_predicates
+    , mar;
 
 type
 
@@ -148,13 +149,14 @@ begin
         result := TVList.Create;
         result.SetCapacity(Length(task_queue));
         for i := 0 to high(task_queue) do
-            if task_queue<>nil then result.Add(task_queue[i]);
+            if task_queue[i]<>nil then result.Add(task_queue[i]);
         SetLength(task_queue, 0);
-        for i := 0 to high(threads_pool) do threads_pool[i].fProc := nil;
+        for i := 0 to high(threads_pool) do FreeAndNil(threads_pool[i].fProc);
     finally
         th := false;
     end
     else result := ifh_filter(PL, call, tpNIL) as TVList;
+
 end;
 
 function  NextTask(out tn: integer): boolean;
