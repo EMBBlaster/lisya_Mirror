@@ -116,6 +116,24 @@ except
 end;
 end;
 
+function str_is_time(s: unicodestring; out dt: TDateTime): boolean;
+var hours,p: integer; minutes, seconds, milliseconds: word;
+begin
+    result := sp_time(s);
+    if not result then exit;
+    p := pos(':',s);
+    if s[1] in ['-','+']
+    then hours := StrToInt(s[2..p-1])
+    else hours := StrToInt(s[1..p-1]);
+    minutes := StrToInt(s[p+1..p+2]);
+    seconds := 0;
+    milliseconds := 0;
+    if sp_time_sec(s) or sp_time_msec(s) then seconds := StrToInt(s[p+4..p+5]);
+    if sp_time_msec(s) then milliseconds := StrToInt(s[p+7..p+9]);
+    dt := hours/24+minutes/(24*60)+seconds/(24*60*60)+milliseconds/(24*60*60*1000);
+    if s[1]='-' then dt := -dt;
+end;
+
 function str_is_elt_call(s: unicodestring; out elt: TStringList): boolean;
 var i: integer; acc: unicodestring;
     state: (sNormal, sString, sEscaped);
@@ -483,6 +501,9 @@ begin
     then result := TVDateTime.Create(dt)
     else
 
+    if str_is_time(t[i], dt)
+    then result := TVTimeInterval.Create(dt)
+    else
 
     if UnicodeUpperCase(t[i])='NIL'
     then result := TVList.Create

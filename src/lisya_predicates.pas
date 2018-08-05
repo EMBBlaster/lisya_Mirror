@@ -69,6 +69,10 @@ function tpListOfNumbers                            (V: TValue): boolean;
 
 function tpListOfReals                              (V: TValue): boolean;
 
+function tpListOfTimes                              (V: TValue): boolean;
+
+function tpListOfTimeIntervals                      (V: TValue): boolean;
+
 function tpListOfOrdinarySymbols                    (V: TValue): boolean;
 
 function tpListOfStrings                            (V: TValue): boolean;
@@ -122,6 +126,8 @@ function tpSubprogram                               (V: TValue): boolean;
 function tpSymbol                                   (V: TValue): boolean;
 
 function tpT                                        (V: TValue): boolean;
+
+function tpTime                                     (V: TValue): boolean;
 
 function tpTimeInterval                             (V: TValue): boolean;
 
@@ -305,6 +311,8 @@ function vpListOfByte                               (V: Tvalue): boolean;
 function vpListOfListsEqualLength                   (V: TValue): boolean;
 
 function vpListOfSymbolValuePairs                   (V: TValue): boolean;
+
+function vpListOfSummableTimes                      (V: TValue): boolean;
 
 function vpListRoutineExpression                    (V: TValue): boolean;
 
@@ -515,6 +523,16 @@ begin
     result := tphListOf(V, tpReal);
 end;
 
+function tpListOfTimes(V: TValue): boolean;
+begin
+    result := tphListOf(V, tpTime);
+end;
+
+function tpListOfTimeIntervals(V: TValue): boolean;
+begin
+    result := tphListOf(V, tpTimeInterval);
+end;
+
 function tpListOfOrdinarySymbols(V: TValue): boolean;
 begin
     result := tphListOf(V, tpOrdinarySymbol);
@@ -650,6 +668,11 @@ end;
 function tpT(V: TValue): boolean;
 begin
     result := V is TVT;
+end;
+
+function tpTime(V: TValue): boolean;
+begin
+    result := V is TVTime;
 end;
 
 function tpTimeInterval(V: TValue): boolean;
@@ -1208,6 +1231,24 @@ begin
     else exit;
     result := true;
 end;
+
+function vpListOfSummableTimes(V: TValue): boolean;
+var is_dt: boolean; L: TVList; i: integer;
+begin
+    result := V is TVList;
+    if not result then Exit;
+    L := V as TVList;
+    is_dt := false;
+    for i := 0 to L.high do begin
+        result := (L.look[i] is TVTime);
+        if not result then Exit;
+        result := not ((L.look[i] is TVDateTime) and is_dt);
+        if not result then Exit;
+        is_dt := is_dt or (L.look[i] is TVDateTime);
+    end;
+    result := is_dt;
+end;
+
 
 function vpListRoutineExpression(V: TValue): boolean;
 var L: TVList;

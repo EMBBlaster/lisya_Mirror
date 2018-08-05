@@ -1631,12 +1631,9 @@ var hour,minute,second, ms: WORD;
         if Length(result)=1 then result := '00'+result;
     end;
 begin
-    DecodeTime(fDT, hour, minute, second, ms);
-    result := IntToStr(round(fDT))+':'
-        +dd(hour)+':'+dd(minute)+':'+dd(second)+'.'+ddd(ms);
-    if fDT>=0
-    then result := '#<'+result+'>'
-    else result := '#< - '+result+'>'
+    DecodeTime(abs(fDT), hour, minute, second, ms);
+    result := dd(hour)+':'+dd(minute)+':'+dd(second)+'.'+ddd(ms);
+    if fDT<0 then result := '-'+result;
 end;
 
 function TVTimeInterval.hash: DWORD;

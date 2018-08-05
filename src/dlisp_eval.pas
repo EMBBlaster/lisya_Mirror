@@ -477,7 +477,9 @@ begin
             tpListOfIntegers,
             tpListOfReals,
             tpListOfNumbers,
-            tpListOfLists]) of
+            tpListOfLists,
+            tpListOfTimeIntervals,
+            vpListOfSummableTimes]) of
             1: begin
                 ires := 0;
                 for i := 0 to PL.L[0].high do
@@ -497,6 +499,18 @@ begin
                 result := TVComplex.Create(cres);
             end;
             4: result := ifh_union(PL.L[0]);
+            5: begin
+                fres := 0;
+                for i := 0 to PL.L[0].high do
+                    fres := fres + (PL.L[0].look[i] as TVTime).fDT;
+                result := TVTimeInterval.Create(fres);
+            end;
+            6: begin
+                fres := 0;
+                for i := 0 to PL.L[0].high do
+                    fres := fres + (PL.L[0].look[i] as TVTime).fDT;
+                result := TVDateTime.Create(fres);
+            end;
         end;
 end;
 
@@ -1601,6 +1615,14 @@ begin
     end;
 end;
 
+function if_reject_th           (const PL: TVList; call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpSubprogram, tpList]) of
+        1: result := ifh_reject_th(call, PL.look[0] as TVSubprogram, PL.L[1]);
+    end;
+end;
+
 function if_fold                (const PL: TVList; call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -1619,10 +1641,7 @@ begin
         tpSubprogram, tpNIL,
         tpSubprogram, vpListOfListsEqualLength]) of
         1: result := TVList.Create;
-        2: result := ifh_map(
-                call,
-                PL.look[0] as TVSubprogram,
-                PL.L[1]);
+        2: result := ifh_map(call, PL.look[0] as TVSubprogram,PL.L[1]);
     end;
 end;
 
@@ -1632,10 +1651,7 @@ begin
         tpSubprogram, tpNIL,
         tpSubprogram, vpListOfListsEqualLength]) of
         1: result := TVList.Create;
-        2: result := ifh_map_th(
-                call,
-                PL.look[0] as TVSubprogram,
-                PL.L[1]);
+        2: result := ifh_map_th(call,PL.look[0] as TVSubprogram,PL.L[1]);
     end;
 end;
 
@@ -3209,7 +3225,7 @@ begin
 end;
 
 
-const int_fun_count = 163;
+const int_fun_count = 164;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3294,6 +3310,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'CURRY ШФ';                  f:if_curry;                 s:'(f :rest p)'),
 (n:'FILTER';                    f:if_filter;                s:'(p l)'),
 (n:'REJECT';                    f:if_reject;                s:'(p l)'),
+(n:'REJECT-TH';                 f:if_reject_th;             s:'(p l)'),
 (n:'FOLD';                      f:if_fold;                  s:'(p l)'),
 (n:'MAP ОТОБРАЖЕНИЕ';           f:if_map;                   s:'(p :rest l)'),
 (n:'MAP-TH';                    f:if_map_th;                s:'(p :rest l)'),
@@ -3405,7 +3422,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 );
 
 
-const predicates: array[1..19] of record n: unicodestring; f: TTypePredicate; end = (
+const predicates: array[1..20] of record n: unicodestring; f: TTypePredicate; end = (
 (n:'T';                    f:tpT),
 (n:'NIL';                  f:tpNIL),
 (n:'TRUE';                 f:tpTRUE),
@@ -3413,6 +3430,7 @@ const predicates: array[1..19] of record n: unicodestring; f: TTypePredicate; en
 (n:'REAL';                 f:tpReal),
 (n:'INTEGER';              f:tpInteger),
 (n:'FLOAT';                f:tpFloat),
+(n:'TIME-INTERVAL';        f:tpTimeInterval),
 (n:'COMPLEX';              f:tpComplex),
 (n:'ATOM';                 f:tpAtom),
 (n:'SUBPROGRAM';           f:tpSubprogram),

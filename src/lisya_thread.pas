@@ -52,6 +52,7 @@ type
 
 
 function ifh_map_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
+function ifh_reject_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
 
 var threads_pool: array of TEvaluationThread;
 
@@ -189,10 +190,11 @@ end;
 procedure TEvaluationThread.fReject;
 var tmp: TValue;
 begin try
-    fExpression := TVList.Create([fProc.Copy]);
+    fExpression := TVList.Create([fProc], false);
     fExpression.Add(task_queue[fN]);
     tmp := fFlow.call(fExpression);
     if tpTrue(tmp) then FreeAndNil(task_queue[fN]);
+    FreeAndNil(fExpression);
 finally
     tmp.Free;
 end;end;
@@ -202,7 +204,7 @@ begin
     while not self.Terminated do begin
         try
             fError := false;
-            //fResult := fFlow.eval(fExpression);
+
             while NextTask(fN) do fAction;
         except
             on E:ELE do begin
