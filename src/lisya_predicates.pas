@@ -71,7 +71,7 @@ function tpListOfReals                              (V: TValue): boolean;
 
 function tpListOfTimes                              (V: TValue): boolean;
 
-function tpListOfTimeIntervals                      (V: TValue): boolean;
+function tpListOfDurations                          (V: TValue): boolean;
 
 function tpListOfOrdinarySymbols                    (V: TValue): boolean;
 
@@ -129,7 +129,7 @@ function tpT                                        (V: TValue): boolean;
 
 function tpTime                                     (V: TValue): boolean;
 
-function tpTimeInterval                             (V: TValue): boolean;
+function tpDuration                                 (V: TValue): boolean;
 
 function tpTrue                                     (V: TValue): boolean;
 
@@ -528,9 +528,9 @@ begin
     result := tphListOf(V, tpTime);
 end;
 
-function tpListOfTimeIntervals(V: TValue): boolean;
+function tpListOfDurations(V: TValue): boolean;
 begin
-    result := tphListOf(V, tpTimeInterval);
+    result := tphListOf(V, tpDuration);
 end;
 
 function tpListOfOrdinarySymbols(V: TValue): boolean;
@@ -675,9 +675,9 @@ begin
     result := V is TVTime;
 end;
 
-function tpTimeInterval(V: TValue): boolean;
+function tpDuration(V: TValue): boolean;
 begin
-    result := V is TVTimeInterval;
+    result := V is TVDuration
 end;
 
 function tpTrue(V:  TValue): boolean;

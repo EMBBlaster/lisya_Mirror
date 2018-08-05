@@ -478,7 +478,7 @@ begin
             tpListOfReals,
             tpListOfNumbers,
             tpListOfLists,
-            tpListOfTimeIntervals,
+            tpListOfDurations,
             vpListOfSummableTimes]) of
             1: begin
                 ires := 0;
@@ -503,7 +503,7 @@ begin
                 fres := 0;
                 for i := 0 to PL.L[0].high do
                     fres := fres + (PL.L[0].look[i] as TVTime).fDT;
-                result := TVTimeInterval.Create(fres);
+                result := TVDuration.Create(fres);
             end;
             6: begin
                 fres := 0;
@@ -522,15 +522,15 @@ begin
     {3} tpInteger,  tpInteger,
     {4} tpReal,     tpReal,
     {5} tpDateTime, tpDatetime,
-    {6} tpDateTime, tpTimeInterval,
-    {7} tpTimeInterval, tpTimeInterval,
+    {6} tpDateTime, tpDuration,
+    {7} tpDuration, tpDuration,
     {8} tpNumber,   tpNumber,
     {9} tpList,     tpList]) of
         1: result := TVInteger.Create(-PL.I[0]);
         2: result := TVFloat.Create(-PL.F[0]);
         3: result := TVInteger.Create(PL.I[0] - PL.I[1]);
         4: result := TVFloat.Create(PL.F[0] - PL.F[1]);
-        5,7: result := TVTimeInterval.Create(
+        5,7: result := TVDuration.Create(
             (PL.look[0] as TVTime).fDT - (PL.look[1] as TVTime).fDT);
         6: result := TVDateTime.Create(
             (PL.look[0] as TVTime).fDT - (PL.look[1] as TVTime).fDT);
@@ -968,7 +968,7 @@ begin
         tpReal,    tpReal,
         tpString,  tpString,
         tpDateTime, tpDateTime,
-        tpTimeInterval, tpTimeInterval]) of
+        tpDuration, tpDuration]) of
         1: bool_to_TV( PL.I[0]>PL.I[1] , result);
         2: bool_to_TV( PL.F[0]>PL.F[1] , result);
         3: bool_to_TV( PL.S[0]>PL.S[1] , result);
@@ -983,7 +983,7 @@ begin
         tpReal,    tpReal,
         tpString,  tpString,
         tpDateTime, tpDateTime,
-        tpTimeInterval, tpTimeInterval]) of
+        tpDuration, tpDuration]) of
         1: bool_to_TV( PL.I[0]<PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<PL.F[1] , result);
         3: bool_to_TV( PL.S[0]<PL.S[1] , result);
@@ -999,7 +999,7 @@ begin
         tpString,  tpString,
         tpList,    tpList,
         tpDateTime, tpDateTime,
-        tpTimeInterval, tpTimeInterval]) of
+        tpDuration, tpDuration]) of
         1: bool_to_TV( PL.I[0]>=PL.I[1] , result);
         2: bool_to_TV( PL.F[0]>=PL.F[1] , result);
         3: bool_to_TV( PL.S[0]>=PL.S[1] , result);
@@ -1016,7 +1016,7 @@ begin
         tpString,  tpString,
         tpList,    tpList,
         tpDateTime, tpDateTime,
-        tpTimeInterval, tpTimeInterval]) of
+        tpDuration, tpDuration]) of
         1: bool_to_TV( PL.I[0]<=PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<=PL.F[1] , result);
         3: bool_to_TV( PL.S[0]<=PL.S[1] , result);
@@ -1033,7 +1033,7 @@ begin
         tpString,  tpString,
         tpBytes,   tpBytes,
         tpDateTime, tpDateTime,
-        tpTimeInterval, tpTimeInterval]) of
+        tpDuration, tpDuration]) of
         1: bool_to_TV( PL.I[0]<>PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<>PL.F[1] , result);
         3: bool_to_TV( PL.S[0]<>PL.S[1] , result);
@@ -3045,7 +3045,7 @@ begin
         ftDateTime, ftDate, ftTimeStamp:
             result := TVDateTime.Create(F.AsDateTime);
 
-        ftTime: result := TVTimeInterval.Create(F.AsDateTime);
+        ftTime: result := TVDuration.Create(F.AsDateTime);
 
         else result := TVString.Create(F.AsString);
 
@@ -3445,7 +3445,7 @@ const predicates: array[1..20] of record n: unicodestring; f: TTypePredicate; en
 (n:'REAL';                 f:tpReal),
 (n:'INTEGER';              f:tpInteger),
 (n:'FLOAT';                f:tpFloat),
-(n:'TIME-INTERVAL';        f:tpTimeInterval),
+(n:'DURATION';             f:tpDuration),
 (n:'COMPLEX';              f:tpComplex),
 (n:'ATOM';                 f:tpAtom),
 (n:'SUBPROGRAM';           f:tpSubprogram),

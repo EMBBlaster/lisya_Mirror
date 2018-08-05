@@ -502,7 +502,7 @@ begin
     else
 
     if str_is_time(t[i], dt)
-    then result := TVTimeInterval.Create(dt)
+    then result := TVDuration.Create(dt)
     else
 
     if UnicodeUpperCase(t[i])='NIL'

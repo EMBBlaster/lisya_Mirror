@@ -158,7 +158,7 @@ type
 
     { TVTimeInterval }
 
-    TVTimeInterval = class (TVTime)
+    TVDuration = class (TVTime)
         constructor Create(dt: TDateTime);
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
@@ -1607,17 +1607,17 @@ end;
 
 { TVTimeInterval }
 
-constructor TVTimeInterval.Create(dt: TDateTime);
+constructor TVDuration.Create(dt: TDateTime);
 begin
     fDT := dt;
 end;
 
-function TVTimeInterval.Copy: TValue;
+function TVDuration.Copy: TValue;
 begin
-    result := TVTimeInterval.Create(fDT);
+    result := TVDuration.Create(fDT);
 end;
 
-function TVTimeInterval.AsString: unicodestring;
+function TVDuration.AsString: unicodestring;
 var hour,minute,second, ms: WORD;
     function dd(i: integer): unicodestring;
     begin
@@ -1636,7 +1636,7 @@ begin
     if fDT<0 then result := '-'+result;
 end;
 
-function TVTimeInterval.hash: DWORD;
+function TVDuration.hash: DWORD;
 begin
     result := crc32(1, @fDT, SizeOf(fDT));
 end;
