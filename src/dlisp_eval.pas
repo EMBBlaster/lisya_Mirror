@@ -966,10 +966,13 @@ begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
         tpReal,    tpReal,
-        tpString,  tpString]) of
+        tpString,  tpString,
+        tpDateTime, tpDateTime,
+        tpTimeInterval, tpTimeInterval]) of
         1: bool_to_TV( PL.I[0]>PL.I[1] , result);
         2: bool_to_TV( PL.F[0]>PL.F[1] , result);
         3: bool_to_TV( PL.S[0]>PL.S[1] , result);
+        4,5: bool_to_TV( (PL.look[0] as TVTime).fDT>(PL.look[1] as TVTime).fDT, result);
     end;
 end;
 
@@ -978,10 +981,13 @@ begin
     case params_is(PL, result, [
         tpInteger, tpInteger,
         tpReal,    tpReal,
-        tpString,  tpString]) of
+        tpString,  tpString,
+        tpDateTime, tpDateTime,
+        tpTimeInterval, tpTimeInterval]) of
         1: bool_to_TV( PL.I[0]<PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<PL.F[1] , result);
         3: bool_to_TV( PL.S[0]<PL.S[1] , result);
+        4,5: bool_to_TV( (PL.look[0] as TVTime).fDT<(PL.look[1] as TVTime).fDT, result);
     end;
 end;
 
@@ -991,11 +997,14 @@ begin
         tpInteger, tpInteger,
         tpReal,    tpReal,
         tpString,  tpString,
-        tpList,    tpList]) of
+        tpList,    tpList,
+        tpDateTime, tpDateTime,
+        tpTimeInterval, tpTimeInterval]) of
         1: bool_to_TV( PL.I[0]>=PL.I[1] , result);
         2: bool_to_TV( PL.F[0]>=PL.F[1] , result);
         3: bool_to_TV( PL.S[0]>=PL.S[1] , result);
         4: bool_to_TV(ifh_set_include(PL.L[0], PL.L[1]), result);
+        5,6: bool_to_TV( (PL.look[0] as TVTime).fDT>=(PL.look[1] as TVTime).fDT, result);
     end;
 end;
 
@@ -1005,11 +1014,14 @@ begin
         tpInteger, tpInteger,
         tpReal,    tpReal,
         tpString,  tpString,
-        tpList,    tpList]) of
+        tpList,    tpList,
+        tpDateTime, tpDateTime,
+        tpTimeInterval, tpTimeInterval]) of
         1: bool_to_TV( PL.I[0]<=PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<=PL.F[1] , result);
         3: bool_to_TV( PL.S[0]<=PL.S[1] , result);
         4: bool_to_TV(ifh_set_include(PL.L[1], PL.L[0]), result);
+        5,6: bool_to_TV( (PL.look[0] as TVTime).fDT<=(PL.look[1] as TVTime).fDT, result);
     end;
 end;
 
@@ -1019,11 +1031,14 @@ begin
         tpInteger, tpInteger,
         tpReal,    tpReal,
         tpString,  tpString,
-        tpBytes,   tpBytes]) of
+        tpBytes,   tpBytes,
+        tpDateTime, tpDateTime,
+        tpTimeInterval, tpTimeInterval]) of
         1: bool_to_TV( PL.I[0]<>PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<>PL.F[1] , result);
         3: bool_to_TV( PL.S[0]<>PL.S[1] , result);
         4: bool_to_TV(not equal(PL.look[0], PL.look[1]), result);
+        5,6: bool_to_TV(not equal(PL.look[0], PL.look[1]), result);
     end;
 end;
 
