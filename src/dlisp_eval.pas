@@ -1621,6 +1621,14 @@ begin
     end;
 end;
 
+function if_filter_th           (const PL: TVList; call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpSubprogram, tpList]) of
+        1: result := ifh_filter_th(call, PL.look[0] as TVSubprogram, PL.L[1]);
+    end;
+end;
+
 function if_reject              (const PL: TVList; call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -3239,7 +3247,7 @@ begin
 end;
 
 
-const int_fun_count = 164;
+const int_fun_count = 165;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3323,6 +3331,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'SLOTS';                     f:if_slots;                 s:'(r)'),
 (n:'CURRY ШФ';                  f:if_curry;                 s:'(f :rest p)'),
 (n:'FILTER';                    f:if_filter;                s:'(p l)'),
+(n:'FILTER-TH';                 f:if_filter_th;             s:'(p l)'),
 (n:'REJECT';                    f:if_reject;                s:'(p l)'),
 (n:'REJECT-TH';                 f:if_reject_th;             s:'(p l)'),
 (n:'FOLD';                      f:if_fold;                  s:'(p l)'),

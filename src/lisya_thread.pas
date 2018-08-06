@@ -36,6 +36,7 @@ type
         procedure SetProc(P: TVSubprogram);
         procedure fMap;
         procedure fReject;
+        procedure fFilter;
     protected
         procedure Execute; override;
     public
@@ -47,6 +48,7 @@ type
         procedure eval(PL: TVList); overload;
         procedure RunMap;
         procedure RunReject;
+        procedure RunFilter;
         procedure WaitEnd;
         function WaitResult: TValue;
     end;
@@ -54,6 +56,7 @@ type
 
 function ifh_map_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
 function ifh_reject_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
+function ifh_filter_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
 
 var threads_pool: array of TEvaluationThread;
 
@@ -156,7 +159,31 @@ begin
         th := false;
     end
     else result := ifh_filter(PL, call, tpNIL) as TVList;
+end;
 
+function ifh_filter_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
+var i,j: integer;
+begin
+    //TODO: возможна утечка содержимого очереди заданий при возникновении исключения
+    if (not th) and (length(threads_pool)>1) then try
+        th := true;
+        result := nil;
+        for i := 0 to high(threads_pool) do threads_pool[i].Proc := P;
+        SetLength(task_queue, PL.Count);
+        task_i := 0;
+        for i := 0 to high(task_queue) do task_queue[i] := separate(PL.look[i]);
+        for i := 0 to high(threads_pool) do threads_pool[i].RunFilter;
+        for i := 0 to high(threads_pool) do threads_pool[i].WaitEnd;
+        result := TVList.Create;
+        result.SetCapacity(Length(task_queue));
+        for i := 0 to high(task_queue) do
+            if task_queue[i]<>nil then result.Add(task_queue[i]);
+        SetLength(task_queue, 0);
+        for i := 0 to high(threads_pool) do FreeAndNil(threads_pool[i].fProc);
+    finally
+        th := false;
+    end
+    else result := ifh_filter(PL, call, tpTrue) as TVList;
 end;
 
 function  NextTask(out tn: integer): boolean;
@@ -196,6 +223,18 @@ begin try
     fExpression.Add(task_queue[fN]);
     tmp := fFlow.call(fExpression);
     if tpTrue(tmp) then FreeAndNil(task_queue[fN]);
+    FreeAndNil(fExpression);
+finally
+    tmp.Free;
+end;end;
+
+procedure TEvaluationThread.fFilter;
+var tmp: TValue;
+begin try
+    fExpression := TVList.Create([fProc], false);
+    fExpression.Add(task_queue[fN]);
+    tmp := fFlow.call(fExpression);
+    if tpNIL(tmp) then FreeAndNil(task_queue[fN]);
     FreeAndNil(fExpression);
 finally
     tmp.Free;
@@ -278,6 +317,13 @@ procedure TEvaluationThread.RunReject;
 begin
     RTLEventResetEvent(fComplitedEvent);
     fAction := fReject;
+    Start;
+end;
+
+procedure TEvaluationThread.RunFilter;
+begin
+    RTLEventResetEvent(fComplitedEvent);
+    fAction := fFilter;
     Start;
 end;
 
