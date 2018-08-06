@@ -3285,8 +3285,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'>=';                        f:if_more_or_equal;         s:'(a b)'),
 (n:'<=';                        f:if_less_or_equal;         s:'(a b)'),
 (n:'<>';                        f:if_not_equal;             s:'(a b)'),
-(n:'AND И';                     f:if_and;                   s:'(:rest a)'),
-(n:'OR ИЛИ';                    f:if_or;                    s:'(:rest a)'),
+(n:'F-AND И';                   f:if_and;                   s:'(:rest a)'),
+(n:'F-OR ИЛИ';                  f:if_or;                    s:'(:rest a)'),
 (n:'XOR';                       f:if_xor;                   s:'(:rest a)'),
 (n:'NOT НЕ';                    f:if_not;                   s:'(a)'),
 (n:'EQUAL-CASE-INSENSITIVE';    f:if_equal_case_insensitive;s:'(a b)'),
@@ -3476,7 +3476,7 @@ var o: TOperatorEnum;
 begin
     for o := low(ops) to high(ops) do
         case o of
-            oeAND_THEN  : op('AND-THEN');
+            oeAND       : op('AND');
             oeAPPEND    : op('APPEND');
             oeASSEMBLE  : op('ASSEMBLE');
             oeBLOCK     : op('BLOCK');
@@ -3501,7 +3501,7 @@ begin
             oeLET       : op('LET');
             oeMACRO     : op('MACRO');
             oeMACRO_SYMBOL: op('MACRO-SYMBOL');
-            oeOR_THEN   : op('OR-THEN');
+            oeOR        : op('OR');
             oePACKAGE   : op('PACKAGE');
             oePOP       : op('POP');
             oePROCEDURE : op('PROCEDURE');
@@ -5199,7 +5199,7 @@ end;
 function TEvaluationFlow.call_operator(PL: TVList): TValue;
 begin
     case (PL.look[0] as TVOperator).op_enum of
-        oeAND_THEN  : result := op_and(PL);
+        oeAND       : result := op_and(PL);
         oeAPPEND    : result := op_append(PL);
         oeASSEMBLE  : result := op_assemble(PL);
         oeBLOCK     : result := op_block(PL);
@@ -5224,7 +5224,7 @@ begin
         oeLET       : result := op_let(PL);
         oeMACRO     : result := op_procedure(PL);
         oeMACRO_SYMBOL: result := op_macro_symbol(PL);
-        oeOR_THEN   : result := op_or(PL);
+        oeOR        : result := op_or(PL);
         oePACKAGE   : result := op_package(PL);
         oePOP       : result := op_pop(PL);
         oePROCEDURE : result := op_procedure(PL);
