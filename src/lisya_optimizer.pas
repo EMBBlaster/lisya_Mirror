@@ -19,7 +19,7 @@ function extract_body_symbols(body, params: TVList; st: TVSymbolStack = nil): TV
 implementation
 
 const restricted_ops = [oeAPPEND, oeASSEMBLE, oeBLOCK, oeBREAK, oeCONST, oeCONTINUE,
-    oeDEFAULT, oeDELETE, oeEXECUTE_FILE, oeFOR, oeGOTO, oeINSERT, oeLET, oeMACRO,
+    oeDEFAULT, oeDELETE, oeFOR, oeGOTO, oeINSERT, oeLET, oeMACRO,
     oeMACRO_SYMBOL, oePACKAGE, oePOP, oePUSH, oeRETURN, oeSET, oeUSE, oeWHILE, oeWITH];
 
 procedure inplace_operators_in_tail(body: TVList);

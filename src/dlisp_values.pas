@@ -715,7 +715,6 @@ type
             oeDELETE,      //mod
             oeELT,
             oeERROR,
-            oeEXECUTE_FILE,
             oeFOR,
             oeFUNCTION,
             oeGOTO,

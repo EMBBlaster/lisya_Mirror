@@ -83,7 +83,6 @@ type
     {m} function op_delete(PL: TVList): TValue;
         function op_elt(PL: TVList): TValue;
         function op_error(PL: TVList): TValue;
-        function op_execute_file(PL: TVList): TValue;
         function op_for(PL: TVList): TValue;
         function op_function(PL: TVList): TValue;
         function op_goto(PL: TVList): TValue;
@@ -3490,7 +3489,6 @@ begin
             oeDELETE    : op('DELETE');
             oeELT       : op('ELT');
             oeERROR     : op('ERROR');
-            oeEXECUTE_FILE: op('EXECUTE-FILE');
             oeFOR       : op('FOR');
             oeFUNCTION  : op('FUNCTION');
             oeGOTO      : op('GOTO');
@@ -4247,25 +4245,6 @@ begin
     end;
 
     raise ELE.Create(smsg, sclass, sstack);
-end;
-
-function TEvaluationFlow.op_execute_file(PL: TVList): TValue;
-var fn: TValue;
-begin
-    if PL.Count<>2 then raise ELE.Malformed('EXECUTE-FILE');
-
-try
-    result := nil;
-    fn := nil;
-    fn := eval(PL[1]);
-    if not tpString(fn) then raise ELE.InvalidParameters;
-
-    oph_execute_file((fn as TVString).S);
-    result := TVT.Create;
-finally
-    fn.Free;
-end;
-
 end;
 
 
@@ -5213,7 +5192,6 @@ begin
         oeDELETE    : result := op_delete(PL);
         oeELT       : result := op_elt(PL);
         oeERROR     : result := op_error(PL);
-        oeEXECUTE_FILE: result := op_execute_file(PL);
         oeFOR       : result := op_for(PL);
         oeFUNCTION  : result := op_function(PL);
         oeGOTO      : result := op_goto(PL);
