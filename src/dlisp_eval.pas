@@ -83,6 +83,7 @@ type
     {m} function op_delete(PL: TVList): TValue;
         function op_elt(PL: TVList): TValue;
         function op_error(PL: TVList): TValue;
+        function op_execute_file(PL: TVList): TValue;
         function op_for(PL: TVList): TValue;
         function op_function(PL: TVList): TValue;
         function op_goto(PL: TVList): TValue;
@@ -539,8 +540,7 @@ begin
 end;
 
 function if_mul                 (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i, j, k: integer; fres: double; ires: Int64; A, B, C, R: TVList;
-    cres : COMPLEX;
+var i: integer; fres: double; ires: Int64; A: TVList; cres : COMPLEX;
 begin
     ires := 1;
     fres := 1.0;
@@ -564,7 +564,17 @@ begin
             for i := 0 to A.high do cres := cres * A.C[i];
             result := TVComplex.Create(cres);
         end;
-        4: begin //декартово произведение множеств
+        4: result := ifh_intersection(A);
+    end;
+end;
+
+//декартово произведение множеств
+function if_cartesian_product   (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i, j, k: integer; A, B, C, R: TVList;
+begin
+    case params_is(PL, result, [
+        tpListOfLists]) of
+        1: begin
             A := nil;
             B := nil;
             C := nil;
@@ -1711,9 +1721,8 @@ end;
 
 function if_intersection        (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
-    case params_is(PL, result, [tpNIL, tpListOfLists]) of
-        1: result := TVList.Create;
-        2: result := ifh_intersection(PL.L[0]);
+    case params_is(PL, result, [tpListOfLists]) of
+        1: result := ifh_intersection(PL.L[0]);
     end;
 end;
 
@@ -3247,7 +3256,7 @@ begin
 end;
 
 
-const int_fun_count = 165;
+const int_fun_count = 166;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3255,6 +3264,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'+';                         f:if_add;                   s:'(:rest n)'),
 (n:'-';                         f:if_sub;                   s:'(a :optional b)'),
 (n:'*';                         f:if_mul;                   s:'(:rest n)'),
+(n:'CARTESIAN-PRODUCT';         f:if_cartesian_product;     s:'(:rest n)'),
 (n:'/';                         f:if_div;                   s:'(a :optional b)'),
 (n:'DIV';                       f:if_div_int;               s:'(a b)'),
 (n:'MOD';                       f:if_mod;                   s:'(a b)'),
@@ -3496,6 +3506,7 @@ begin
             oeDEBUG     : op('DEBUG');
             oeDEFAULT   : op('DEFAULT');
             oeDELETE    : op('DELETE');
+            oeEXECUTE_FILE:op('EXECUTE-FILE');
             oeELT       : op('ELT');
             oeERROR     : op('ERROR');
             oeFOR       : op('FOR');
@@ -3622,7 +3633,6 @@ function TEvaluationFlow.oph_block(PL: TVList; start: integer; with_frame: boole
 var frame_start: integer; pc, i: integer; V: TValue;
 begin
     frame_start := stack.Count;
-    //if with_frame then stack.new_var(' <block>', TVString.Create(' <block>'), true);
 
     pc := start;
     V := TVList.Create;
@@ -4015,7 +4025,6 @@ try
     try for i := 2 to PL.High do elts.Add(eval(PL[i]));
     except elts.Free; raise; end;
     (CP.look as TVList).Append(elts);
-    //for i := 2 to PL.High do (CP.look as TVList).Add(eval(PL[i]));
 
     result := TVT.Create;
 finally
@@ -4026,7 +4035,6 @@ end;
 function TEvaluationFlow.op_const                   (PL: TVList): TValue;
 var tmp: TValue;
 begin
-  //WriteLn(PL.AsString());
     if (PL.Count<>3) or not (tpOrdinarySymbol(PL.look[1]) or tpList(PL.look[1]))
     then raise ELE.malformed('CONST');
 
@@ -4254,6 +4262,26 @@ begin
     end;
 
     raise ELE.Create(smsg, sclass, sstack);
+end;
+
+
+function TEvaluationFlow.op_execute_file(PL: TVList): TValue;
+var fn: TValue;
+begin
+    if PL.Count<>2 then raise ELE.Malformed('EXECUTE-FILE');
+
+    try
+        result := nil;
+        fn := nil;
+        fn := eval(PL[1]);
+
+        if not tpString(fn) then raise ELE.InvalidParameters;
+
+        oph_execute_file((fn as TVString).S);
+        result := TVT.Create;
+    finally
+        fn.Free;
+    end;
 end;
 
 
@@ -4852,8 +4880,6 @@ try
     fun.stack := TVSymbolStack.Create(nil);
     try
         sl := lisya_optimizer.extract_body_symbols(fun.body,PL.L[sign_pos]);
-        //WriteLn(fun.body.AsString);
-        //WriteLn(sl.AsString);
               //   extract_body_symbols(fun.body);
         fill_subprogram_stack(fun, sl);
         fun.rest := TVList.Create;
@@ -5201,6 +5227,7 @@ begin
         oeDELETE    : result := op_delete(PL);
         oeELT       : result := op_elt(PL);
         oeERROR     : result := op_error(PL);
+        oeEXECUTE_FILE: result := op_execute_file(PL);
         oeFOR       : result := op_for(PL);
         oeFUNCTION  : result := op_function(PL);
         oeGOTO      : result := op_goto(PL);

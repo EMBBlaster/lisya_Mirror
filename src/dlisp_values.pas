@@ -373,11 +373,7 @@ type
     public
         constructor Create; overload;
         constructor Create(VL: array of TValue; free_objects: boolean = true); overload;
-        {$IFDEF ARRAY_LIST}
-        constructor Create(body: TListBodyA); overload;
-        {$ELSE}
         constructor Create(body: TListBody); overload;
-        {$ENDIF}
         destructor Destroy; override;
         function Copy(): TValue; override;
         function AsString(): unicodestring; override;
@@ -702,6 +698,7 @@ type
             oeDELETE,      //mod
             oeELT,
             oeERROR,
+            oeEXECUTE_FILE,
             oeFOR,
             oeFUNCTION,
             oeGOTO,
@@ -726,7 +723,6 @@ type
             oeWHEN,
             oeWHILE,
             oeWITH);
-    //and append block break case cond const continue default elt for goto if if-nil last let or pop procedure push quote set stack structure structure-as val var when while
 
     TVOperator = class (TVInternalSubprogram)
         op_enum: TOperatorEnum;
@@ -904,23 +900,6 @@ begin
     else result := result+')';
 end;
 
-{ TSubprogramSignature }
-
-//function TSubprogramSignature.Copy: TSubprogramSignature;
-//begin
-//    result.required_count:=self.required_count;
-//    result.mode:= self.mode;
-//    result.p := system.copy(self.p);
-//end;
-//
-//procedure TSubprogramSignature.Clear;
-//var i: integer;
-//begin
-//    required_count := 0;
-//    mode := spmReq;
-//    for i := 0 to high(p) do p[i].V.Free;
-//    SetLength(p, 0);
-//end;
 
 { TVProcedureForwardDeclaration }
 
@@ -1232,17 +1211,6 @@ begin
     //этот метод нужен процедуре разделения памяти
     keys.CopyOnWrite;
 end;
-
-//procedure TVHashTable.AddPair(key, value: TValue);
-//var h: DWORD; i: integer;
-//begin
-//    h := key.hash;
-//    keys.Add(key);
-//    data.Add(value);
-//    i := FindEmpty(h);
-//    index[i].h := h;
-//    index[i].k := data.high;
-//end;
 
 
 function TVHashTable.Get(key: TValue): TValue;
@@ -2229,7 +2197,7 @@ end;
 
 function TVOperator.AsString: unicodestring;
 begin
-    result := '#<OPERATOR '+symbol_uname(nN)+'>';//+signature.AsString()+'>';
+    result := '#<OPERATOR '+symbol_uname(nN)+'>';
 end;
 
 function TVOperator.hash: DWORD;
@@ -2278,7 +2246,7 @@ end;
 
 function TVInternalFunction.AsString: unicodestring;
 begin
-    result := '#<INTERNAL '+symbol_uname(nN)+'>';//+signature.AsString()+'>';
+    result := '#<INTERNAL '+symbol_uname(nN)+'>';
 end;
 
 function TVInternalFunction.hash: DWORD;
@@ -2567,9 +2535,7 @@ function TVSymbol.Copy: TValue;
 begin
     result := TVSymbol.CreateEmpty;
     (result as TVSymbol).fname := self.fname;
-    //(result as TVSymbol).funame := self.funame;
     (result as TVSymbol).fN := self.fN;
-    //(result as TVSymbol).fKeyword := self.fKeyword;
 end;
 
 function TVSymbol.AsString: unicodestring;
@@ -2842,7 +2808,6 @@ begin
         fL.count:=fL_old.count;
         for i := 0 to fL_old.Count-1 do fL.V[i] := fL_old.V[i].copy;
         Dec(fL_old.ref_count);
-        //inc(list_copy_on_write_count);
         result := true;
     end
     else result := false;
@@ -2917,4 +2882,4 @@ finalization
     kwFLAG.Free;
     _.Free;
 
-end.  //3477 3361 3324 3307 2938  2911 2988 3079
+end.  //3477 3361 3324 3307 2938  2911 2988 3079 2885
