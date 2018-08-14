@@ -3264,7 +3264,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'+';                         f:if_add;                   s:'(:rest n)'),
 (n:'-';                         f:if_sub;                   s:'(a :optional b)'),
 (n:'*';                         f:if_mul;                   s:'(:rest n)'),
-(n:'CARTESIAN-PRODUCT';         f:if_cartesian_product;     s:'(:rest n)'),
+(n:'CARTESIAN-PRODUCT ДЕКАРТОВО-ПРОИЗВЕДЕНИЕ';f:if_cartesian_product;     s:'(:rest n)'),
 (n:'/';                         f:if_div;                   s:'(a :optional b)'),
 (n:'DIV';                       f:if_div_int;               s:'(a b)'),
 (n:'MOD';                       f:if_mod;                   s:'(a b)'),
