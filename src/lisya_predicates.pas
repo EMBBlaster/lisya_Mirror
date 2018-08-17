@@ -49,6 +49,8 @@ function tpHashTable                                (V: TValue): boolean;
 
 function tpInteger                                  (V: tValue): boolean;
 
+function tpIntegerOrNIL                             (V: tValue): boolean;
+
 function tpInternalFunction                         (V: TValue): boolean;
 
 function tpKeyword                                  (V: TValue): boolean;
@@ -105,6 +107,8 @@ function tpRange                                    (V: TValue): boolean;
 
 function tpReal                                     (V: TValue): boolean;
 
+function tpRealOrNIL                                (V: TValue): boolean;
+
 function tpRecord                                   (V: TValue): boolean;
 
 //function tpReferenceOnly                            (V: TValue): boolean;
@@ -149,6 +153,14 @@ function vpFlag_LAZY                                (V :TValue): boolean;
 
 function vpFlag_BY_HEAD                             (V :TValue): boolean;
 
+
+function vpInteger60Range                           (V: TValue): boolean;
+
+function vpInteger60RangeOrNIL                      (V: TValue): boolean;
+
+function vpInteger1000Range                         (V: TValue): boolean;
+
+function vpInteger1000RangeOrNIL                    (V: TValue): boolean;
 
 function vpIntegerAbsOne                            (V: TValue): boolean;
 
@@ -473,6 +485,11 @@ begin
     result := V is TVInteger;
 end;
 
+function tpIntegerOrNIL(V: tValue): boolean;
+begin
+    result := tpInteger(V) or tpNIL(V);
+end;
+
 function tpInternalFunction(V: TValue): boolean;
 begin
     result := V is TVInternalFunction;
@@ -612,6 +629,11 @@ end;
 function tpReal(V: TValue): boolean;
 begin
     result := (V is TVReal);
+end;
+
+function tpRealOrNIL(V: TValue): boolean;
+begin
+    result := tpReal(V) or tpNIL(V);
 end;
 
 function tpRecord(V: TValue): boolean;
@@ -755,6 +777,29 @@ begin
     result := tpNIL(V) or vphSymbolName(V, ':BY-HEAD');
 end;
 
+function vpInteger60Range(V: TValue): boolean;
+begin
+    result := (V is TVInteger)
+        and ((V as TVInteger).fI>=0)
+        and ((V as TVInteger).fI<60);
+end;
+
+function vpInteger60RangeOrNIL(V: TValue): boolean;
+begin
+    result := vpInteger60Range(V) or tpNIL(V);
+end;
+
+function vpInteger1000Range(V: TValue): boolean;
+begin
+    result := (V is TVInteger)
+        and ((V as TVInteger).fI>=0)
+        and ((V as TVInteger).fI<1000);
+end;
+
+function vpInteger1000RangeOrNIL(V: TValue): boolean;
+begin
+    result := vpInteger1000Range(V) or tpNIL(V);
+end;
 
 function vpIntegerAbsOne                            (V: TValue): boolean;
 begin

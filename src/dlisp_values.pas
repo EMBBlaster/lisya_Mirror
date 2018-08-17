@@ -1564,7 +1564,7 @@ begin
 end;
 
 function TVDuration.AsString: unicodestring;
-var hour,minute,second, ms: WORD;
+var hour,minute,second, ms: WORD; h: integer;
     function dd(i: integer): unicodestring;
     begin
         result := IntToStr(i);
@@ -1577,8 +1577,10 @@ var hour,minute,second, ms: WORD;
         if Length(result)=1 then result := '00'+result;
     end;
 begin
-    DecodeTime(abs(fDT), hour, minute, second, ms);
-    result := dd(hour)+':'+dd(minute)+':'+dd(second)+'.'+ddd(ms);
+    DecodeTime(fDT, hour, minute, second, ms);
+    h := hour+round(abs(int(fDT))*24);
+    //result := dd(hour)+':'+dd(minute)+':'+dd(second)+'.'+ddd(ms);
+    result := format('%.0d:%.2d:%.2d:%.3d',[h, minute, second, ms]);
     if fDT<0 then result := '-'+result;
 end;
 

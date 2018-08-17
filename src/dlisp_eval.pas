@@ -915,6 +915,22 @@ begin
     end;
 end;
 
+function if_duration            (const PL: TVList; {%H-}call: TCallProc): TValue;
+var d: double;
+begin
+    case params_is(PL, result, [
+        tpRealOrNIL, tpRealOrNIL, tpRealOrNIL, tpRealOrNIL]) of
+        1: begin
+            d := 0;
+            if tpReal(PL.look[0]) then d := d + PL.F[0]/24;
+            if tpReal(PL.look[1]) then d := d + PL.F[1]/(24*60);
+            if tpReal(PL.look[2]) then d := d + PL.F[2]/(24*60*60);
+            if tpReal(PL.look[3]) then d := d + PL.F[3]/(24*60*60*1000);
+        end;
+    end;
+    result := TVDuration.Create(d);
+end;
+
 function if_hash                (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -3289,7 +3305,7 @@ begin
 end;
 
 
-const int_fun_count = 170;
+const int_fun_count = 171;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3323,6 +3339,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RAD';                       f:if_rad;                   s:'(d)'),
 (n:'DEG';                       f:if_deg;                   s:'(r)'),
 (n:'COMPLEX';                   f:if_complex;               s:'(r i)'),
+(n:'DURATION';                  f:if_duration;              s:'(:optional h m s ms)'),
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 (n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
 (n:'TRIM';                      f:if_trim;                  s:'(s)'),
