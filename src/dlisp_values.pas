@@ -1565,22 +1565,10 @@ end;
 
 function TVDuration.AsString: unicodestring;
 var hour,minute,second, ms: WORD; h: integer;
-    function dd(i: integer): unicodestring;
-    begin
-        result := IntToStr(i);
-        if Length(result)=1 then result := '0'+result;
-    end;
-    function ddd(i: integer): unicodestring;
-    begin
-        result := IntToStr(i);
-        if Length(result)=2 then result := '0'+result;
-        if Length(result)=1 then result := '00'+result;
-    end;
 begin
     DecodeTime(fDT, hour, minute, second, ms);
     h := hour+round(abs(int(fDT))*24);
-    //result := dd(hour)+':'+dd(minute)+':'+dd(second)+'.'+ddd(ms);
-    result := format('%.0d:%.2d:%.2d:%.3d',[h, minute, second, ms]);
+    result := format('%.0d:%.2d:%.2d.%.3d',[h, minute, second, ms]);
     if fDT<0 then result := '-'+result;
 end;
 
@@ -1603,22 +1591,11 @@ end;
 
 function TVDateTime.AsString(): unicodestring;
 var year,month,day,hour,minute,second, ms: WORD;
-    function dd(i: integer): unicodestring;
-    begin
-        result := IntToStr(i);
-        if Length(result)=1 then result := '0'+result;
-    end;
-    function ddd(i: integer): unicodestring;
-    begin
-        result := IntToStr(i);
-        if Length(result)=2 then result := '0'+result;
-        if Length(result)=1 then result := '00'+result;
-    end;
 begin
     DecodeDate(fDT, year, month, day);
     DecodeTime(fDT, hour, minute, second, ms);
-    result := IntToStr(Year)+'.'+dd(month)+'.'+dd(day)+
-        '_'+dd(hour)+':'+dd(minute)+':'+dd(second)+'.'+ddd(ms);
+    result := format('%.4d.%.2d.%.2d_%.2d:%.2d:%.2d.%.3d',
+                     [year,month,day,hour,minute,second,ms]);
 end;
 
 function TVDateTime.hash: DWORD;
