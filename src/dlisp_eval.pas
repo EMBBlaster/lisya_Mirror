@@ -2608,18 +2608,30 @@ begin
     case params_is(PL, result, [
         vpStreamPointerActive, vpIntegerByte,
         vpStreamPointerActive, tpBytes]) of
-        1: begin
-            (PL.look[0] as TVStreamPointer).body.write_byte(PL.I[1]);
-            result := TVT.Create
-        end;
-        2: begin
-            (PL.look[0] as TVStreamPointer).body.write_bytes(
+        1: (PL.look[0] as TVStreamPointer).body.write_byte(PL.I[1]);
+        2: (PL.look[0] as TVStreamPointer).body.write_bytes(
                 (PL.look[1] as TVBytes).fBytes);
-            result := TVT.Create;
-        end;
     end;
+    result := TVT.Create;
 end;
 
+function if_write_float_single  (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpStreamPointerActive, tpReal]) of
+        1: (PL.look[0] as TVStreamPointer).body.write_single(PL.F[1]);
+    end;
+    result := TVT.Create;
+end;
+
+function if_write_float_double  (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpStreamPointerActive, tpReal]) of
+        1: (PL.look[0] as TVStreamPointer).body.write_double(PL.F[1]);
+    end;
+    result := TVT.Create;
+end;
 
 function if_read_character      (const PL: TVList; {%H-}call: TCallProc): TValue;
 var ch: unicodechar;
@@ -3265,7 +3277,7 @@ begin
 end;
 
 
-const int_fun_count = 167;
+const int_fun_count = 169;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3429,6 +3441,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'WRITE-STRING';              f:if_write_string;          s:'(stream s)'),
 (n:'WRITE-LINE';                f:if_write_line;            s:'(s l :optional sep)'),
 (n:'WRITE-BYTE';                f:if_write_byte;            s:'(s i)'),
+(n:'WRITE-FLOAT-SINGLE';        f:if_write_float_single;    s:'(s f)'),
+(n:'WRITE-FLOAT-DOUBLE';        f:if_write_float_double;    s:'(s f)'),
 
 (n:'READ';                      f:if_read;                  s:'(:optional s)'),
 (n:'WRITE';                     f:if_write;                 s:'(s a)'),

@@ -54,6 +54,8 @@ type
       procedure write_bytes(bb: TBytes);
       procedure write_character(ch: unicodechar);
       procedure write_string(s: unicodestring);
+      procedure write_single(f: double);
+      procedure write_double(f: double);
 
       property position: Int64 read GetPosition write SetPosition;
       property size: Int64 read GetSize write SetSize;
@@ -832,6 +834,20 @@ procedure TLStream.write_string(s: unicodestring);
 var i: integer;
 begin
     for i := 1 to Length(s) do write_character(s[i]);
+end;
+
+procedure TLStream.write_single(f: double);
+var d: record case byte of 0: (f: single); 1: (b: array [1..SizeOf(single)] of Byte); end;
+begin
+    d.f := f;
+    WriteBytes(d.b[1], SizeOf(single), true);
+end;
+
+procedure TLStream.write_double(f: double);
+var d: record case byte of 0: (f: double); 1: (b: array [1..SizeOf(double)] of Byte); end;
+begin
+    d.f:=f;
+    WriteBytes(d.b[1], SizeOf(double), true);
 end;
 
 procedure TLStream.close_stream;
