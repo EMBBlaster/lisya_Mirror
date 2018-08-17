@@ -205,65 +205,6 @@ begin
 end;
 
 
-function valid_sign(const PL: TVList; out E: TValue; tp: array of const): integer;
-var i,l, p: integer;
-    case_n, cmax, cmin, tpc, Pcount: integer;
-label return, next;
-begin
-    //  Эта функция проверяет переданный список параметров на предмет
-    // соответствия параметров шаблону.
-    //  Если среди параметров есть ошибки первая из них возвращается через
-    // вариантный параметр E в вызвавшую функция где должна использоваться в
-    // качестве результата. Наличие ошибки сигнализируется возвратом значения -1
-    // через результат функции. Таким образом если каждая функция будет проверять
-    // свои параметры посредством этой, то ошибки будут распространяться
-    // назад по стеку вызовов.
-    //  Если ошибок в параметрах нет, то производится поиск подходящего шаблона
-    // номер первого подошедшего возвращается как результат. Если ни один не
-    // подошёл - возвращается 0.
-    //  Здесь применена новая для меня фича языка - параметр типа
-    //  "array of const". Со стороны вызывающей функции выглядит как открытый
-    // массив значений произвольного типа, но изнутри как массив TVarRec. Этот
-    // механизм не позволяет передавать массивы и записи.
-
-
-    E := nil;
-    pCount := PL.Count - 1;
-
-    case_n := 0;
-    if tpNIL(PL) or (not TTypePredicate(tp[0].VPointer)(PL.look[0]))
-    then goto return;
-    case_n := 1;
-    p := 1;
-    while p<length(tp) do begin
-        assert((tp[p].VType=vtinteger) and (tp[p+1].VType=vtinteger),
-                'Нарушение структуры шаблона проверки типов');
-        cmin := tp[p].VInteger;
-        cmax := tp[p+1].VInteger;
-        if cmax>=cmin then tpc := cmax else tpc := cmin + 1;
-        assert(length(tp)>=(p+tpc+2),
-                'Нарушение структуры шаблона проверки типов');
-        if Pcount<cmin then goto next;
-        if (cmax>=0) and (Pcount>cmax) then goto next;
-        if Pcount<tpc then l := Pcount else l := tpc;
-        for i:=0 to l-1 do
-            if not TTypePredicate(tp[p+2+i].VPointer)(PL.look[i+1])
-            then goto next;
-            if Pcount>tpc then
-                for i := tpc to Pcount do
-                    if not TTypePredicate(tp[p+2+tpc-1].VPointer)(PL.look[i])
-                        then goto next;
-        goto return;
-    next:
-        Inc(case_n);
-        p := p+2+tpc;
-    end;
-    case_n := 0;
-
-
-return:
-    result := case_n;
-end;
 //------------------------------------------------------------------------------
 function params_is(PL: TVList;
                     out E: TValue;
@@ -4404,23 +4345,22 @@ end;
 function TEvaluationFlow.op_cond                    (PL: TVList): TValue;
 var i: integer; tmp: TValue;
 begin try
-    case valid_sign(PL, result, [@tpOperator,
-        0,-1, @tpListNotEmpty]) of
-        1: begin
-            tmp := TVList.Create;
-            for i := 1 to PL.Count-1 do begin
-                FreeAndNil(tmp);
-                tmp := eval(PL.L[i][0]);
-                if not tpNIL(tmp)
-                then begin
-                    FreeAndNil(tmp);
-                    tmp := oph_block(PL.L[i], 1, false);
-                    break;
-                end;
-            end;
+    tmp := TVList.Create;
+
+    for i := 1 to PL.high do
+        if not tpListNotEmpty(PL.look[i]) then raise ELE.Malformed('COND');
+
+    for i := 1 to PL.Count-1 do begin
+        FreeAndNil(tmp);
+        tmp := eval(PL.L[i][0]);
+        if not tpNIL(tmp)
+        then begin
+            FreeAndNil(tmp);
+            tmp := oph_block(PL.L[i], 1, false);
+            break;
         end;
-        0: raise ELE.malformed('COND');
     end;
+
     result := tmp;
 except
     tmp.Free; raise;

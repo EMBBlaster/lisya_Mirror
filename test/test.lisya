@@ -232,6 +232,11 @@
     ;(assertion (= L \(1 2 9)) "set last")
     )
 
+(log \COND)
+(block "cond"
+    (assertion (= nil (cond)) "cond 1")
+    (assertion (= 1 (cond ((= 0 1) 0) ((= 1 1) 1))) "cond 2"))
+
 (log \RECORD)
 (block "record"
     (var s0 (record :x 0 :y 0))
