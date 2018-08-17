@@ -35,6 +35,7 @@ uses
     ,lisya_process
     ,lisya_symbols
     ,lisya_gc
+    ,lisya_heuristic
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -1217,11 +1218,19 @@ begin
 end;
 
 
-function if_likeness              (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_likeness            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpString, tpString]) of
         1: result := TVInteger.Create(ifh_like(PL.S[0],PL.S[1]));
+    end;
+end;
+
+function if_levenshtein         (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpString, tpString]) of
+        1: result := TVInteger.Create(levenshtein(PL.S[0],PL.S[1]));
     end;
 end;
 
@@ -3256,7 +3265,7 @@ begin
 end;
 
 
-const int_fun_count = 166;
+const int_fun_count = 167;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3315,6 +3324,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'TEST-DYN';                  f:if_test_dyn;              s:'(:rest msgs)'),
 //(n:'CANVAS';                    f:if_canvas;                s:'()'),
 (n:'LIKENESS СХОДСТВО';         f:if_likeness;              s:'(s1 s2)'),
+(n:'LEVENSHTEIN';               f:if_levenshtein;           s:'(s1 s2)'),
 
 
 (n:'EXTRACT-FILE-EXT';          f:if_extract_file_ext;      s:'(s)'),
