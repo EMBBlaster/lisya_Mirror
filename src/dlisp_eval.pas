@@ -2850,12 +2850,24 @@ begin
     end;
 end;
 
+function if_decimal             (const PL: TVList; {%H-}call: TCallProc): TValue;
+var d: integer;
+begin
+    case params_is(PL, result, [
+        tpInteger,  vpIntegerNotNegative,
+        tpInteger,  tpNIL]) of
+        1: result := TVString.Create(format('%.'+IntToStr(PL.I[1])+'d', [PL.I[0]]));
+        2: result := TVString.Create(IntToStr(PL.I[0]));
+    end;
+end;
+
 function if_fixed               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
-        tpReal,  vpIntegerNotNegative]) of
+        tpReal, vpIntegerNotNegative]) of
         1: result := TVString.Create(FloatToStrF(PL.F[0], ffFixed, 0, PL.I[1]));
     end;
+
 end;
 
 function if_col                 (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -3277,7 +3289,7 @@ begin
 end;
 
 
-const int_fun_count = 169;
+const int_fun_count = 170;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3453,7 +3465,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'FMT';                       f:if_fmt;                   s:'(stream :rest s)'),
 (n:'LOG';                       f:if_log;                   s:'(:rest s)'),
 (n:'HEX';                       f:if_hex;                   s:'(i :optional d)'),
-(n:'FIXED';                     f:if_fixed;                 s:'(f :optional d)'),
+(n:'DECIMAL';                   f:if_decimal;               s:'(i :optional d)'),
+(n:'FIXED';                     f:if_fixed;                 s:'(f d)'),
 (n:'COL';                       f:if_col;                   s:'(w v :optional a)'),
 (n:'LST';                       f:if_fmt_list;              s:'(l :optional s b e)'),
 (n:'UPPER-CASE';                f:if_upper_case;            s:'(s)'),

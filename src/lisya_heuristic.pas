@@ -8,7 +8,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    Classes, SysUtils;
+    Classes, SysUtils, mar;
 
 function levenshtein(s1, s2: unicodestring): integer;
 
@@ -164,8 +164,6 @@ end;
 function levenshtein(s1, s2: unicodestring): integer;
 var v1, v2: TWordVec;
 begin
-    //WriteLn(normalize(s1));
-    //WriteLn(normalize(s2));
     v1 := to_vec(normalize(s1));
     v2 := to_vec(normalize(s2));
     result := vec_dist(v1, v2);

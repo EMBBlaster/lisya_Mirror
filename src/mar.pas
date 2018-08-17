@@ -23,6 +23,7 @@ function concat_integers(i1, i2: TIntegers): TIntegers;
 procedure append_integers(var i1: TIntegers; i2: TIntegers); inline;
 procedure append_integer(var i1: TIntegers; i: integer); inline;
 
+
 type
 
     { TCountingObject }
