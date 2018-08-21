@@ -467,7 +467,8 @@ begin
     {6} tpDateTime, tpDuration,
     {7} tpDuration, tpDuration,
     {8} tpNumber,   tpNumber,
-    {9} tpList,     tpList]) of
+    {9} tpList,     tpList,
+    {10}tpDuration, tpNIL]) of
         1: result := TVInteger.Create(-PL.I[0]);
         2: result := TVFloat.Create(-PL.F[0]);
         3: result := TVInteger.Create(PL.I[0] - PL.I[1]);
@@ -478,6 +479,7 @@ begin
             (PL.look[0] as TVTime).fDT - (PL.look[1] as TVTime).fDT);
         8: result := TVComplex.Create(PL.C[0] - PL.C[1]);
         9: result := ifh_difference(PL.L[0], PL.L[1]);
+        10: result := TVDuration.Create(-(PL.look[0] as TVDuration).fDT);
     end;
 end;
 
