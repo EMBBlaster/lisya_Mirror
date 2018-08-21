@@ -176,6 +176,10 @@ function vpIntegerPositive                          (V: TValue): boolean;
 
 function vpIntegerRoundToRange                      (V: TValue): boolean;
 
+function vpIntegerWORD                              (V: TValue): boolean;
+
+function vpIntegerWORDorNIL                         (V: TValue): boolean;
+
 
 function vpKeyword__                                (V: TValue): boolean;
 
@@ -839,6 +843,18 @@ begin
         and Math.InRange((V as TVInteger).fI,
             low(math.TRoundToRange),
             high(math.TRoundToRange));
+end;
+
+function vpIntegerWORD(V: TValue): boolean;
+begin
+    result := (V is TVInteger)
+        and ((V as TVInteger).fI>=0)
+        and ((V as TVInteger).fI<(256*256));
+end;
+
+function vpIntegerWORDorNIL(V: TValue): boolean;
+begin
+    result := vpIntegerWORD(V) or tpNIL(V);
 end;
 
 

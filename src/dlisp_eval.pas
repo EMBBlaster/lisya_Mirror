@@ -229,7 +229,7 @@ begin
 
     case_count := Length(tp) div PL.Count;
     for case_n := 1 to case_count+1 do begin
-        if case_n>case_count then raise ELE.InvalidParameters;
+        if case_n>case_count then raise ELE.Create('invalid parameters '+PL.AsString);
 
         if pr_confirm(case_n) then begin
             result := case_n;
@@ -872,6 +872,26 @@ begin
         end;
     end;
     result := TVDuration.Create(d);
+end;
+
+function if_datetime            (const PL: TVList; {%H-}call: TCallProc): TValue;
+var year,month,day,h,m,s,ms: WORD;
+begin
+    case params_is(PL, result, [
+        vpIntegerWORD, vpIntegerWORD, vpIntegerWORD,
+        vpIntegerWORDorNIL, vpIntegerWORDorNIL, vpIntegerWORDorNIL, vpIntegerWORDorNIL]) of
+        1: begin
+            year := PL.I[0];
+            month := PL.I[1];
+            day := PL.I[2];
+            if tpInteger(PL.look[3]) then h := PL.I[3] else h := 0;
+            if tpInteger(PL.look[4]) then m := PL.I[4] else m := 0;
+            if tpInteger(PL.look[5]) then s := PL.I[5] else s := 0;
+            if tpInteger(PL.look[6]) then ms := PL.I[6] else ms := 0;
+            result := TVDatetime.Create(ComposeDateTime(
+                EncodeDate(year,month,day), EncodeTime(h,m,s,ms)));
+        end;
+    end;
 end;
 
 function if_hash                (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -3248,7 +3268,7 @@ begin
 end;
 
 
-const int_fun_count = 171;
+const int_fun_count = 172;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3283,6 +3303,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'DEG';                       f:if_deg;                   s:'(r)'),
 (n:'COMPLEX';                   f:if_complex;               s:'(r i)'),
 (n:'DURATION';                  f:if_duration;              s:'(:optional h m s ms)'),
+(n:'DATE-TIME ДАТА-ВРЕМЯ';      f:if_datetime;              s:'(year month day :optional h m s ms)'),
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 (n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
 (n:'TRIM';                      f:if_trim;                  s:'(s)'),
