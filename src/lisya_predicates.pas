@@ -95,6 +95,8 @@ function tpOperator                                 (V: TValue): boolean;
 
 function tpOrdinarySymbol                           (V :TValue): boolean;
 
+function tpQueue                                    (V: TValue): boolean;
+
 function tpPredicate                                (V: TValue): boolean;
 
 function tpProcedure                                (V: TValue): boolean;
@@ -602,6 +604,11 @@ end;
 function tpOrdinarySymbol(V :TValue): boolean;
 begin
     result := (V is TVSymbol) and not (V is TVKeyword);
+end;
+
+function tpQueue(V: TValue): boolean;
+begin
+    result := V is TVQueue;
 end;
 
 function tpPredicate(V: TValue): boolean;

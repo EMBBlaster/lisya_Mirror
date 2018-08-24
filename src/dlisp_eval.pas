@@ -36,6 +36,7 @@ uses
     ,lisya_symbols
     ,lisya_gc
     ,lisya_heuristic
+    ,lisya_protected_objects
     {$IFDEF mysql55}
     ,mysql_55
     {$ENDIF}
@@ -1700,6 +1701,11 @@ begin
     end;
 end;
 
+function if_queue               (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    result := TVQueue.Create(TQueue.Create);
+end;
+
 function if_union               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [tpListOfLists]) of
@@ -3268,7 +3274,7 @@ begin
 end;
 
 
-const int_fun_count = 172;
+const int_fun_count = 173;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3364,6 +3370,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'MAP-TH';                    f:if_map_th;                s:'(p :rest l)'),
 (n:'MAP-CONCATENATE';           f:if_map_concatenate;       s:'(p :rest l)'),
 (n:'APPLY ПРИМЕНИТЬ';           f:if_apply;                 s:'(p :rest params)'),
+(n:'QUEUE ОЧЕРЕДЬ';             f:if_queue;                 s:'()'),
 
 (n:'UNION';                     f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION ПЕРЕСЕЧЕНИЕ';  f:if_intersection;          s:'(:rest a)'),
@@ -4023,9 +4030,10 @@ var CP: TVChainPointer;
 begin
     oph_eval_link_for_modification(CP, PL.look[1]);
 try
-    if not tpList(CP.look) then raise ELE.Create('target is not list');
+    if not (tpList(CP.look) or tpQueue(CP.look)) then raise ELE.Create('target is not list or queue');
 
-    result := (cp.look as TVList).POP;
+    if tpList(CP.look) then result := (cp.look as TVList).POP;
+    if tpQueue(CP.look) then result := (CP.look as TVQueue).q.pop as TValue;
 finally
     CP.Free;
 end;
@@ -4037,12 +4045,16 @@ begin
     oph_eval_link_for_modification(CP, PL.look[1]);
 try
     target := CP.look;
-    if not tpList(target) then raise ELE.Create('target is not list');
+    if not (tpList(target) or tpQueue(target)) then raise ELE.Create('target is not list or queue');
 
     elts := TVList.Create;
     try for i := 2 to PL.High do elts.Add(eval(PL[i]));
     except elts.Free; raise; end;
-    (CP.look as TVList).Append(elts);
+    if tpList(target) then (CP.look as TVList).Append(elts);
+    if tpQueue(target) then begin
+        for i := 0 to elts.high do (CP.look as TVQueue).q.push(elts.look[i]);
+        elts.Free;
+    end;
 
     result := TVT.Create;
 finally

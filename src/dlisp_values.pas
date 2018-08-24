@@ -14,6 +14,7 @@ uses
     lisia_charset, mar, lisya_zip, lisya_exceptions, lisya_streams,
     lisya_process
     ,lisya_symbols
+    ,lisya_protected_objects
     ;
 
 
@@ -786,6 +787,20 @@ type
     end;
 
 
+    { TVQueue }
+
+    TVQueue = class(TValue)
+        q: TQueue;
+        constructor Create(q_: TQueue);
+        destructor Destroy; override;
+
+        function Copy: TValue; override;
+        function AsString: unicodestring; override;
+        function Hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
+    end;
+
+
 
 
 procedure Assign(var v1, v2: TValue);
@@ -821,6 +836,39 @@ end;
 function op_null(V: TValue): boolean;
 begin
     result := (V is TVList) and ((V as TVList).count=0);
+end;
+
+{ TVQueue }
+
+constructor TVQueue.Create(q_: TQueue);
+begin
+    q := q_;
+end;
+
+destructor TVQueue.Destroy;
+begin
+    q.Release;
+    inherited Destroy;
+end;
+
+function TVQueue.Copy: TValue;
+begin
+    result := TVQueue.Create(q.Ref as TQueue);
+end;
+
+function TVQueue.AsString: unicodestring;
+begin
+    result := '#<'+q.description+'>';
+end;
+
+function TVQueue.Hash: DWORD;
+begin
+    result := mar.PointerToQWORD(Pointer(q)) and $FFFFFFFF;
+end;
+
+function TVQueue.equal(V: TValue): boolean;
+begin
+    result := (V is TVQueue) and (q=(V as TVQueue).q);
 end;
 
 { TVFunctionForwardDeclaration }
