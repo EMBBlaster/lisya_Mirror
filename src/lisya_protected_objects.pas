@@ -24,6 +24,7 @@ type
         function description: unicodestring; override;
         procedure push(V: TObject);
         function pop: TObject;
+        function empty: boolean;
     end;
 
 implementation
@@ -77,6 +78,16 @@ begin
             SetLength(q, Length(q)-1);
         end
         else result := TVList.Create;
+    finally
+        unlock;
+    end;
+end;
+
+function TQueue.empty: boolean;
+begin
+    try
+        lock;
+        result := Length(q)=0;
     finally
         unlock;
     end;

@@ -398,6 +398,8 @@ function vpSymbolQualified                          (V: TValue): boolean;
 
 implementation /////////////////////////////////////////////////////////////////
 
+uses lisya_protected_objects;
+
 function tphListOf(V: TValue; p: TTypePredicate): boolean; inline;
 var i: integer;
 begin
@@ -776,7 +778,8 @@ end;
 
 function vpEmpty(V: TValue): boolean;
 begin
-    result := (V is TVCompound) and ((V as TVCompound).Count=0);
+    result := ((V is TVCompound) and ((V as TVCompound).Count=0))
+        or ((V is TVQueue) and (V as TVQueue).target.empty);
 end;
 
 function vpFlag_LAZY(V: TValue): boolean;
