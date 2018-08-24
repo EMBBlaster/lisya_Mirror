@@ -19,7 +19,9 @@ type
     private
         q: array of TObject;
     public
-        function description: unicodestring;
+        constructor Create;
+        destructor Destroy; override;
+        function description: unicodestring; override;
         procedure push(V: TObject);
         function pop: TObject;
     end;
@@ -30,6 +32,20 @@ uses
     dlisp_values, lisya_gc;
 
 { TQueue }
+
+constructor TQueue.Create;
+begin
+    inherited;
+    q := nil;
+end;
+
+destructor TQueue.Destroy;
+var i: integer;
+begin
+    for i := 0 to high(q) do q[i].Free;
+    q := nil;
+    inherited Destroy;
+end;
 
 function TQueue.description: unicodestring;
 begin

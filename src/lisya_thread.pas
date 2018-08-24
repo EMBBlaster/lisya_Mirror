@@ -53,6 +53,37 @@ type
         function WaitResult: TValue;
     end;
 
+    { TLThreadBody }
+
+    TLThreadBody = class (TThread)
+    private
+        fflow: TEvaluationFlow;
+        fexpr: TVList;
+        fresult: TValue;
+        eclass, emessage, estack: unicodestring;
+        fError: boolean;
+    protected
+        procedure Execute; override;
+    public
+        constructor Create(expr: TVList);
+        destructor Destroy; override;
+        function WaitResult: TValue;
+    end;
+
+    TLThread = class (TCountingObject)
+    private
+        thread: TLThreadBody;
+        fname: unicodestring;
+    public
+        constructor Create(expr: TVList);
+        destructor Destroy; override;
+        function description: unicodestring; override;
+        function WaitResult: TValue;
+    end;
+
+    TVThread = TVPointer<TLThread>;
+
+
 
 function ifh_map_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
 function ifh_reject_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
@@ -68,6 +99,8 @@ var th: boolean = true;
 
 procedure set_threads_count(n: integer);
 function CPU_Count: integer;
+
+function tpThread(V: TValue): boolean;
 
 implementation
 
@@ -89,6 +122,11 @@ begin
         result := GetCPUCount;
     {$ENDIF}
     if result <1 then result := 1;
+end;
+
+function tpThread(V: TValue): boolean;
+begin
+    result := V is TVThread;
 end;
 
 
@@ -193,6 +231,82 @@ begin
     tn := task_i;
     Inc(task_i);
     LeaveCriticalSection(task_cs);
+end;
+
+{ TLThread }
+
+constructor TLThread.Create(expr: TVList);
+begin
+    inherited Create;
+    fname := expr.AsString;
+    thread := TLThreadBody.Create(expr);
+end;
+
+destructor TLThread.Destroy;
+begin
+    thread.Destroy;
+    inherited Destroy;
+end;
+
+function TLThread.description;
+begin
+    if thread.Finished
+    then result := 'THREAD FINISHED '+fname
+    else result := 'THREAD '+fname
+end;
+
+function TLThread.WaitResult: TValue;
+begin
+    result := thread.WaitResult;
+end;
+
+{ TLThreadBody }
+
+procedure TLThreadBody.Execute;
+begin
+    try
+        fresult := fflow.eval(fexpr);
+    except
+        on E:ELE do begin
+            fError := true;
+            eclass := E.EClass;
+            emessage := E.Message;
+            estack := E.EStack;
+        end;
+        on E:Exception do begin
+            fError := true;
+            eclass := '!'+E.ClassName+'!';
+            emessage := E.Message;
+            estack := 'thread';
+        end;
+    end;
+end;
+
+constructor TLThreadBody.Create(expr: TVList);
+begin
+    fexpr := separate(expr) as TVList;
+    fflow := TEvaluationFlow.CreatePure;
+    fResult := nil;
+    fError := false;
+    FreeOnTerminate := false;
+    inherited Create(false);
+end;
+
+destructor TLThreadBody.Destroy;
+begin
+    WaitFor;
+    fflow.Free;
+    fResult.Free;
+    //fExpr.Free;
+    inherited;
+end;
+
+function TLThreadBody.WaitResult: TValue;
+begin
+    result := nil;
+    self.WaitFor;
+    if fError then raise ELE.Create(emessage,eclass,estack);
+    result := fResult.Copy;
 end;
 
 

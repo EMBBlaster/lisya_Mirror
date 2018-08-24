@@ -703,6 +703,7 @@ begin
     result := V is TVT;
 end;
 
+
 function tpTime(V: TValue): boolean;
 begin
     result := V is TVTime;

@@ -787,19 +787,23 @@ type
     end;
 
 
-    { TVQueue }
 
-    TVQueue = class(TValue)
-        q: TQueue;
-        constructor Create(q_: TQueue);
+    { TVPointer }
+
+    TVPointer<T: TCountingObject> = class (TValue)
+        target: T;
+        constructor Create(target_: T);
         destructor Destroy; override;
 
         function Copy: TValue; override;
         function AsString: unicodestring; override;
         function Hash: DWORD; override;
-        function equal(V: TValue): boolean; override;
+        function equal(V: TValue): boolean;override;
     end;
 
+    { TVQueue }
+
+    TVQueue = TVPointer<TQueue>;
 
 
 
@@ -838,38 +842,39 @@ begin
     result := (V is TVList) and ((V as TVList).count=0);
 end;
 
-{ TVQueue }
+{ TVPointer }
 
-constructor TVQueue.Create(q_: TQueue);
+constructor TVPointer<T>.Create(target_: T);
 begin
-    q := q_;
+    target := target_;
 end;
 
-destructor TVQueue.Destroy;
+destructor TVPointer<T>.Destroy;
 begin
-    q.Release;
+    target.release;
     inherited Destroy;
 end;
 
-function TVQueue.Copy: TValue;
+function TVPointer<T>.Copy: TValue;
 begin
-    result := TVQueue.Create(q.Ref as TQueue);
+    result := TVPointer<T>.Create(target.ref as T);
 end;
 
-function TVQueue.AsString: unicodestring;
+function TVPointer<T>.AsString: unicodestring;
 begin
-    result := '#<'+q.description+'>';
+    result := '#<'+target.description+'>'
 end;
 
-function TVQueue.Hash: DWORD;
+function TVPointer<T>.Hash: DWORD;
 begin
-    result := mar.PointerToQWORD(Pointer(q)) and $FFFFFFFF;
+    result := mar.PointerToQWORD(Pointer(target)) and $FFFFFFFF;
 end;
 
-function TVQueue.equal(V: TValue): boolean;
+function TVPointer<T>.equal(V: TValue): boolean;
 begin
-    result := (V is TVQueue) and (q=(V as TVQueue).q);
+    result := (V is TVPointer<T>) and (target=(V as TVPointer<T>).target);
 end;
+
 
 { TVFunctionForwardDeclaration }
 

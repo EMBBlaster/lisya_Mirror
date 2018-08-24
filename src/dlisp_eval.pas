@@ -1701,9 +1701,32 @@ begin
     end;
 end;
 
+function if_thread              (const PL: TVList; call: TCallProc): TValue;
+var expr: TVList; i: integer;
+begin
+    case params_is(PL, result, [
+        tpSubprogram, vpListWithLastList]) of
+        1: try
+            expr := TVList.Create([PL.look[0]], false);
+            for i := 0 to PL.L[1].high-1 do expr.Add(PL.L[1].look[i]);
+            expr.Append(PL.L[1].L[PL.L[1].high]);
+            result := TVThread.Create(TLThread.Create(expr));
+        finally
+            expr.Free;
+        end;
+    end;
+end;
+
 function if_queue               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     result := TVQueue.Create(TQueue.Create);
+end;
+
+function if_wait                (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [tpThread]) of
+        1: result := (PL.look[0] as TVThread).target.WaitResult;
+    end;
 end;
 
 function if_union               (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -3274,7 +3297,7 @@ begin
 end;
 
 
-const int_fun_count = 173;
+const int_fun_count = 175;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3370,7 +3393,10 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'MAP-TH';                    f:if_map_th;                s:'(p :rest l)'),
 (n:'MAP-CONCATENATE';           f:if_map_concatenate;       s:'(p :rest l)'),
 (n:'APPLY ПРИМЕНИТЬ';           f:if_apply;                 s:'(p :rest params)'),
+(n:'THREAD НИТЬ';               f:if_thread;                 s:'(p :rest params)'),
 (n:'QUEUE ОЧЕРЕДЬ';             f:if_queue;                 s:'()'),
+(n:'WAIT ОЖИДАНИЕ';             f:if_wait;                  s:'(thread)'),
+
 
 (n:'UNION';                     f:if_union;                 s:'(:rest a)'),
 (n:'INTERSECTION ПЕРЕСЕЧЕНИЕ';  f:if_intersection;          s:'(:rest a)'),
@@ -4033,7 +4059,7 @@ try
     if not (tpList(CP.look) or tpQueue(CP.look)) then raise ELE.Create('target is not list or queue');
 
     if tpList(CP.look) then result := (cp.look as TVList).POP;
-    if tpQueue(CP.look) then result := (CP.look as TVQueue).q.pop as TValue;
+    if tpQueue(CP.look) then result := (CP.look as TVQueue).target.pop as TValue;
 finally
     CP.Free;
 end;
@@ -4052,7 +4078,7 @@ try
     except elts.Free; raise; end;
     if tpList(target) then (CP.look as TVList).Append(elts);
     if tpQueue(target) then begin
-        for i := 0 to elts.high do (CP.look as TVQueue).q.push(elts.look[i]);
+        for i := 0 to elts.high do (CP.look as TVQueue).target.push(elts.look[i]);
         elts.Free;
     end;
 
