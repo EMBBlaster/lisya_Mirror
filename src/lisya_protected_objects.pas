@@ -53,11 +53,13 @@ begin
 end;
 
 procedure TQueue.push(V: TObject);
+var sv: TValue;
 begin
+    sv := lisya_gc.separate(V as TValue);
     try
         lock;
         SetLength(q, length(q)+1);
-        q[high(q)] := lisya_gc.separate(V as TValue);
+        q[high(q)] := sv;
     finally
         unlock;
     end;
