@@ -1705,11 +1705,12 @@ function if_thread              (const PL: TVList; call: TCallProc): TValue;
 var expr: TVList; i: integer;
 begin
     case params_is(PL, result, [
-        tpSubprogram, vpListWithLastList]) of
-        1: try
+        tpSubprogram, vpListWithLastList,
+        tpSubprogram, tpNIL]) of
+        1,2: try
             expr := TVList.Create([PL.look[0]], false);
             for i := 0 to PL.L[1].high-1 do expr.Add(PL.L[1].look[i]);
-            expr.Append(PL.L[1].L[PL.L[1].high]);
+            if not tpNIL(PL.look[1]) then expr.Append(PL.L[1].L[PL.L[1].high]);
             result := TVThread.Create(TLThread.Create(expr));
         finally
             expr.Free;

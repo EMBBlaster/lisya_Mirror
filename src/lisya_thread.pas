@@ -244,7 +244,8 @@ end;
 
 destructor TLThread.Destroy;
 begin
-    thread.Destroy;
+    thread.FreeOnTerminate:=true;
+//    thread.Destroy;
     inherited Destroy;
 end;
 
