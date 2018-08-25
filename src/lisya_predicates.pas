@@ -148,6 +148,9 @@ function tpZIPArchivePointer                        (V: TValue): boolean;
 function vpComplexNotZero                           (V: TValue): boolean;
 
 
+function vpDurationNotNegative                      (V: TValue): boolean;
+
+
 function vpEmpty                                    (V: TValue): boolean;
 
 
@@ -774,6 +777,11 @@ function vpComplexNotZero                           (V: TValue): boolean;
 begin
     result := (V is TVComplex) and
         (((V as TVComplex).fC.re<>0) or ((V as TVComplex).fC.im<>0));
+end;
+
+function vpDurationNotNegative(V: TValue): boolean;
+begin
+    result := (V is TVDuration) and ((V as TVDuration).fDT>=0);
 end;
 
 function vpEmpty(V: TValue): boolean;

@@ -1725,9 +1725,16 @@ end;
 
 function if_wait                (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
-    case params_is(PL, result, [tpThread, tpQueue]) of
+    case params_is(PL, result, [
+        tpThread,
+        tpQueue,
+        vpDurationNotNegative]) of
         1: result := (PL.look[0] as TVThread).target.WaitResult;
         2: result := (PL.look[0] as TVQueue).target.wait as TValue;
+        3: begin
+            result := TVT.Create;
+            sleep(round((PL.look[0] as TVDuration).fDT*1000*60*60*24));
+        end;
     end;
 end;
 
