@@ -1724,8 +1724,9 @@ end;
 
 function if_wait                (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
-    case params_is(PL, result, [tpThread]) of
+    case params_is(PL, result, [tpThread, tpQueue]) of
         1: result := (PL.look[0] as TVThread).target.WaitResult;
+        2: result := (PL.look[0] as TVQueue).target.wait as TValue;
     end;
 end;
 
@@ -5151,6 +5152,7 @@ begin
     //используемых символов
     //TODO: не извлекать символы объявленные в теле
 
+    stack := nil;
     result := TVList.Create;
     if tpNIL(body) then exit;
 

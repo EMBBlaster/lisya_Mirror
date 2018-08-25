@@ -18,12 +18,14 @@ type
     TQueue = class (TCountingObject)
     private
         q: array of TObject;
+        data_event: pRTLEvent;
     public
         constructor Create;
         destructor Destroy; override;
         function description: unicodestring; override;
         procedure push(V: TObject);
         function pop: TObject;
+        function wait: TObject;
         function empty: boolean;
     end;
 
@@ -38,6 +40,7 @@ constructor TQueue.Create;
 begin
     inherited;
     q := nil;
+    data_event := RTLEventCreate;
 end;
 
 destructor TQueue.Destroy;
@@ -45,6 +48,7 @@ var i: integer;
 begin
     for i := 0 to high(q) do q[i].Free;
     q := nil;
+    RTLeventdestroy(data_event);
     inherited Destroy;
 end;
 
@@ -61,6 +65,7 @@ begin
         lock;
         SetLength(q, length(q)+1);
         q[high(q)] := sv;
+        RTLEventSetEvent(data_event);
     finally
         unlock;
     end;
@@ -78,9 +83,16 @@ begin
             SetLength(q, Length(q)-1);
         end
         else result := TVList.Create;
+        if Length(q)=0 then RTLEventResetEvent(data_event);
     finally
         unlock;
     end;
+end;
+
+function TQueue.wait: TObject;
+begin
+       RtlEventWaitFor(data_event);
+       result := pop;
 end;
 
 function TQueue.empty: boolean;
