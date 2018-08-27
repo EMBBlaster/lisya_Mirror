@@ -1728,12 +1728,17 @@ begin
     case params_is(PL, result, [
         tpThread,
         tpQueue,
-        vpDurationNotNegative]) of
+        vpDurationNotNegative,
+        vpRealNotNegative]) of
         1: result := (PL.look[0] as TVThread).target.WaitResult;
         2: result := (PL.look[0] as TVQueue).target.wait as TValue;
         3: begin
             result := TVT.Create;
             sleep(round((PL.look[0] as TVDuration).fDT*1000*60*60*24));
+        end;
+        4: begin
+            result := TVT.Create;
+            sleep(round((PL.look[0] as TVReal).F*1000));
         end;
     end;
 end;
