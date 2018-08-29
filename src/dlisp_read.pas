@@ -216,14 +216,14 @@ end;
 
 function str_is_float(s: unicodestring; out f: double): boolean;
 const ml: array[1..19] of record n: unicodestring; v: real; end = (
-    (n:'п';  v:10e-12),  (n:'p'; v:10e-12),
-    (n:'н';  v:10e-9),   (n:'n'; v:10e-9),
-    (n:'мк'; v:10e-6),   (n:'u'; v:10e-6),
-    (n:'м';  v:10e-3),   (n:'m'; v:10e-3),
-    (n:'к';  v:10e3),    (n:'k'; v:10e3),
-    (n:'М';  v:10e6),    (n:'M'; v:10e6),
-    (n:'Г';  v:10e9),    (n:'G'; v:10e9),
-    (n:'Т';  v:10e12),   (n:'T'; v:10e12),
+    (n:'п';  v:1e-12),  (n:'p'; v:1e-12),
+    (n:'н';  v:1e-9),   (n:'n'; v:1e-9),
+    (n:'мк'; v:1e-6),   (n:'u'; v:1e-6),
+    (n:'м';  v:1e-3),   (n:'m'; v:1e-3),
+    (n:'к';  v:1e3),    (n:'k'; v:1e3),
+    (n:'М';  v:1e6),    (n:'M'; v:1e6),
+    (n:'Г';  v:1e9),    (n:'G'; v:1e9),
+    (n:'Т';  v:1e12),   (n:'T'; v:1e12),
     (n:'гр'; v:pi/180),  (n:'deg'; v:pi/180), (n:'°'; v:pi/180));
 var i: integer; fs: TFormatSettings; m: double; ss: unicodestring;
     function str_at_end(ss: unicodestring): boolean;
@@ -254,7 +254,7 @@ begin
 end;
 
 
-function str_is_complex(s: unicodestring; out re, im: double): boolean;
+function str_is_complex1(s: unicodestring; out re, im: double): boolean;
 var fs: TFormatSettings; i_pos: integer;
     re_s, im_s: unicodestring;
     sign: unicodechar;
@@ -279,6 +279,28 @@ begin
     end;
 
     if not result then exit;
+
+    if sign='-' then im := - im;
+end;
+
+function str_is_complex(s: unicodestring; out re, im: double): boolean;
+var fs: TFormatSettings; i_pos: integer;
+    re_s, im_s: unicodestring;
+    sign: unicodechar;
+begin
+    result := sp_complex_alg(s);
+    if not result then Exit;
+
+    i_pos := PosU('i', s);
+    if i_pos=0 then i_pos := PosU('м', s);
+    if i_pos=0 then exit;
+
+    if i_pos>2 then re_s := s[1..i_pos-2] else re_s :='0';
+    im_s := s[i_pos+1..Length(s)];
+
+    if i_pos>1 then sign := s[i_pos-1] else sign := '+';
+
+    if not (str_is_float(re_s, re) and str_is_float(im_s, im)) then exit;
 
     if sign='-' then im := - im;
 end;
