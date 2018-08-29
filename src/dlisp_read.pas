@@ -75,46 +75,6 @@ begin
     if result then ss := unicodechar(StrToInt(s[2..Length(s)]));
 end;
 
-function str_is_datetime1(s: unicodestring; out dt: TDateTime): boolean;
-var year, month, day, hours, minutes, seconds, milliseconds: word;
-begin try
-    result := false;
-    if not ((Length(s)>=12) and (s[1]='''') and (s[Length(s)]='''')
-        and (s[6]='-') and (s[9]='-') and (Length(s)<=25)) then exit;
-
-    year := StrToInt(s[2..5]);
-    month := StrToInt(s[7..8]);
-    day := StrToInt(s[10..11]);
-    dt := EncodeDate(year, month, day);
-
-    hours := 0;
-    minutes := 0;
-    seconds := 0;
-    milliseconds := 0;
-
-    if Length(s)=12 then begin result := true; exit; end;
-    if s[12]<>' ' then exit;
-    if Length(s)<18 then exit;
-    if s[15]<>':' then exit;
-    hours := StrToInt(s[13..14]);
-    minutes := StrToInt(s[16..17]);
-    dt := dt + hours/24 + minutes/(24*60);
-    if Length(s)=18 then begin result := true; exit; end;
-    if s[18]<>':' then exit;
-    if Length(s)<21 then exit;
-    seconds := StrToInt(s[19..20]);
-    dt := dt + seconds/(24*60*60);
-    if Length(s)=21 then begin result := true; exit; end;
-    if (s[21]<>'.') and (s[21]<>',') then exit;
-    if Length(s)<25 then exit;
-    milliseconds := StrToInt(s[22..24]);
-    dt := dt + milliseconds/(24*60*60*1000);
-
-    result := true;
-except
-    on EConvertError do result := false;
-end;
-end;
 
 function str_is_time(s: unicodestring; out dt: TDateTime): boolean;
 var hours,p: integer; minutes, seconds, milliseconds: word;
@@ -253,35 +213,6 @@ begin
     f := StrToFloat(ss,fs)*m;
 end;
 
-
-function str_is_complex1(s: unicodestring; out re, im: double): boolean;
-var fs: TFormatSettings; i_pos: integer;
-    re_s, im_s: unicodestring;
-    sign: unicodechar;
-begin
-    result := false;
-
-    i_pos := PosU('i', s);
-    if i_pos=0 then i_pos := PosU('м', s);
-    if i_pos=0 then exit;
-
-    if i_pos>2 then re_s := s[1..i_pos-2] else re_s :='0';
-    im_s := s[i_pos+1..Length(s)];
-
-    if i_pos>1 then sign := s[i_pos-1] else sign := '+';
-
-    fs.DecimalSeparator:='.';
-    result := TryStrToFloat(re_s, re, fs) and TryStrToFloat(im_s, im, fs);
-
-    if not result then begin
-        fs.DecimalSeparator:=',';
-        result :=  TryStrToFloat(re_s, re, fs) and TryStrToFloat(im_s, im, fs);
-    end;
-
-    if not result then exit;
-
-    if sign='-' then im := - im;
-end;
 
 function str_is_complex(s: unicodestring; out re, im: double): boolean;
 var fs: TFormatSettings; i_pos: integer;
