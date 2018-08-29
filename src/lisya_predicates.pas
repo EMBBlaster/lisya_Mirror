@@ -327,7 +327,9 @@ function vpListKeywordValue                         (V: TValue): boolean;
 
 function vpListLambdaExpression                     (V: TValue): boolean;
 
-function vpListOfByte                               (V: Tvalue): boolean;
+function vpListOfByte                               (V: TValue): boolean;
+
+function vpListOfDurationsForMul                    (V: TValue): boolean;
 
 function vpListOfListsEqualLength                   (V: TValue): boolean;
 
@@ -1274,6 +1276,23 @@ end;
 function vpListOfByte                               (V: Tvalue): boolean;
 begin
     result := tphListOf(V, vpIntegerByte);
+end;
+
+function vpListOfDurationsForMul(V: TValue): boolean;
+var is_dt: boolean; L: TVList; i: integer;
+begin
+    result := V is TVList;
+    if not result then Exit;
+    L := V as TVList;
+    is_dt := false;
+    for i := 0 to L.high do begin
+        result := (L.look[i] is TVDuration) or (L.look[i] is TVReal);
+        if not result then Exit;
+        result := not ((L.look[i] is TVDuration) and is_dt);
+        if not result then Exit;
+        is_dt := is_dt or (L.look[i] is TVDuration);
+    end;
+    result := is_dt;
 end;
 
 function vpListOfListsEqualLength(V: TValue): boolean;

@@ -494,7 +494,8 @@ begin
         tpListOfIntegers,
         tpListOfReals,
         tpListOfNumbers,
-        tpListOfLists]) of
+        tpListOfLists,
+        vpListOfDurationsForMul]) of
         1: begin
             for i := 0 to A.high do ires := ires * A.I[i];
             result := TVInteger.Create(ires);
@@ -510,6 +511,13 @@ begin
             result := TVComplex.Create(cres);
         end;
         4: result := ifh_intersection(A);
+        5: begin
+            for i := 0 to A.high do
+                if A.look[i] is TVDuration
+                then fres := fres * (A.look[i] as TVDuration).fDT
+                else fres := fres * A.F[i];
+            result := TVDuration.Create(fres);
+        end;
     end;
 end;
 
