@@ -563,7 +563,8 @@ begin
     {4} tpInteger,          vpIntegerNotZero,
     {5} tpReal,             vpRealNotZero,
     {6} tpNumber,           vpNumberNotZero,
-    {7} tpSequence,         vpIntegerPositive]) of
+    {7} tpSequence,         vpIntegerPositive,
+    {8} tpDuration,         vpRealNotZero]) of
         1: result := TVInteger.Create(1 div PL.I[0]);
         2: result := TVFloat.Create(1 / PL.F[0]);
         3: result := TVComplex.Create(cinv(PL.C[0]));
@@ -573,6 +574,7 @@ begin
         5: result := TVFloat.Create(PL.F[0] / PL.F[1]);
         6: result := TVComplex.Create(PL.C[0] / PL.C[1]);
         7: result := ifh_div_sequence(PL.look[0] as TVSequence, PL.I[1]);
+        8: result := TVDuration.Create((PL.look[0] as TVDuration).fDT / PL.F[1]);
     end;
 end;
 
