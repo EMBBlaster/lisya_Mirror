@@ -304,7 +304,11 @@ begin
     result := ModOperatorAttri
   else
 
-  if sp_float(FLineText[FTokenPos..FTokenEnd-1]) or sp_integer(FLineText[FTokenPos..FTokenEnd-1]) then
+  if sp_float(FLineText[FTokenPos..FTokenEnd-1])
+    or sp_integer(FLineText[FTokenPos..FTokenEnd-1])
+    or sp_complex_alg(FLineText[FTokenPos..FTokenEnd-1])
+    or sp_complex_exp(FLineText[FTokenPos..FTokenEnd-1])
+  then
     Result := NumberAttri
   else
 

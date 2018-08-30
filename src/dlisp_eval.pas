@@ -845,6 +845,16 @@ begin
     end;
 end;
 
+function if_arg                 (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpReal,
+        tpComplex]) of
+        1: result := TVFloat.Create(0);
+        2: result := TVFloat.Create(carg((PL.look[0] as TVComplex).C));
+    end;
+end;
+
 function if_rad                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -3321,7 +3331,7 @@ begin
 end;
 
 
-const int_fun_count = 175;
+const int_fun_count = 176;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3352,6 +3362,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RANDOM';                    f:if_random;                s:'(:optional r)'),
 (n:'RE';                        f:if_re;                    s:'(a)'),
 (n:'IM';                        f:if_im;                    s:'(a)'),
+(n:'ARG';                       f:if_arg;                   s:'(a)'),
 (n:'RAD';                       f:if_rad;                   s:'(d)'),
 (n:'DEG';                       f:if_deg;                   s:'(r)'),
 (n:'COMPLEX';                   f:if_complex;               s:'(r i)'),
