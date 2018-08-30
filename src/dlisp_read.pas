@@ -8,7 +8,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    Classes, SysUtils, dlisp_values, mar, lisia_charset, lisya_exceptions,
+    Classes, SysUtils, ucomplex, math, dlisp_values, mar, lisia_charset, lisya_exceptions,
     lisya_streams, lisya_string_predicates;
 
 
@@ -214,8 +214,30 @@ begin
 end;
 
 
-function str_is_complex(s: unicodestring; out re, im: double): boolean;
-var fs: TFormatSettings; i_pos: integer;
+function str_is_complex_exp(s: unicodestring; out re, im: double): boolean;
+var a_pos: integer;
+    m_s, a_s: unicodestring;
+    m_f, a_f: double;
+    c: complex;
+begin
+    result := sp_complex_exp(s);
+    if not result then Exit;
+
+    a_pos := PosU('a', s);
+    if a_pos=0 then a_pos := PosU('у', s);
+
+    m_s := s[1..a_pos-1];
+    a_s := s[a_pos+1..Length(s)];
+
+    result := (str_is_float(m_s, m_f) and str_is_float(a_s, a_f));
+
+    c := m_f*cexp(cinit(0,a_f));
+    re := c.re;
+    im := c.im;
+end;
+
+function str_is_complex_alg(s: unicodestring; out re, im: double): boolean;
+var i_pos: integer;
     re_s, im_s: unicodestring;
     sign: unicodechar;
 begin
@@ -224,16 +246,20 @@ begin
 
     i_pos := PosU('i', s);
     if i_pos=0 then i_pos := PosU('м', s);
-    if i_pos=0 then exit;
 
     if i_pos>2 then re_s := s[1..i_pos-2] else re_s :='0';
     im_s := s[i_pos+1..Length(s)];
 
     if i_pos>1 then sign := s[i_pos-1] else sign := '+';
 
-    if not (str_is_float(re_s, re) and str_is_float(im_s, im)) then exit;
+    result := (str_is_float(re_s, re) and str_is_float(im_s, im));
 
     if sign='-' then im := - im;
+end;
+
+function str_is_complex(s: unicodestring; out re, im: double): boolean;
+begin
+    result := str_is_complex_alg(s,re,im) or str_is_complex_exp(s,re,im);
 end;
 
 function str_is_keyword(s: unicodestring): boolean;

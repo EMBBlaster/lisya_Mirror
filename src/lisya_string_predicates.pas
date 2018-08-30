@@ -14,6 +14,7 @@ uses
 function sp_integer(s: unicodestring): boolean;
 function sp_float(s: unicodestring): boolean;
 function sp_complex_alg(s: unicodestring): boolean;
+function sp_complex_exp(s: unicodestring): boolean;
 function sp_char(s: unicodestring): boolean;
 function sp_time(s: unicodestring): boolean;
 function sp_time_min(s: unicodestring): boolean;
@@ -23,7 +24,7 @@ function sp_date_time(s: unicodestring): boolean;
 
 implementation
 
-var re_integer, re_float, re_complex_alg, re_char,
+var re_integer, re_float, re_complex_alg, re_complex_exp, re_char,
     re_time, re_time_min, re_time_sec, re_time_msec
     , re_date_time: TRegExpr;
 
@@ -40,6 +41,11 @@ end;
 function sp_complex_alg(s: unicodestring): boolean;
 begin
     result := re_complex_alg.Exec(s);
+end;
+
+function sp_complex_exp(s: unicodestring): boolean;
+begin
+    result := re_complex_exp.Exec(s);
 end;
 
 function sp_char(s: unicodestring): boolean;
@@ -87,8 +93,11 @@ initialization
     '^[-+]?[0-9]+(_[0-9]+)*([.,][0-9]+(_[0-9]+)*)?([eE][-+]?[0-9]+|([пpнnuмmкkМMГGТT°]|мк|гр|deg))?$');
     re_float.Compile;
 
-    re_complex_alg := TRegExpr.Create('^[-+]?'+expr_exp+'[-+][iм]'+expr_exp);
+    re_complex_alg := TRegExpr.Create('^[-+]?'+expr_exp+'[-+][iм]'+expr_exp+'$');
     re_complex_alg.Compile;
+
+    re_complex_exp := TRegExpr.Create('^[-+]?'+expr_exp+'[aу][-+]?'+expr_float+'(°|гр|deg)$');
+    re_complex_exp.Compile;
 
     re_char := TRegExpr.Create('^\#([0-9]+|\$(?i)[0-9A-F]+)$');
     re_char.Compile;
