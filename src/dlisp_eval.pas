@@ -142,11 +142,6 @@ var T: TVT;
     log_cs, console_cs: TRTLCriticalSection;
 
 
-function ternary(cnd: boolean; a,b: unicodestring): unicodestring; inline;
-begin
-    if cnd then result := a else result := b;
-end;
-
 function value_by_key(L: TVList; key: unicodestring): TValue;
 var i: integer;
 begin
