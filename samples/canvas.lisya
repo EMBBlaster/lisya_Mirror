@@ -1,0 +1,70 @@
+﻿(var p (process-pipe (process (fmt t executable-path "canvas"))))
+(stream-encoding p :utf16LE)
+
+
+(procedure canvas (:rest cmd) (write-line p (apply fmt t cmd)))
+
+(canvas "equal_scale")
+
+(canvas "caption Лися")
+
+(canvas "area -10 100 -10 100")
+
+(canvas "color silver")
+(canvas "grid 20 20")
+(canvas "point 22 22")
+
+
+(canvas "color black")
+(canvas "axis x 10")
+(canvas "axis y 10")
+
+
+(canvas "polyline 0.95 0.95 0.95 -0.95 -0.95 -0.95 -0.95 0.95 0.95 0.95")
+
+
+(canvas "color red")
+(canvas "rotate 45")
+(canvas "translate 20 20")
+(canvas "mark x 10 10 Привет")
+(canvas "reset_transform")
+
+(canvas "color blue")
+(const z 60 )
+(var dzr "polyline")
+(var phi 80)
+
+(for i -18..19
+    (const a (/ (* i pi 5) 180))
+    (const r (* z (cos a)))
+    (append dzr (fmt t " " (* r (cos (+ a 0))) " " (* r (sin (+ a 0))))))
+
+(canvas "scale 1 0.5")
+(canvas "translate " (- (* 0.06 Z)) " 0")
+(canvas "rotate " phi)
+(canvas dzr)
+(canvas "polyline 0 0 " (* z 1.1) " 0")
+
+(canvas "reset_transform")
+
+
+(var sinplot "plot y 0 0.1")
+(for i 0..360
+    (const a (rad i))
+    (append sinplot (fmt t " " (* 20 (sin a)))))
+
+(canvas sinplot)
+
+
+
+(while t
+    (fmt nil ">")
+    (var input (read-line))
+    (if (= input "") (break))
+
+    (write-line p input))
+
+exit
+
+
+

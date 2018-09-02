@@ -11,7 +11,7 @@ uses
     {$IFDEF WINDOWS}
     windows,
     {$ENDIF}
-    zstream, LResources, serial,
+    zstream, LResources, serial, pipes,
     Classes, SysUtils, mar, lisia_charset, lisya_exceptions, lisya_zip, lisya_process;
 
 type

@@ -8,6 +8,9 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
+    {$IFDEF WINDOWS}
+    Windows,
+    {$ENDIF}
     Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
     StdCtrls, pipes, Contnrs, math;
 
@@ -215,7 +218,7 @@ begin
         wx := cw*(x - lo_x)/a_x;
         wy := ch - ch*(y - lo_y)/a_y;
     end;
-    result := point(Round(wx), Round(wy));
+    result := classes.point(Round(wx), Round(wy));
 end;
 
 function scale(_p: TPointFloat): TPoint;  overload;
@@ -231,7 +234,7 @@ begin
         wx := cw*(p.x - lo_x)/a_x;
         wy := ch - ch*(p.y - lo_y)/a_y;
     end;
-    result := point(Round(wx), Round(wy));
+    result := classes.point(Round(wx), Round(wy));
 end;
 
 
@@ -543,7 +546,7 @@ end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-    stdin := TInputPipeStream.Create(0);
+    stdin := TInputPipeStream.Create({$IFDEF WINDOWS}GetStdHandle(std_input_handle){$ELSE}0{$ENDIF});
     cmdl := TStringList.Create;
     cmdl.Delimiter:=' ';
     objects := TObjectList.Create(true);
