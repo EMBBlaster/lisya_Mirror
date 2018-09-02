@@ -2351,6 +2351,15 @@ begin
     end;
 end;
 
+function if_process_id          (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpProcessPointer, tpNIL]) of
+        1: result := TVInteger.Create((PL.look[0] as TVProcessPointer).P.ProcessID);
+        2: result := TVInteger.Create(GetProcessID);
+    end;
+end;
+
 function if_now                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     Assert(PL.Count=0, 'NOW не нуждается в параметрах');
@@ -3326,7 +3335,7 @@ begin
 end;
 
 
-const int_fun_count = 176;
+const int_fun_count = 177;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3466,6 +3475,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RUN-COMMAND';               f:if_run_command;           s:'(c :optional d)'),
 (n:'PROCESS';                   f:if_process;               s:'(cmd :key directory)'),
 (n:'PROCESS-PIPE';              f:if_process_pipe;          s:'(proc :optional encoding)'),
+(n:'PROCESS-ID';                f:if_process_id;            s:'(:optional proc)'),
 //(n:'PROCESS-TERMINATE';         f:if_process_pipe;          s:'(proc :optional encoding)'),
 (n:'NOW';                       f:if_now;                   s:'()'),
 

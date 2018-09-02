@@ -28,6 +28,7 @@ type
     public
         property In_pipe: TStream read GetInputPipe;
         property Out_pipe: TStream read GetOutputPipe;
+        function ProcessID: integer;
 
         constructor Run(cmd: unicodestring; dir: unicodestring = '.');
         destructor Destroy; override;
@@ -48,6 +49,11 @@ end;
 function TLProcess.GetOutputpipe: TStream;
 begin
     result := P.Output;
+end;
+
+function TLProcess.ProcessID: integer;
+begin
+    result := p.ProcessID;
 end;
 
 constructor TLProcess.Run(cmd: unicodestring; dir: unicodestring);
