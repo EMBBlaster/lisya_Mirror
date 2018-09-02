@@ -560,7 +560,6 @@ end;
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
     stdin.Free;
-    stdout.Free;
     cmdl.Free;
     objects.Free;
 end;

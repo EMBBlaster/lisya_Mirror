@@ -339,6 +339,7 @@ end;
 procedure TForm1.Timer1Timer(Sender: TObject);
 var b1, b2: byte; ch: unicodechar;
 begin
+    Timer1.Enabled:=false;
     while stdin.NumBytesAvailable>1 do begin
         b1 := stdin.ReadByte;
         b2 := stdin.ReadByte;
@@ -348,6 +349,7 @@ begin
             else cmd := cmd + ch;
         end;
     end;
+    Timer1.Enabled:=true;
 end;
 
 procedure TForm1.Timer2Timer(Sender: TObject);
@@ -367,6 +369,7 @@ var cnt, i: integer;
 begin try try
     cnt := objects.Count;
     cmdl.DelimitedText:= cmd;
+    if cmdl.Count=0 then Exit;
 
     //ShowMessage(cmdl[0]);
 
