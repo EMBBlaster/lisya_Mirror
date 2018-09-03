@@ -1319,7 +1319,7 @@ var i: Int64;
 begin
     if fC.im=0
     then begin
-        i := round(fC.re);
+        if fC.re<$7FFFFFFFFFFFFFFF then i := round(fC.re) else i := 0;
         if i = fC.re
         then result := crc32(0, @i, SizeOf(i))
         else result := crc32(0, @fC.re, SizeOf(fC.re))
@@ -2432,9 +2432,9 @@ end;
 function TVFloat.hash: DWORD;
 var i: Int64;
 begin
-    i := round(fF);
+    if abs(fF)<$7FFFFFFFFFFFFFFF then i := round(fF) else i:=0;
     if fF = i
-    then crc32(0, @i, SizeOf(i))
+    then result := crc32(0, @i, SizeOf(i))
     else result := crc32(0, @fF, SizeOf(fF));
 end;
 
