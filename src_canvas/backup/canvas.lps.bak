@@ -9,7 +9,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="7"/>
         <CursorPos X="24" Y="13"/>
-        <UsageCount Value="87"/>
+        <UsageCount Value="135"/>
         <Loaded Value="True"/>
       </Unit0>
       <Unit1>
@@ -18,12 +18,12 @@
         <ComponentName Value="Form1"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <TopLine Value="538"/>
-        <CursorPos X="62" Y="545"/>
-        <UsageCount Value="87"/>
+        <TopLine Value="137"/>
+        <CursorPos X="43" Y="156"/>
+        <UsageCount Value="135"/>
         <Bookmarks Count="2">
-          <Item0 X="20" Y="375"/>
-          <Item1 X="5" Y="434" ID="1"/>
+          <Item0 X="20" Y="392"/>
+          <Item1 X="5" Y="451" ID="1"/>
         </Bookmarks>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -32,7 +32,7 @@
         <Filename Value="../LISYA/work/canvas.lisya"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="24" Y="30"/>
-        <UsageCount Value="40"/>
+        <UsageCount Value="35"/>
         <DefaultSyntaxHighlighter Value="None"/>
       </Unit2>
       <Unit3>
@@ -40,14 +40,14 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="1888"/>
         <CursorPos X="70" Y="1931"/>
-        <UsageCount Value="39"/>
+        <UsageCount Value="34"/>
       </Unit3>
       <Unit4>
         <Filename Value="/usr/share/fpcsrc/3.0.0/packages/fcl-base/src/contnrs.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="52"/>
         <CursorPos X="27" Y="59"/>
-        <UsageCount Value="39"/>
+        <UsageCount Value="34"/>
       </Unit4>
       <Unit5>
         <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
@@ -55,15 +55,15 @@
         <EditorIndex Value="5"/>
         <TopLine Value="2524"/>
         <CursorPos X="10" Y="2548"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit5>
       <Unit6>
         <Filename Value="../samples/canvas.lisya"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="8"/>
-        <CursorPos X="42" Y="11"/>
-        <UsageCount Value="13"/>
+        <CursorPos X="22" Y="14"/>
+        <UsageCount Value="37"/>
         <Loaded Value="True"/>
         <DefaultSyntaxHighlighter Value="None"/>
       </Unit6>
@@ -72,14 +72,14 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="49"/>
         <CursorPos Y="74"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="6"/>
       </Unit7>
       <Unit8>
         <Filename Value="../src/dlisp_eval.pas"/>
         <EditorIndex Value="9"/>
         <TopLine Value="294"/>
         <CursorPos Y="318"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit8>
       <Unit9>
@@ -87,21 +87,21 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="2070"/>
         <CursorPos X="3" Y="2094"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="5"/>
       </Unit9>
       <Unit10>
         <Filename Value="/usr/share/fpcsrc/3.0.0/rtl/objpas/classes/classes.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="857"/>
         <CursorPos X="9" Y="881"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="5"/>
       </Unit10>
       <Unit11>
         <Filename Value="/usr/share/fpcsrc/3.0.0/rtl/objpas/sysutils/sysstrh.inc"/>
         <EditorIndex Value="6"/>
         <TopLine Value="55"/>
         <CursorPos X="19" Y="79"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit11>
       <Unit12>
@@ -109,7 +109,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="182"/>
         <CursorPos X="3" Y="182"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="5"/>
       </Unit12>
       <Unit13>
         <Filename Value="/usr/share/fpcsrc/3.0.0/packages/fcl-process/src/pipes.pp"/>
@@ -117,14 +117,14 @@
         <EditorIndex Value="1"/>
         <TopLine Value="44"/>
         <CursorPos X="34" Y="70"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit13>
       <Unit14>
         <Filename Value="/usr/share/fpcsrc/3.0.0/packages/fcl-process/src/unix/pipes.inc"/>
         <EditorIndex Value="2"/>
         <CursorPos X="33" Y="22"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit14>
       <Unit15>
@@ -133,7 +133,7 @@
         <EditorIndex Value="3"/>
         <TopLine Value="89"/>
         <CursorPos X="16" Y="114"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit15>
       <Unit16>
@@ -141,127 +141,131 @@
         <EditorIndex Value="4"/>
         <TopLine Value="13"/>
         <CursorPos X="3" Y="25"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit16>
     </Units>
-    <JumpHistory Count="29" HistoryIndex="28">
+    <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="main.pas"/>
-        <Caret Line="261" TopLine="237"/>
+        <Caret Line="144" Column="44" TopLine="130"/>
       </Position1>
       <Position2>
         <Filename Value="main.pas"/>
-        <Caret Line="223" TopLine="199"/>
+        <Caret Line="72" Column="45" TopLine="43"/>
       </Position2>
       <Position3>
         <Filename Value="main.pas"/>
-        <Caret Line="144" Column="47" TopLine="129"/>
+        <Caret Line="107" Column="25" TopLine="81"/>
       </Position3>
       <Position4>
         <Filename Value="main.pas"/>
-        <Caret Line="106" Column="27" TopLine="86"/>
+        <Caret Line="99" Column="27" TopLine="79"/>
       </Position4>
       <Position5>
         <Filename Value="main.pas"/>
-        <Caret Line="144" Column="44" TopLine="130"/>
+        <Caret Line="85" Column="24" TopLine="76"/>
       </Position5>
       <Position6>
         <Filename Value="main.pas"/>
-        <Caret Line="72" Column="45" TopLine="43"/>
+        <Caret Line="557" Column="19" TopLine="430"/>
       </Position6>
       <Position7>
-        <Filename Value="main.pas"/>
-        <Caret Line="107" Column="25" TopLine="81"/>
+        <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
+        <Caret Line="15" Column="61"/>
       </Position7>
       <Position8>
-        <Filename Value="main.pas"/>
-        <Caret Line="99" Column="27" TopLine="79"/>
+        <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
+        <Caret Line="344" Column="35" TopLine="304"/>
       </Position8>
       <Position9>
-        <Filename Value="main.pas"/>
-        <Caret Line="85" Column="24" TopLine="76"/>
+        <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
+        <Caret Line="365" Column="37" TopLine="325"/>
       </Position9>
       <Position10>
-        <Filename Value="main.pas"/>
-        <Caret Line="557" Column="19" TopLine="430"/>
+        <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
+        <Caret Line="381" Column="39" TopLine="341"/>
       </Position10>
       <Position11>
         <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
-        <Caret Line="15" Column="61"/>
+        <Caret Line="397" Column="37" TopLine="357"/>
       </Position11>
       <Position12>
         <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
-        <Caret Line="344" Column="35" TopLine="304"/>
+        <Caret Line="1956" Column="20" TopLine="1916"/>
       </Position12>
       <Position13>
         <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
-        <Caret Line="365" Column="37" TopLine="325"/>
+        <Caret Line="2610" Column="3" TopLine="2596"/>
       </Position13>
       <Position14>
         <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
-        <Caret Line="381" Column="39" TopLine="341"/>
+        <Caret Line="2548" Column="10" TopLine="2524"/>
       </Position14>
       <Position15>
-        <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
-        <Caret Line="397" Column="37" TopLine="357"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="339" Column="5" TopLine="327"/>
       </Position15>
       <Position16>
-        <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
-        <Caret Line="1956" Column="20" TopLine="1916"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="6" Column="54"/>
       </Position16>
       <Position17>
-        <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
-        <Caret Line="2610" Column="3" TopLine="2596"/>
+        <Filename Value="/usr/share/fpcsrc/3.0.0/packages/fcl-process/src/unix/pipes.inc"/>
+        <Caret Line="32" Column="65"/>
       </Position17>
       <Position18>
-        <Filename Value="/usr/lib/lazarus/1.6.2/lcl/graphics.pp"/>
-        <Caret Line="2548" Column="10" TopLine="2524"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="560" Column="27" TopLine="539"/>
       </Position18>
       <Position19>
         <Filename Value="main.pas"/>
-        <Caret Line="339" Column="5" TopLine="327"/>
+        <Caret Line="547" TopLine="529"/>
       </Position19>
       <Position20>
-        <Filename Value="main.pas"/>
-        <Caret Line="6" Column="54"/>
+        <Filename Value="/usr/share/fpcsrc/3.0.0/packages/fcl-process/src/unix/pipes.inc"/>
+        <Caret Line="22" Column="33"/>
       </Position20>
       <Position21>
-        <Filename Value="/usr/share/fpcsrc/3.0.0/packages/fcl-process/src/unix/pipes.inc"/>
-        <Caret Line="32" Column="65"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="547" TopLine="529"/>
       </Position21>
       <Position22>
         <Filename Value="main.pas"/>
-        <Caret Line="560" Column="27" TopLine="539"/>
+        <Caret Line="548" TopLine="529"/>
       </Position22>
       <Position23>
         <Filename Value="main.pas"/>
-        <Caret Line="547" TopLine="529"/>
+        <Caret Line="549" TopLine="454"/>
       </Position23>
       <Position24>
-        <Filename Value="/usr/share/fpcsrc/3.0.0/packages/fcl-process/src/unix/pipes.inc"/>
-        <Caret Line="22" Column="33"/>
+        <Filename Value="main.pas"/>
+        <Caret Line="122" Column="38" TopLine="394"/>
       </Position24>
       <Position25>
         <Filename Value="main.pas"/>
-        <Caret Line="547" TopLine="529"/>
+        <Caret Line="548" Column="6" TopLine="517"/>
       </Position25>
       <Position26>
         <Filename Value="main.pas"/>
-        <Caret Line="548" TopLine="529"/>
+        <Caret Line="372" Column="37" TopLine="353"/>
       </Position26>
       <Position27>
         <Filename Value="main.pas"/>
-        <Caret Line="549" TopLine="454"/>
+        <Caret Line="373" Column="37" TopLine="354"/>
       </Position27>
       <Position28>
         <Filename Value="main.pas"/>
-        <Caret Line="122" Column="38" TopLine="394"/>
+        <Caret Line="374" Column="37" TopLine="355"/>
       </Position28>
       <Position29>
         <Filename Value="main.pas"/>
-        <Caret Line="548" Column="6" TopLine="517"/>
+        <Caret Line="376" Column="37" TopLine="357"/>
       </Position29>
+      <Position30>
+        <Filename Value="main.pas"/>
+        <Caret Line="189" Column="41" TopLine="217"/>
+      </Position30>
     </JumpHistory>
   </ProjectSession>
 </CONFIG>

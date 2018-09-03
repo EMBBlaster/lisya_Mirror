@@ -11,7 +11,7 @@
 (canvas "area -10 100 -10 100")
 
 (canvas "color silver")
-(canvas "grid 20 20")
+(canvas "grid 20 20,2")
 (canvas "point 22 22")
 
 

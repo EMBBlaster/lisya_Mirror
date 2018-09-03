@@ -26,7 +26,7 @@
       <local>
         <FormatVersion Value="1"/>
         <HostApplicationFilename Value="/home/marina/projects/LISYA/lisya"/>
-        <CommandLineParams Value="canvas.lisya"/>
+        <CommandLineParams Value="../samples/canvas.lisya"/>
         <WorkingDirectory Value="/home/marina/projects/LISYA/work"/>
       </local>
     </RunParams>

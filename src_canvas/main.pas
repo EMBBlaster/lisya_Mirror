@@ -12,7 +12,7 @@ uses
     Windows,
     {$ENDIF}
     Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-    StdCtrls, pipes, Contnrs, math;
+    StdCtrls, ExtDlgs, ActnList, pipes, Contnrs, math;
 
 type
 
@@ -82,10 +82,14 @@ type
     { TForm1 }
 
     TForm1 = class(TForm)
+        Action_SaveAs: TAction;
+        ActionList1: TActionList;
+        SavePictureDialog1: TSavePictureDialog;
         Timer1: TTimer;
         objects: TObjectList;
         cmdl: TStringList;
         Timer2: TTimer;
+        procedure Action_SaveAsExecute(Sender: TObject);
         procedure FormCreate(Sender: TObject);
         procedure FormDestroy(Sender: TObject);
         procedure FormPaint(Sender: TObject);
@@ -144,6 +148,16 @@ implementation
 procedure error(const msg: unicodestring);
 begin
     raise TLCanvasException.Create(msg);
+end;
+
+function StrToFloat(s: string): real;
+var fs: TFormatSettings;
+begin
+    fs.DecimalSeparator:='.';
+    if not TryStrToFloat(s, result, fs) then begin
+        fs.DecimalSeparator:=',';
+        result := SysUtils.StrToFloat(s, fs);
+    end;
 end;
 
 function mul(const p: TPointFloat; const m: TMatrix): TPointFloat; overload;
@@ -557,6 +571,20 @@ begin
     ch := form1.ClientHeight;
     cnv := form1.Canvas;
     set_area(lo_x, hi_x, lo_y, hi_y);
+end;
+
+procedure TForm1.Action_SaveAsExecute(Sender: TObject);
+var b: TBitmap;
+begin
+    if SavePictureDialog1.Execute then try
+        b := TBitmap.Create;
+        b.SetSize(Form1.ClientWidth, form1.ClientHeight);
+//        b.SetSize(cnv.ClipRect.Right-cnv.ClipRect.Left, cnv.ClipRect.Bottom-cnv.ClipRect.Top);
+        b.Canvas.CopyRect(cnv.ClipRect, cnv, cnv.ClipRect);
+        b.SaveToFile(SavePictureDialog1.FileName);
+    finally
+        b.Free;
+    end;
 end;
 
 

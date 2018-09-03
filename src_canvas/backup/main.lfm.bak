@@ -21,4 +21,18 @@ object Form1: TForm1
     left = 213
     top = 78
   end
+  object SavePictureDialog1: TSavePictureDialog
+    DefaultExt = '.png'
+    left = 213
+    top = 152
+  end
+  object ActionList1: TActionList
+    left = 216
+    top = 24
+    object Action_SaveAs: TAction
+      Caption = 'Сохранить как ...'
+      OnExecute = Action_SaveAsExecute
+      ShortCut = 16467
+    end
+  end
 end
