@@ -122,6 +122,8 @@ initialization
 finalization
     re_integer.Free;
     re_float.Free;
+    re_complex_alg.Free;
+    re_complex_exp.Free;
     re_char.Free;
     re_time.Free;
     re_time_min.Free;
