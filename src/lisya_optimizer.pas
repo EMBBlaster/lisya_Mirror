@@ -115,7 +115,6 @@ var i: integer; tmp: TVList;
     end;
 
     procedure declared_symbols(expr: TVList);
-    var i: integer;
     begin
         if expr.Count<2 then exit;
         if vpListVariableExpression(expr) or vpListRoutineExpression(expr)
@@ -174,10 +173,10 @@ begin
 end;
 
 
-procedure inplace_internals(body: TVList);
-begin
-
-end;
+//procedure inplace_internals(body: TVList);
+//begin
+//
+//end;
 
 end.
 

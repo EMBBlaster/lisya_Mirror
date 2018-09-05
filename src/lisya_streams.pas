@@ -11,7 +11,7 @@ uses
     {$IFDEF WINDOWS}
     windows,
     {$ENDIF}
-    zstream, LResources, serial, pipes,
+    zstream, LResources, serial,
     Classes, SysUtils, mar, lisia_charset, lisya_exceptions, lisya_zip, lisya_process;
 
 type
@@ -28,7 +28,7 @@ type
       procedure SetPosition(p: Int64);
       function GetSize: Int64;
       procedure SetSize(s: Int64);
-      function ReadBytes(var Buffer; count: integer; EoE: boolean = false): integer; virtual;
+      function ReadBytes(out Buffer; count: integer; EoE: boolean = false): integer; virtual;
       function WriteBytes(const Buffer; count: integer; EoE: boolean = false): integer; virtual;
       function ReadCharacter(out ch: unicodechar; EoE: boolean = false): boolean;
     public
@@ -39,7 +39,7 @@ type
 
       property encoding: TStreamEncoding read fencoding write SetEncoding;
       function read_byte: byte;
-      function read_bytes(var bb: TBytes; count: integer): boolean;
+      procedure read_bytes(out bb: TBytes; count: integer);
       function read_DWORD: DWORD;
       function read_single: single;
       function read_double: double;
@@ -129,7 +129,7 @@ type
 
     TLProcessPipes = class(TLStream)
     private
-        function ReadBytes(var Buffer; count: integer; EoE: boolean = false): integer; override;
+        function ReadBytes(out Buffer; count: integer; EoE: boolean = false): integer; override;
         function WriteBytes(const Buffer; count: integer; EoE: boolean = false): integer; override;
     public
         proc: TLProcess;
@@ -150,7 +150,7 @@ type
     private
         port: {$IFDEF LINUX}TSerialHandle{$ELSE}THandle{$ENDIF};
         timeout: integer;
-        function ReadBytes(var Buffer; count: integer; EoE: boolean = false): integer; override;
+        function ReadBytes(out Buffer; count: integer; EoE: boolean = false): integer; override;
         function WriteBytes(const Buffer; count: integer; EoE: boolean = false): integer; override;
     public
         constructor Create(port_name: unicodestring; boud: integer;
@@ -205,12 +205,12 @@ end;
 
 { TLSerialStream }
 
-function TLSerialStream.ReadBytes(var Buffer; count: integer; EoE: boolean
+function TLSerialStream.ReadBytes(out Buffer; count: integer; EoE: boolean
     ): integer;
 var b: array of byte;
 begin
     if timeout=0
-    then result := SerRead(port, Buffer, Count)
+    then result := SerRead(port, Buffer{%H-}, Count)
     else begin
         SetLength(b, count);
         result := SerReadTimeout(port, b, count, timeout);
@@ -269,11 +269,11 @@ end;
 
 { TLProcessPipes }
 
-function TLProcessPipes.ReadBytes(var Buffer; count: integer; EoE: boolean
+function TLProcessPipes.ReadBytes(out Buffer; count: integer; EoE: boolean
     ): integer;
 begin
    if out_pipe=nil then raise ELE.Create('reading from closed pipe', 'stream');
-   result := out_pipe.Read(Buffer, count);
+   result := out_pipe.Read(Buffer{%H-}, count);
    if EoE and (result<count) then raise ELEmptyStream.Create('pipe read', 'stream');
 end;
 
@@ -576,10 +576,10 @@ begin
     stream.Size:=s;
 end;
 
-function TLStream.ReadBytes(var Buffer; count: integer; EoE: boolean): integer;
+function TLStream.ReadBytes(out Buffer; count: integer; EoE: boolean): integer;
 begin
     if stream=nil then raise ELE.Create('reading from closed stream', 'stream');
-    result := stream.Read(Buffer, count);
+    result := stream.Read(Buffer{%H-}, count);
     if EoE and (result<count) then raise ELEmptyStream.Create('empty stream', 'stream');
 end;
 
@@ -650,10 +650,11 @@ begin
 end;
 
 
-function TLStream.read_bytes(var bb: TBytes; count: integer): boolean;
+procedure TLStream.read_bytes(out bb: TBytes; count: integer);
 const bs = 4096;
 var bc: integer;
 begin
+
     if count>=0
     then begin
         SetLength(bb, count);

@@ -1183,8 +1183,8 @@ begin
 end;
 
 
-function if_test_dyn            (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer;
+function if_test_dyn            (const {%H-}PL: TVList; {%H-}call: TCallProc): TValue;
+{$IFDEF GUI} var i: integer; {$ENDIF}
 begin
 {$IFDEF GUI}
     Application.Initialize;
@@ -1193,22 +1193,6 @@ begin
     CanvasForm.Post(PL.L[0].L[i]);
     Application.Run;
 {$ENDIF}
-    result := TVT.Create;
-end;
-
-
-function if_canvas              (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer;
-begin
-{$IFDEF GUI}
-//    Application.Initialize;
-//    Application.CreateForm(TCanvasForm, CanvasForm);
-//    for i:= 0 to PL.L[0].high do
-//    CanvasForm.Post(PL.L[0].L[i]);
-//    Application.Run;
-    CanvasThread := TCanvasThread.Create;
-{$ENDIF}
-
     result := TVT.Create;
 end;
 
@@ -1716,7 +1700,7 @@ begin
     end;
 end;
 
-function if_thread              (const PL: TVList; call: TCallProc): TValue;
+function if_thread              (const PL: TVList; {%H-}call: TCallProc): TValue;
 var expr: TVList; i: integer;
 begin
     case params_is(PL, result, [
@@ -1735,6 +1719,7 @@ end;
 
 function if_queue               (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
+    if PL.Count>0 then raise ELE.InvalidParameters;
     result := TVQueue.Create(TQueue.Create);
 end;
 
@@ -2775,7 +2760,6 @@ begin
 end;
 
 function if_write               (const PL: TVList; {%H-}call: TCallProc): TValue;
-var sp: TVStreamPointer;
 begin
     case params_is(PL, result, [
         vpStreamPointerActive, tpAny,
@@ -2897,7 +2881,6 @@ begin
 end;
 
 function if_decimal             (const PL: TVList; {%H-}call: TCallProc): TValue;
-var d: integer;
 begin
     case params_is(PL, result, [
         tpInteger,  vpIntegerNotNegative,
@@ -3395,7 +3378,6 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'IDENTITY';                  f:if_identity;              s:'(v)'),
 
 (n:'TEST-DYN';                  f:if_test_dyn;              s:'(:rest msgs)'),
-//(n:'CANVAS';                    f:if_canvas;                s:'()'),
 (n:'LIKENESS СХОДСТВО';         f:if_likeness;              s:'(s1 s2)'),
 (n:'LEVENSHTEIN';               f:if_levenshtein;           s:'(s1 s2)'),
 
@@ -3866,7 +3848,7 @@ begin
     if package_file<>'' then begin load_pack(package_file); bind_pack; Exit; end;
 
 try
-    built_in_stream := TLStream.FindBuiltIn(UnicodeLowerCase(name));
+    built_in_stream := TLStream.FindBuiltIn(UnicodeLowerCase(name)){%H-};
     if built_in_stream.active then begin
         eval(read(built_in_stream)).Free;
         bind_pack;
@@ -4928,7 +4910,7 @@ end;
 
 
 function TEvaluationFlow.op_function                (PL: TVList): TValue;
-var fun: TVFunction; sl: TVList; P: PVariable; tmp: TValue;
+var fun: TVFunction; sl: TVList; P: PVariable;
     mode: (forward_declaration, lambda, function_declaration);
     sign_pos: integer;
 

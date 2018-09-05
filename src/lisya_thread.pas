@@ -15,7 +15,6 @@ uses
 
 type
 
-    TMTFunction = function (call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
     TAction = procedure of object;
 
     { TEvaluationThread }
@@ -44,7 +43,6 @@ type
         property Proc: TVSubprogram write SetProc;
         constructor Create;
         destructor Destroy; override;
-        procedure eval(f: TMTFunction; P: TVSubprogram; PL: TVList; b, e: integer); overload;
         procedure eval(PL: TVList); overload;
         procedure RunMap;
         procedure RunReject;
@@ -175,7 +173,7 @@ begin
 end;
 
 function ifh_reject_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
-var i,j: integer;
+var i: integer;
 begin
     //TODO: возможна утечка содержимого очереди заданий при возникновении исключения
     if (not th) and (length(threads_pool)>1) then try
@@ -200,7 +198,7 @@ begin
 end;
 
 function ifh_filter_th(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
-var i,j: integer;
+var i: integer;
 begin
     //TODO: возможна утечка содержимого очереди заданий при возникновении исключения
     if (not th) and (length(threads_pool)>1) then try
@@ -405,12 +403,6 @@ begin
     self.Terminate;
     self.Suspended := false;
     inherited;
-end;
-
-procedure TEvaluationThread.eval(f: TMTFunction; P: TVSubprogram; PL: TVList;
-    b, e: integer);
-begin
-
 end;
 
 

@@ -8,7 +8,7 @@ uses
     {$IFDEF LINUX}
     cwstring,
     {$ENDIF}
-    Classes, SysUtils, mar;
+    Classes, SysUtils;
 
 function levenshtein(s1, s2: unicodestring): integer;
 

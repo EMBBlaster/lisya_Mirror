@@ -96,7 +96,7 @@ end;
 
 function PointerToStr(ptr: Pointer; digits: integer): unicodestring;
 var d: record case byte of 0: (p: pointer); 1: (b: array [1..SizeOf(ptr)] of Byte); end;
-    i, _digits: integer;
+    i: integer;
 begin
     d.p:=ptr;
     result := '';
@@ -114,6 +114,7 @@ var d: record case byte of 0: (p: pointer); 1: (b: array [1..SizeOf(ptr)] of Byt
     i: integer;
 begin
     result := 0;
+    d.p := ptr;
     for i := 0 to high(d.b) do result := result + d.b[i]*(256**i);
 end;
 
