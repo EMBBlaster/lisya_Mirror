@@ -324,6 +324,12 @@
     (assertion (= xml (xml:read s)) "xml read")
     (assertion (= s (xml:write t xml)) "xml write"))
 
+(log \functions
+(block
+    (assertion (maybe integer? nil) "maybe 1")
+    (assertion (maybe integer? 1) "maybe 2")
+    (assertion (not (maybe integer? 1.5) "maybe 3")))
+
 
 (log)
 (if (not (directory-exists "test_tmp")) (create-directory "test_tmp"))

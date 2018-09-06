@@ -414,6 +414,22 @@ begin
     end;
 end;
 
+function if_maybe               (const PL: TVList; call: TCallProc): TValue;
+var expr: TVList;
+begin
+    case params_is(PL, result, [
+        tpSubprogram, tpNIL,
+        tpSubprogram, tpANY]) of
+        1: result := TVT.Create;
+        2: try
+            expr := TVList.Create([PL.look[0], PL.look[1]], false);
+            result := call(expr);
+        finally
+            expr.Free;
+        end;
+    end;
+end;
+
 function if_add                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; fres: double; ires: Int64; cres: COMPLEX;
 begin
@@ -3360,10 +3376,11 @@ begin
 end;
 
 
-const int_fun_count = 181;
+const int_fun_count = 182;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
+(n:'MAYBE МОЖЕТ-БЫТЬ';          f:if_maybe;                 s:'(p a)'),
 
 (n:'+';                         f:if_add;                   s:'(:rest n)'),
 (n:'-';                         f:if_sub;                   s:'(a :optional b)'),
