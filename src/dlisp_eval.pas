@@ -2923,6 +2923,24 @@ begin
 
 end;
 
+function if_dt                  (const PL: TVList; {%H-}call: TCallProc): TValue;
+var fmtstr: unicodestring;
+begin
+    case params_is(PL, result, [
+        tpDateTime, tpStringOrNIL,
+        tpDuration, tpStringOrNIL]) of
+        1: begin
+            fmtstr := ifh_default_string(PL.look[1], 'yyyy.mm.dd hh:mm:ss');
+            result := TVString.Create(FormatDateTime(fmtstr, (PL.look[0] as TVDatetime).fDT));
+        end;
+        2: begin
+            fmtstr := ifh_default_string(PL.look[1], '[h]:mm:ss.zzz');
+            result := TVString.Create(FormatDateTime(fmtstr, (PL.look[0] as TVDuration).fDT, [fdoInterval]));
+        end;
+    end;
+
+end;
+
 function if_col                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 var s: unicodestring; w,i: integer; lr: boolean;
 begin
@@ -3342,7 +3360,7 @@ begin
 end;
 
 
-const int_fun_count = 180;
+const int_fun_count = 181;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3530,6 +3548,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'HEX';                       f:if_hex;                   s:'(i :optional d)'),
 (n:'DECIMAL';                   f:if_decimal;               s:'(i :optional d)'),
 (n:'FIXED';                     f:if_fixed;                 s:'(f d)'),
+(n:'DT';                        f:if_dt;                    s:'(dt :optional format)'),
 (n:'COL';                       f:if_col;                   s:'(w v :optional a)'),
 (n:'LST';                       f:if_fmt_list;              s:'(l :optional s b e)'),
 (n:'UPPER-CASE';                f:if_upper_case;            s:'(s)'),
