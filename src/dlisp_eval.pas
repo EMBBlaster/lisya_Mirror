@@ -233,6 +233,12 @@ begin
         end;
     end;
 end;
+
+procedure no_params(PL: TVList);
+begin
+    if PL.Count>0 then raise ELE.Create('invalid parameters');
+end;
+
 //------------------------------------------------------------------------------
 
 //////////////////////////////////////////////
@@ -2347,8 +2353,26 @@ end;
 
 function if_now                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
-    Assert(PL.Count=0, 'NOW не нуждается в параметрах');
+    no_params(PL);
     result := TVDateTime.Create(now);
+end;
+
+function if_today               (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    no_params(PL);
+    result := TVDateTime.Create(int(now));
+end;
+
+function if_tomorrow            (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    no_params(PL);
+    result := TVDateTime.Create(int(now)+1);
+end;
+
+function if_yesterday           (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    no_params(PL);
+    result := TVDateTime.Create(int(now)-1);
 end;
 
 
@@ -3146,8 +3170,8 @@ begin
             rec := nil;
 
             Active := false;
-            SQL.Text := ifh_format(PL.L[1]);
-            ucommand := UnicodeUpperCase(SQL.Text);
+            SQL.Text := string(ifh_format(PL.L[1]));
+            ucommand := UnicodeUpperCase(unicodestring(SQL.Text));
             if (Pos('SELECT', ucommand)=1)
                 or (Pos('SHOW', ucommand)=1)
                 or (Pos('DESCRIBE', ucommand)=1)
@@ -3318,7 +3342,7 @@ begin
 end;
 
 
-const int_fun_count = 177;
+const int_fun_count = 180;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3460,6 +3484,9 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'PROCESS-ID';                f:if_process_id;            s:'(:optional proc)'),
 //(n:'PROCESS-TERMINATE';         f:if_process_pipe;          s:'(proc :optional encoding)'),
 (n:'NOW';                       f:if_now;                   s:'()'),
+(n:'TODAY СЕГОДНЯ';             f:if_today;                 s:'()'),
+(n:'TOMORROW ЗАВТРА';           f:if_tomorrow;              s:'()'),
+(n:'YESTERDAY ВЧЕРА';           f:if_yesterday;             s:'()'),
 
 
 (n:'OPEN-FILE';                 f:if_open_file;             s:'(n :key mode encoding)'),
