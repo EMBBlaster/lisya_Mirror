@@ -2278,6 +2278,23 @@ begin
     end;
 end;
 
+function if_platform            (const PL: TVList; {%H-}call: TCallProc): TValue;
+const p: unicodestring = ''
+    {$IFDEF WINDOWS}+' WINDOWS '{$ENDIF}
+    {$IFDEF LINUX}+' LINUX '{$ENDIF}
+    ;
+var i: integer; res: boolean;
+begin
+    case params_is(PL, result, [
+        tpListOfStrings]) of
+        1: begin
+            res := true;
+            for i := 0 to PL.L[0].high do
+                res := res and (PosU(' '+UnicodeUpperCase(PL.L[0].S[i])+' ',p)>0);
+            bool_to_TV(res, result);
+        end;
+    end;
+end;
 
 function if_run_command         (const PL: TVList; {%H-}call: TCallProc): TValue;
 var output: string;
@@ -3376,7 +3393,7 @@ begin
 end;
 
 
-const int_fun_count = 182;
+const int_fun_count = 183;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3513,6 +3530,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'DIRECTORY';                 f:if_directory;             s:'(d)'),
 (n:'SLEEP';                     f:if_sleep;                 s:'(m)'),
 
+(n:'PLATFORM ПЛАТФОРМА';        f:if_platform;              s:'(:rest a)'),
 (n:'RUN-COMMAND';               f:if_run_command;           s:'(c :optional d)'),
 (n:'PROCESS';                   f:if_process;               s:'(cmd :key directory)'),
 (n:'PROCESS-PIPE';              f:if_process_pipe;          s:'(proc :optional encoding)'),
@@ -3727,8 +3745,6 @@ begin
 
     //загрузка констант
     result.new_var('EXECUTABLE-PATH', TVString.Create(ExtractFilePath(paramstr(0))), true);
-    {$IFDEF WINDOWS} result.new_var('PLATFORM', TVKeyword.Create(':WINDOWS'), true); {$ENDIF}
-    {$IFDEF LINUX} result.new_var('PLATFORM', TVKeyword.Create(':LINUX'), true); {$ENDIF}
     result.new_var('NL', TVString.Create(LineEnding), true);
     result.new_var('CR', TVString.Create(#13), true);
     result.new_var('LF', TVString.Create(#10), true);
