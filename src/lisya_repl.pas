@@ -10,6 +10,7 @@ uses
     {$ENDIF}
 
     Classes, SysUtils, dlisp_eval, dlisp_values, dlisp_read, lisya_packages,
+    lisya_streams,
     lisya_exceptions;
 
 
@@ -31,8 +32,10 @@ begin
     last_error_stack := '';
 
     while true do begin
-        if prompt then Write('> ');
-        ReadLn(input_string);
+        if prompt
+        then begin Write('> '); ReadLn(input_string); end
+        else input_string := stdin.read_line(LineEnding);
+
         u_input_string := UnicodeUpperCase(input_string);
         if (input_string='') or (u_input_string='EXIT') then break;
 

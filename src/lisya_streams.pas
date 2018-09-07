@@ -11,7 +11,7 @@ uses
     {$IFDEF WINDOWS}
     windows,
     {$ENDIF}
-    zstream, LResources, serial,
+    zstream, LResources, serial, pipes,
     Classes, SysUtils, mar, lisia_charset, lisya_exceptions, lisya_zip, lisya_process;
 
 type
@@ -164,6 +164,8 @@ type
 
 function bytes_to_string(const bytes: TBytes; encoding: TStreamEncoding): unicodestring;
 function string_to_bytes(const s: unicodestring; encoding: TStreamEncoding): TBytes;
+
+var stdin: TLStream = nil;
 
 implementation
 
@@ -860,6 +862,12 @@ function TLStream.active: boolean;
 begin
     result := stream <> nil;
 end;
+
+initialization
+    stdin := TLStream.Create(TInputPipeStream.Create({$IFDEF WINDOWS}GetStdHandle(std_input_handle){$ELSE}0{$ENDIF}));
+
+finalization
+    stdin.Free;
 
 end.   //426 659
 
