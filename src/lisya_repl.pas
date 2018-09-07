@@ -28,9 +28,11 @@ var input_string, u_input_string: unicodestring; expr, res: TValue;
     last_error_stack: unicodestring;
 begin
     last_error_stack := '';
-    Write('> ');ReadLn(input_string);
-    u_input_string := UnicodeUpperCase(input_string);
-    while input_string<>'' do begin
+
+    while true do begin
+        Write('> ');ReadLn(input_string);
+        u_input_string := UnicodeUpperCase(input_string);
+        if (input_string='') or (u_input_string='EXIT') then break;
 
         if u_input_string = 'ERROR STACK'
         then WriteLn(last_error_stack)
@@ -63,8 +65,6 @@ begin
                 last_error_stack := E.EStack + E.Message + ' ('+E.EClass+')';
             end;
         end;
-        Write('> ');ReadLn(input_string);
-        u_input_string := UnicodeUpperCase(input_string);
     end;
 end;
 

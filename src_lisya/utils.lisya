@@ -2,16 +2,20 @@
     inc
     dec
     successfull
-    tokens)
+    tokens
+    subprocess)
+
 
 (procedure inc (i) (set i (+ i 1)))
 
 (procedure dec (i) (set i (- i 1)))
 
+
 (macro successfull (:rest expression)
     "Возвращает результат вычисления последнего переданного выражения.
     В случае возникновения исключения, подавляет его, и возвращает NIL"
     (assemble try (block @expression) ("")))
+
 
 (procedure tokens (rules s)
     "Разбирает переданную строку в соответствии с заданными правилами"
@@ -44,5 +48,13 @@
             (error "strutils:parser" "selector not found in " mode " at " (subseq s i))))
     (if (<> "" acc) (push tokens acc))
     tokens)
+
+
+(macro subprocess (name :rest body)
+    "Создаёт процесс интерпретатора и передаёт ему команды на исполнение"
+    (var p (process-pipe (process (fmt t executable-path "lisya"))))
+    (when (platform "windows") (stream-encoding :cp866))
+    (for c body (write p c))
+    (assemble var /name /p))
 
 )
