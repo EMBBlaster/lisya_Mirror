@@ -1770,7 +1770,7 @@ begin
         end;
         6: begin
             ((PL.look[0] as TVStreamPointer).body as TLProcessPipes).proc.Wait;
-            result := TVT.Create;
+            result := TVString.Create((PL.look[0] as TVStreamPointer).body.read_string(-1));
         end;
     end;
 end;
@@ -3574,7 +3574,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'READ-FLOAT-SINGLE';         f:if_read_float_single;     s:'(s)'),
 (n:'READ-FLOAT-DOUBLE';         f:if_read_float_double;     s:'(s)'),
 (n:'READ-BYTES';                f:if_read_bytes;            s:'(s count)'),
-(n:'READ-CHARACTER';            f:if_read_character;        s:'(:optional s count)'),
+(n:'READ-CHARACTER READ-STRING';f:if_read_character;        s:'(:optional s count)'),
 (n:'READ-LINE';                 f:if_read_line;             s:'(:optional s sep)'),
 (n:'WRITE-STRING';              f:if_write_string;          s:'(stream s)'),
 (n:'WRITE-LINE';                f:if_write_line;            s:'(s l :optional sep)'),
