@@ -418,7 +418,7 @@ function if_maybe               (const PL: TVList; call: TCallProc): TValue;
 var expr: TVList;
 begin
     case params_is(PL, result, [
-        tpSubprogram, tpNIL,
+        tpAny, tpNIL,
         tpSubprogram, tpANY]) of
         1: result := TVT.Create;
         2: try
