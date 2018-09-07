@@ -264,9 +264,9 @@ LazarusResources.Add('utils','LISYA',[
   +#208#176#209#145#209#130' '#208#181#208#188#209#131' '#208#186#208#190#208
   +#188#208#176#208#189#208#180#209#139' '#208#189#208#176' '#208#184#209#129
   +#208#191#208#190#208#187#208#189#208#181#208#189#208#184#208#181'"'#10'    ('
-  +'var p (process-pipe (process (fmt t executable-path "lisya"))))'#10'    (wh'
-  +'en (platform "windows") (stream-encoding :cp866))'#10'    (for c body (writ'
-  +'e p c))'#10'    (assemble var /name /p))'#10#10')'#10
+  +'var p (process-pipe (process (fmt t executable-path "lisya -"))))'#10'    ('
+  +'when (platform "windows") (stream-encoding :cp866))'#10'    (for c body (wr'
+  +'ite p c))'#10'    (assemble var /name /p))'#10#10')'#10
 ]);
 LazarusResources.Add('gnuplot','LISYA',[
   #239#187#191'(package gnuplot (run)'#10#10'(procedure run (:key output width '

@@ -52,7 +52,7 @@
 
 (macro subprocess (name :rest body)
     "Создаёт процесс интерпретатора и передаёт ему команды на исполнение"
-    (var p (process-pipe (process (fmt t executable-path "lisya"))))
+    (var p (process-pipe (process (fmt t executable-path "lisya -"))))
     (when (platform "windows") (stream-encoding :cp866))
     (for c body (write p c))
     (assemble var /name /p))

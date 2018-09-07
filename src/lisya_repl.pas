@@ -22,6 +22,7 @@ implementation
 
 var
     root_evaluation_flow: TEvaluationFlow;
+    prompt: boolean = true;
 
 procedure REPL;
 var input_string, u_input_string: unicodestring; expr, res: TValue;
@@ -30,7 +31,8 @@ begin
     last_error_stack := '';
 
     while true do begin
-        Write('> ');ReadLn(input_string);
+        if prompt then Write('> ');
+        ReadLn(input_string);
         u_input_string := UnicodeUpperCase(input_string);
         if (input_string='') or (u_input_string='EXIT') then break;
 
@@ -52,9 +54,7 @@ begin
             expr := read_from_string(input_string);
             res := nil;
             res := root_evaluation_flow.Eval(expr);
-            Write('= ');
-            print(res, nil);
-            WriteLn();
+            if prompt then begin Write('= '); print(res, nil); WriteLn(); end;
             FreeAndNil(res);
         except
             on E:ELE do begin
@@ -74,6 +74,8 @@ function EXEC(filename: unicodestring): boolean;
 var fn: unicodestring;
 begin
     result := false;
+    if filename='-' then begin prompt := false; REPL; result := true; exit; end;
+
     fn := FindLisyaFile(filename);
     if fn='' then raise ELE.Create(filename, 'script not found');
     try
