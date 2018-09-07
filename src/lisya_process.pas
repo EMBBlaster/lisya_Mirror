@@ -36,6 +36,7 @@ type
 
         procedure term;
         procedure CloseInput;
+        procedure Wait;
     end;
 
 implementation
@@ -95,6 +96,11 @@ end;
 procedure TLProcess.CloseInput;
 begin
     P.CloseInput;
+end;
+
+procedure TLProcess.Wait;
+begin
+    P.WaitOnExit;
 end;
 
 

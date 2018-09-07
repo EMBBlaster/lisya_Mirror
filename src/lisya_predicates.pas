@@ -103,6 +103,8 @@ function tpProcedure                                (V: TValue): boolean;
 
 function tpRoutine                                  (V: TValue): boolean;
 
+function tpProcessPipes                             (V: TValue): boolean;
+
 function tpProcessPointer                           (V: TValue): boolean;
 
 function tpRange                                    (V: TValue): boolean;
@@ -633,6 +635,10 @@ begin
     result := V is TVRoutine;
 end;
 
+function tpProcessPipes(V: TValue): boolean;
+begin
+    result := (V is TVStreamPointer) and ((V as TVStreamPointer).body is TLProcessPipes);
+end;
 
 function tpProcessPointer(V: TValue): boolean;
 begin

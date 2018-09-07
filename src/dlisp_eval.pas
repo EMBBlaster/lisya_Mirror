@@ -1751,7 +1751,9 @@ begin
         tpThread,
         tpQueue,
         vpDurationNotNegative,
-        vpRealNotNegative]) of
+        vpRealNotNegative,
+        tpProcessPointer,
+        tpProcessPipes]) of
         1: result := (PL.look[0] as TVThread).target.WaitResult;
         2: result := (PL.look[0] as TVQueue).target.wait as TValue;
         3: begin
@@ -1761,6 +1763,14 @@ begin
         4: begin
             result := TVT.Create;
             sleep(round((PL.look[0] as TVReal).F*1000));
+        end;
+        5: begin
+            (PL.look[0] as TVProcessPointer).P.Wait;
+            result := TVT.Create;
+        end;
+        6: begin
+            ((PL.look[0] as TVStreamPointer).body as TLProcessPipes).proc.Wait;
+            result := TVT.Create;
         end;
     end;
 end;
