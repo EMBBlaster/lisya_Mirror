@@ -339,22 +339,21 @@ begin
 end;
 //------------------------------------------------------------------------------
 function ifh_equal_sets(const A, B: TVList): boolean;
-var i: integer;
+var i: integer; hashes_A, hashes_B: THashes;
 begin
-    result := true;
+    ifhh_hash_list(A, hashes_A);
+    ifhh_hash_list(B, hashes_B);
 
-    for i := 0 to A.high do
-        if not ifh_member(B, A.look[i])
-        then begin
-            result := false;
-            Exit;
-        end;
-    for i := 0 to B.high do
-        if not ifh_member(A, B.look[i])
-        then begin
-            result := false;
-            Exit;
-        end;
+    result := true;
+    for i := 0 to A.high do begin
+        result := ifhh_member_hashed(hashes_B, B, hashes_A[i], A.look[i]);
+        if not result then Exit;
+    end;
+
+    for i := 0 to B.high do begin
+        result := ifhh_member_hashed(hashes_A, A, hashes_B[i], B.look[i]);
+        if not result then Exit;
+    end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
