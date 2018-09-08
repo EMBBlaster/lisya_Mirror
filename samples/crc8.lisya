@@ -1,0 +1,13 @@
+﻿(function crc8 (data :optional seed)
+    (var result (if-nil seed 0))
+    (var s_data data)
+
+    (for bit 8
+        (if (= (bit-and (bit-xor result s_data) $01) 0)
+            (set result (shift result -1 8))
+        (else
+            (set result (bit-xor result $18))
+            (set result (shift result -1 8))
+            (set result (bit-or result $80))))
+        (set s_data (shift s_data -1 8)))
+    result)

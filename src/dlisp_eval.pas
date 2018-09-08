@@ -2980,7 +2980,7 @@ begin
 
 end;
 
-function if_dt                  (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_fdt                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 var fmtstr: unicodestring;
 begin
     case params_is(PL, result, [
@@ -3609,7 +3609,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'HEX';                       f:if_hex;                   s:'(i :optional d)'),
 (n:'DECIMAL';                   f:if_decimal;               s:'(i :optional d)'),
 (n:'FIXED';                     f:if_fixed;                 s:'(f d)'),
-(n:'DT';                        f:if_dt;                    s:'(dt :optional format)'),
+(n:'FDT';                       f:if_fdt;                   s:'(dt :optional format)'),
 (n:'COL';                       f:if_col;                   s:'(w v :optional a)'),
 (n:'LST';                       f:if_fmt_list;              s:'(l :optional s b e)'),
 (n:'UPPER-CASE';                f:if_upper_case;            s:'(s)'),

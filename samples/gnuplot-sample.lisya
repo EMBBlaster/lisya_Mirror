@@ -1,0 +1,88 @@
+(with gnuplot)
+
+
+(var gp (gnuplot:run :output \qt :width 400 :height 400))
+
+
+(procedure dz-r (Z phi :optional E d)
+        (default E 1.0)
+        (default d 0.0)
+
+        (const df (/ d 100))
+        (const r  (/ (* Z (+ 1 df)) 2))
+        (const rv (/ (* Z (- 1 df)) 2))
+        (const x (* (cos (RAD phi)) rv))
+        (const y (* (sin (RAD phi)) rv))
+
+        (gp\ellipse x y r (* r E) phi))
+
+(procedure dz-p (R X phi :optional phi2 phi3)
+        (default phi2 -25)
+        (default phi3 115)
+
+        (const tan-p  (tan (rad phi)))
+        (const tan-p2 (tan (rad phi2)))
+        (const tan-p3 (tan (rad phi3)))
+
+        (const px (/ (* R tan-p) (- tan-p tan-p2)))
+        (const py (* px tan-p2))
+        (gp\polygon 0+i0
+            (complex px py)
+            (complex (/ (+ X (* R tan-p)) tan-p) X)
+            (complex (/ X tan-p3) X)))
+
+
+(procedure dz-l (R phi)
+        (const tan-p  (tan (rad phi)))
+
+        (gp\polygon
+            (complex R (* R tan-p))
+            (complex R (- (* R tan-p)))
+            (complex (* 3 R) (- (* 3 R tan-p)))
+            (complex (* 3 R) (* 3 R tan-p))))
+
+
+
+
+
+(gp\range -10 10 -10 10)
+(gp\equal-axes)
+
+;(gp\cmd "set multiplot")
+
+(gp\cmd "plot sin(x)")
+
+
+(dz-r -10 65 1)
+(dz-r 10 65 1 6)
+(dz-r 10 65 1 12)
+
+(dz-p 5 9 75)
+(dz-p -5 -9 75)
+
+(dz-l 3 30)
+
+
+
+(var square \(0+м0 0+i1 1+i1 1+i0))
+
+(log square)
+
+
+(const p1 (apply gp\polygon (map (procedure (x) (* x 2.5)) square)))
+(apply gp\polygon  square)
+
+(gp\ellipse 0 0 1 0.5 30)
+
+
+
+
+(while t
+    (fmt nil ">")
+    (const cmd (read-line))
+    (case cmd
+        ("" (break))
+        (t (gp\cmd cmd)
+            )))
+
+(set gp nil)
