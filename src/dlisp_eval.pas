@@ -995,11 +995,13 @@ begin
         tpReal,    tpReal,
         tpString,  tpString,
         tpDateTime, tpDateTime,
-        tpDuration, tpDuration]) of
+        tpDuration, tpDuration,
+        tpList, tpList]) of
         1: bool_to_TV( PL.I[0]>PL.I[1] , result);
         2: bool_to_TV( PL.F[0]>PL.F[1] , result);
         3: bool_to_TV( PL.S[0]>PL.S[1] , result);
         4,5: bool_to_TV( (PL.look[0] as TVTime).fDT>(PL.look[1] as TVTime).fDT, result);
+        6: bool_to_TV(ifh_set_include(PL.L[0], PL.L[1]) and not ifh_equal_sets(PL.L[0],PL.L[1]), result);
     end;
 end;
 
@@ -1010,11 +1012,13 @@ begin
         tpReal,    tpReal,
         tpString,  tpString,
         tpDateTime, tpDateTime,
-        tpDuration, tpDuration]) of
+        tpDuration, tpDuration,
+        tpList, tpList]) of
         1: bool_to_TV( PL.I[0]<PL.I[1] , result);
         2: bool_to_TV( PL.F[0]<PL.F[1] , result);
         3: bool_to_TV( PL.S[0]<PL.S[1] , result);
         4,5: bool_to_TV( (PL.look[0] as TVTime).fDT<(PL.look[1] as TVTime).fDT, result);
+        6: bool_to_TV(ifh_set_include(PL.L[1], PL.L[0]) and not ifh_equal_sets(PL.L[0],PL.L[1]), result);
     end;
 end;
 
@@ -1148,30 +1152,12 @@ begin
 end;
 
 function if_equal_sets            (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; r: boolean; A, B: TVList;
 begin
     case params_is(PL, result, [
         tpNIL, tpNIL,
         tpList, tpList]) of
         1: result := TVT.Create;
-        2: begin
-            r := true;
-            A := PL.L[0];
-            B := PL.L[1];
-            for i := 0 to A.high do
-                if not ifh_member(B, A.look[i])
-                then begin
-                    r := false;
-                    break;
-                end;
-            if r then for i := 0 to B.high do
-                if not ifh_member(A, B.look[i])
-                then begin
-                    r := false;
-                    break;
-                end;
-            bool_to_TV(r, result);
-        end;
+        2: bool_to_TV(ifh_equal_sets(PL.L[0], PL.L[1]), result);
     end;
 end;
 

@@ -33,8 +33,9 @@ begin
 
     while true do begin
         if prompt
-        then begin Write('> '); ReadLn(input_string); end
-        else input_string := stdin.read_line(LineEnding);
+        then Write('> ');
+        ReadLn(input_string);
+        //else input_string := stdin.read_line(LineEnding);
 
         u_input_string := UnicodeUpperCase(input_string);
         if (input_string='') or (u_input_string='EXIT') then break;

@@ -21,7 +21,13 @@
     (assertion (not (>= b a)) "set include 3")
     (assertion (not (<= c a)) "set include 4")
     (assertion (>= a a) "set include 5")
-    (assertion (<= a a) "set include 6"))
+    (assertion (<= a a) "set include 6")
+
+    (const (a b c) \((1 2 3) (1 2 3) (1 2)))
+    (assertion (< c b) "set include 7")
+    (assertion (not (< a b)) "set include 8")
+    (assertion (> b c) "set include 9")
+    (assertion (not (> b a)) "set include 10"))
 
 
 (log \успешно)

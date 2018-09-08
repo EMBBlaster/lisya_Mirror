@@ -27,6 +27,7 @@ function ifh_union              (const L: TVList): TVList;
 
 function ifh_intersection       (const L: TVList): TVList;
 function ifh_set_include        (const A, B: TVList): boolean;
+function ifh_equal_sets         (const A, B: TVList): boolean;
 
 function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
 function ifh_filter(const PL: TVList; call: TCallProc; P: TTypePredicate): TValue; inline;
@@ -335,6 +336,25 @@ begin
         result := ifhh_member_hashed(hashes_A, A, hashes_B[i], B.look[i]);
         if not result then exit;
     end;
+end;
+//------------------------------------------------------------------------------
+function ifh_equal_sets(const A, B: TVList): boolean;
+var i: integer;
+begin
+    result := true;
+
+    for i := 0 to A.high do
+        if not ifh_member(B, A.look[i])
+        then begin
+            result := false;
+            Exit;
+        end;
+    for i := 0 to B.high do
+        if not ifh_member(A, B.look[i])
+        then begin
+            result := false;
+            Exit;
+        end;
 end;
 
 ////////////////////////////////////////////////////////////////////////////////
