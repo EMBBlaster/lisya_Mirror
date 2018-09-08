@@ -2086,7 +2086,7 @@ begin
     end;
 end;
 
-function if_bitwise_or          (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_bit_or              (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; a, b: TVBytes;
 begin
     //TODO: побитовые операторы имеют много общего кода нужно разделить
@@ -2106,7 +2106,7 @@ begin
     end;
 end;
 
-function if_bitwise_not         (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_bit_not             (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; a: TVBytes;
 begin
     case params_is(PL, result, [
@@ -2123,7 +2123,7 @@ begin
     end;
 end;
 
-function if_bitwise_and         (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_bit_and             (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; a, b: TVBytes;
 begin
     case params_is(PL, result, [
@@ -2142,7 +2142,7 @@ begin
     end;
 end;
 
-function if_bitwise_xor         (const PL: TVList; {%H-}call: TCallProc): TValue;
+function if_bit_xor             (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; a, b: TVBytes;
 begin
     case params_is(PL, result, [
@@ -3541,10 +3541,10 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'ELEMENT ЭЛЕМЕНТ';           f:if_element;               s:'(c :rest k)'),
 
 (n:'BYTES';                     f:if_bytes;                 s:'(:rest b)'),
-(n:'BITWISE-AND';               f:if_bitwise_and;           s:'(a b)'),
-(n:'BITWISE-NOT';               f:if_bitwise_not;           s:'(a)'),
-(n:'BITWISE-OR';                f:if_bitwise_or;            s:'(a b)'),
-(n:'BITWISE-XOR';               f:if_bitwise_xor;           s:'(a b)'),
+(n:'BIT-AND';                   f:if_bit_and;               s:'(a b)'),
+(n:'BIT-NOT';                   f:if_bit_not;               s:'(a)'),
+(n:'BIT-OR';                    f:if_bit_or;                s:'(a b)'),
+(n:'BIT-XOR';                   f:if_bit_xor;               s:'(a b)'),
 (n:'SHIFT';                     f:if_shift;                 s:'(a n :optional bits)'),
 (n:'CRC32';                     f:if_crc32;                 s:'(b)'),
 (n:'CRC8';                      f:if_crc8;                  s:'(b :optional seed)'),
