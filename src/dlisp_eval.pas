@@ -639,6 +639,26 @@ begin
     end;
 end;
 
+function if_factorial           (const PL: TVList; {%H-}call: TCallProc): TValue;
+var i: integer; a,ires:integer; fres: real;
+begin
+    case params_is(PL, result, [vpIntegerNotNegative]) of
+        1: begin
+          a := PL.I[0];
+          if a<=20 then begin //факториал 20-и помещается в Int64, а 21-го - нет
+            ires := 1;
+            for i := a downto 1 do ires := ires*i;
+            result := TVInteger.Create(ires);
+          end
+          else begin
+            fres := 1.0;
+            for i := a downto 1 do fres := fres*i;
+            result := TVFloat.Create(fres);
+          end; //факториал 171 не помещается в double
+        end;
+    end;
+end;
+
 function if_max                 (const PL: TVList; {%H-}call: TCallProc): TValue;
 var i: integer; max_i: integer; max_r: double; index: integer;
 begin
@@ -3426,7 +3446,7 @@ begin
 end;
 
 
-const int_fun_count = 185;
+const int_fun_count = 186;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3441,6 +3461,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'MOD';                       f:if_mod;                   s:'(a b)'),
 (n:'ABS';                       f:if_abs;                   s:'(a)'),
 (n:'**';                        f:if_power;                 s:'(a b)'),
+(n:'!';                         f:if_factorial;             s:'(a)'),
 (n:'MAX';                       f:if_max;                   s:'(a :rest b)'),
 (n:'MIN';                       f:if_min;                   s:'(a :rest b)'),
 (n:'SQRT КОРЕНЬ';               f:if_sqrt;                  s:'(a)'),
