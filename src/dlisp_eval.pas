@@ -1141,6 +1141,8 @@ begin
     end;
 end;
 
+
+
 function if_equal_case_insensitive(const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -2156,6 +2158,20 @@ begin
                 (result as TVBytes).fBytes[i] := a.fBytes[i] xor b.fBytes[i];
         end;
         2: result := TVInteger.Create(PL.I[0] xor PL.I[1]);
+    end;
+end;
+
+function if_shift               (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpInteger, vpIntegerNotNegative, tpNIL,
+        tpInteger, vpIntegerNegative, tpNIL,
+        tpInteger, vpIntegerNotNegative, vpIntegerNotNegative,
+        tpInteger, vpIntegerNegative, vpIntegerNotNegative]) of
+        1: result := TVInteger.Create(PL.I[0] shl PL.I[1]);
+        2: result := TVInteger.Create(PL.I[0] shr abs(PL.I[1]));
+        3: result := TVInteger.Create((PL.I[0] shl PL.I[1]) and (2**PL.I[2]-1));
+        4: result := TVInteger.Create((PL.I[0] shr abs(PL.I[1])) and (2**PL.I[2]-1));
     end;
 end;
 
@@ -3401,7 +3417,7 @@ begin
 end;
 
 
-const int_fun_count = 184;
+const int_fun_count = 185;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3529,6 +3545,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'BITWISE-NOT';               f:if_bitwise_not;           s:'(a)'),
 (n:'BITWISE-OR';                f:if_bitwise_or;            s:'(a b)'),
 (n:'BITWISE-XOR';               f:if_bitwise_xor;           s:'(a b)'),
+(n:'SHIFT';                     f:if_shift;                 s:'(a n :optional bits)'),
 (n:'CRC32';                     f:if_crc32;                 s:'(b)'),
 (n:'CRC8';                      f:if_crc8;                  s:'(b :optional seed)'),
 (n:'CHARACTER';                 f:if_character;             s:'(n)'),

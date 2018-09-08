@@ -173,6 +173,8 @@ function vpIntegerAbsOne                            (V: TValue): boolean;
 
 function vpIntegerByte                              (V: TValue): boolean;
 
+function vpIntegerNegative                          (V: TValue): boolean;
+
 function vpIntegerNotNegative                       (V: TValue): boolean;
 
 function vpIntegerNotNegativeOrNIL                  (V: TValue): boolean;
@@ -842,6 +844,11 @@ begin
     result := (V is TVInteger)
         and ((V as TVInteger).fI>=0)
         and ((V as TVInteger).fI<256);
+end;
+
+function vpIntegerNegative(V: TValue): boolean;
+begin
+    result := (V is TVInteger) and ((V as TVInteger).fI < 0);
 end;
 
 function vpIntegerNotNegative                       (V: TValue): boolean;
