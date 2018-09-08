@@ -23,6 +23,9 @@ function concat_integers(i1, i2: TIntegers): TIntegers;
 procedure append_integers(var i1: TIntegers; i2: TIntegers); inline;
 procedure append_integer(var i1: TIntegers; i: integer); inline;
 
+function crc8 (const data: TBytes; seed: byte): byte; overload;
+function crc8 (const data: byte; seed: byte): byte; overload;
+
 
 type
 
@@ -147,6 +150,31 @@ procedure append_integer(var i1: TIntegers; i: integer);
 begin
     SetLength(i1, Length(i1)+1);
     i1[high(i1)] := i;
+end;
+
+
+function crc8 (const data: byte; seed: byte): byte;
+var s_data: byte; bit: integer;
+begin
+    result := seed;
+    s_data := data;
+    for bit := 1 to 8 do begin
+        if ((result xor s_data) and $01) = 0
+        then result := result shr 1
+        else begin
+            result := result xor $18;
+            result := result shr 1;
+            result := result or $80;
+        end;
+        s_data := s_data shr 1;
+    end;
+end;
+
+function crc8(const data: TBytes; seed: byte): byte;
+var i: integer;
+begin
+    result := seed;
+    for i := 0 to high(data) do result := crc8(data[i], result);
 end;
 
 

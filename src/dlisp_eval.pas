@@ -2169,6 +2169,18 @@ begin
     end;
 end;
 
+function if_crc8                (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        vpIntegerByte, tpNIL,
+        vpIntegerByte, vpIntegerByte,
+        tpBytes, tpNIL]) of
+        1: result := TVInteger.Create(crc8(byte(PL.I[0]), 0));
+        2: result := TVInteger.Create(crc8(byte(PL.I[0]), byte(PL.I[1])));
+        3: result := TVInteger.Create(crc8((PL.look[0] as TVBytes).fBytes, 0));
+    end;
+end;
+
 function if_character           (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -3389,7 +3401,7 @@ begin
 end;
 
 
-const int_fun_count = 183;
+const int_fun_count = 184;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3518,6 +3530,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'BITWISE-OR';                f:if_bitwise_or;            s:'(a b)'),
 (n:'BITWISE-XOR';               f:if_bitwise_xor;           s:'(a b)'),
 (n:'CRC32';                     f:if_crc32;                 s:'(b)'),
+(n:'CRC8';                      f:if_crc8;                  s:'(b :optional seed)'),
 (n:'CHARACTER';                 f:if_character;             s:'(n)'),
 (n:'BYTES-TO-STRING';           f:if_byte_vector_to_string; s:'(bv :optional encoding)'),
 

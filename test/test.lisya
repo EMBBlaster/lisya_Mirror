@@ -328,7 +328,14 @@
 (block
     (assertion (maybe integer? nil) "maybe 1")
     (assertion (maybe integer? 1) "maybe 2")
-    (assertion (not (maybe integer? 1.5)) "maybe 3"))
+    (assertion (not (maybe integer? 1.5)) "maybe 3")
+
+    (assertion (= (crc8 15) 65) "crc8 1")
+    (assertion (= (crc8 38) 254) "crc8 2")
+    (assertion (= (crc8 38 (crc8 15)) 230) "crc8 3")
+    (assertion (= (crc8 (bytes 15 38)) 230) "crc8 4")
+    (assertion (= (crc8 (bytes 15 38 40)) 213) "crc8 5"))
+
 
 
 (log)
