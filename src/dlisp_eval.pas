@@ -261,15 +261,16 @@ begin
     if b then E := TVT.Create else E := TVList.Create;
 end;
 
+function ifh_str(V: TValue): unicodestring; inline;
+begin
+    if tpString(V) then result := (V as TVString).S else result := V.AsString;
+end;
 
 function ifh_format(const L: TVList): unicodestring;
 var i: integer;
 begin
     result := '';
-    for i := 0 to L.High do
-        if tpString(L.look[i])
-        then result := result + L.S[i]
-        else result := result + L.look[i].AsString();
+    for i := 0 to L.High do result := result + ifh_str(L.look[i]);
 end;
 
 function ifh_keyword_to_encoding(const V: TValue): TStreamEncoding;
@@ -3029,30 +3030,38 @@ begin
 end;
 
 function if_fmt_list            (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer; res, s, b, e: unicodestring;
+var i: integer; res, s : unicodestring; expr: TVList;
+    function el(V: TValue): unicodestring;
+    var tmp: TValue;
+    begin try
+        tmp := nil;
+        expr[1] := V;
+        tmp := call(expr);
+        result := ifh_str(tmp);
+    finally
+        tmp.Free;
+    end; end;
 begin
     case params_is(PL, result, [
-        tpList, tpString, tpString, tpString,
-        tpList, tpString, tpString, tpNIL,
-        tpList, tpString, tpNIL,    tpNIL,
-        tpList, tpNIL,    tpNIL,    tpNIL]) of
-        1,2,3,4: begin
-            if tpString(PL.look[3]) then e := PL.S[3] else e := '';
-            if tpString(PL.look[2]) then b := PL.S[2] else b := '';
-            if tpString(PL.look[1]) then s := PL.S[1] else s := ' ';
-            res := b;
-            if PL.L[0].Count>=1 then
-                if tpString(PL.L[0].look[0])
-                then res := res + PL.L[0].S[0]
-                else res := res + PL.L[0].look[0].AsString;
-            for i := 1 to PL.L[0].High do
-                if tpString(PL.L[0].look[i])
-                then res := res + s + PL.L[0].S[i]
-                else res := res + s + PL.L[0].look[i].AsString;
-            res := res + e;
-            Result := TVString.Create(res);
+        tpList, tpStringOrNIL, tpNIL,
+        tpList, tpStringOrNIL, tpSubprogram]) of
+        1: begin
+            s := ifh_default_string(PL.look[1],' ');
+            res := '';
+            if PL.L[0].Count>=1 then res := res + ifh_str(PL.L[0].look[0]);
+            for i := 1 to PL.L[0].High do res := res + s + ifh_str(PL.L[0].look[i]);
+        end;
+        2: try
+            expr := TVList.Create([PL.look[2], nil],false);
+            s := ifh_default_string(PL.look[1],' ');
+            res := '';
+            if PL.L[0].Count>=1 then res := res + el(PL.L[0].look[0]);
+            for i := 1 to PL.L[0].High do res := res + s + el(PL.L[0].look[0]);
+        finally
+            expr.Free;
         end;
     end;
+    Result := TVString.Create(res);
 end;
 
 function if_upper_case          (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -3611,7 +3620,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'FIXED';                     f:if_fixed;                 s:'(f d)'),
 (n:'FDT';                       f:if_fdt;                   s:'(dt :optional format)'),
 (n:'COL';                       f:if_col;                   s:'(w v :optional a)'),
-(n:'LST';                       f:if_fmt_list;              s:'(l :optional s b e)'),
+(n:'LST';                       f:if_fmt_list;              s:'(l :optional s f)'),
 (n:'UPPER-CASE';                f:if_upper_case;            s:'(s)'),
 (n:'LOWER-CASE';                f:if_lower_case;            s:'(s)'),
 (n:'FMT-TABLE';                 f:if_fmt_table;             s:'(stream data :key hs mode)'),
