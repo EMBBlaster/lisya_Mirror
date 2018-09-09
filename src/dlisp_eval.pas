@@ -200,6 +200,12 @@ begin
     variable := value;
 end;
 
+function oph_command_line(): TVList;
+var i: integer;
+begin
+    result := TVList.Create();
+    for i := 1 to ParamCount do result.Add(TVString.Create(paramStr(i)));
+end;
 
 //------------------------------------------------------------------------------
 function params_is(PL: TVList;
@@ -1297,14 +1303,6 @@ begin
     end;
 end;
 
-function if_command_line        (const PL: TVList; {%H-}call: TCallProc): TValue;
-var i: integer;
-begin
-    Assert(PL.Count=0, 'command-line не нуждается в параметрах');
-    result := TVList.Create;
-    for i := 2 to paramCount do
-        (result as TVList).Add(TVString.Create(paramStr(i)));
-end;
 
 function if_environment_variable(const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
@@ -3446,7 +3444,7 @@ begin
 end;
 
 
-const int_fun_count = 186;
+const int_fun_count = 185;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3517,7 +3515,6 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'EXTRACT-FILE-PATH';         f:if_extract_file_path;     s:'(s)'),
 (n:'FILE-EXISTS';               f:if_file_exists;           s:'(n)'),
 (n:'DIRECTORY-EXISTS';          f:if_directory_exists;      s:'(d)'),
-(n:'COMMAND-LINE';              f:if_command_line;          s:'()'),
 (n:'ENVIRONMENT-VARIABLE';      f:if_environment_variable;  s:'(name)'),
 (n:'CHANGE-DIRECTORY';          f:if_change_directory;      s:'(d)'),
 (n:'DELETE-FILE УДАЛИТЬ-ФАЙЛ';  f:if_delete_file;           s:'(f)'),
@@ -3801,6 +3798,7 @@ begin
 
     //загрузка констант
     result.new_var('EXECUTABLE-PATH', TVString.Create(ExtractFilePath(paramstr(0))), true);
+    result.new_var('COMMAND-LINE', oph_command_line, true);
     result.new_var('NL', TVString.Create(LineEnding), true);
     result.new_var('CR', TVString.Create(#13), true);
     result.new_var('LF', TVString.Create(#10), true);
