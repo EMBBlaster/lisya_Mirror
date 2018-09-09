@@ -98,10 +98,6 @@ begin
      oname := DirSep(name);
      ename := ChangeFileExt(DirSep(name),'.lisya');
      rname := ChangeFileExt(DirSep(name),'.лися');
-     //поиск в текущей папке
-     if FileExists(oname) then begin result := ExpandFileName(oname); Exit; end;
-     if FileExists(ename) then begin result := ExpandFileName(ename); Exit; end;
-     if FileExists(rname) then begin result := ExpandFileName(rname); Exit; end;
      //поиск в папке стартового скрипта
      if (ParamCount>0) then begin
         sdir := ExtractFilePath(ExpandFileName(paramStr(1)));
