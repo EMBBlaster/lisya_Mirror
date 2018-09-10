@@ -28,6 +28,7 @@ type
   { Tmain_form }
 
   Tmain_form = class(TForm)
+      Action_SearchPanel: TAction;
       Action_SetMain: TAction;
       Action_CloseTab: TAction;
       Action_SaveAll: TAction;
@@ -54,6 +55,7 @@ type
     procedure Action_save_asExecute(Sender: TObject);
     procedure Action_SearchBackExecute(Sender: TObject);
     procedure Action_searchExecute(Sender: TObject);
+    procedure Action_SearchPanelExecute(Sender: TObject);
     procedure Action_SetMainExecute(Sender: TObject);
     procedure Edit_searchKeyPress(Sender: TObject; var Key: char);
     procedure Edit_searchKeyUp(Sender: TObject; var Key: Word;
@@ -327,6 +329,13 @@ end;
 procedure Tmain_form.Action_searchExecute(Sender: TObject);
 begin
     Search(false);
+end;
+
+procedure Tmain_form.Action_SearchPanelExecute(Sender: TObject);
+begin
+    if tabs.PageCount=0 then Exit;
+    panel.Visible:=true;
+    edit_search.SetFocus;
 end;
 
 procedure Tmain_form.Action_SetMainExecute(Sender: TObject);

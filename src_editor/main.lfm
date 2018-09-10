@@ -1095,6 +1095,11 @@ object main_form: Tmain_form
       OnExecute = Action_SetMainExecute
       ShortCut = 16504
     end
+    object Action_SearchPanel: TAction
+      Caption = 'Action_SearchPanel'
+      OnExecute = Action_SearchPanelExecute
+      ShortCut = 16454
+    end
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.*.лися'
