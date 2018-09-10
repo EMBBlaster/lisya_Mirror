@@ -1672,7 +1672,7 @@ begin
     end;
 end;
 
-function if_fold                (const PL: TVList; call: TCallProc): TValue;
+function if_fold                     (const PL: TVList; call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpSubprogram, tpList]) of
@@ -1684,13 +1684,23 @@ begin
     end;
 end;
 
-function if_map                 (const PL: TVList; call: TCallProc): TValue;
+function if_map                      (const PL: TVList; call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
         tpSubprogram, tpNIL,
         tpSubprogram, vpListOfListsEqualLength]) of
         1: result := TVList.Create;
         2: result := ifh_map(call, PL.look[0] as TVSubprogram,PL.L[1]);
+    end;
+end;
+
+function if_map_tail                 (const PL: TVList; call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpSubprogram, tpNIL,
+        tpSubprogram, vpListOfListsEqualLength]) of
+        1: result := TVList.Create;
+        2: result := ifh_map_tail(call, PL.look[0] as TVSubprogram,PL.L[1]);
     end;
 end;
 
@@ -3444,7 +3454,7 @@ begin
 end;
 
 
-const int_fun_count = 185;
+const int_fun_count = 186;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3538,6 +3548,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'REJECT-TH';                 f:if_reject_th;             s:'(p l)'),
 (n:'FOLD';                      f:if_fold;                  s:'(p l)'),
 (n:'MAP ОТОБРАЖЕНИЕ';           f:if_map;                   s:'(p :rest l)'),
+(n:'MAP-TAIL';                  f:if_map_tail;              s:'(p :rest l)'),
 (n:'MAP-TH';                    f:if_map_th;                s:'(p :rest l)'),
 (n:'MAP-CONCATENATE';           f:if_map_concatenate;       s:'(p :rest l)'),
 (n:'APPLY ПРИМЕНИТЬ';           f:if_apply;                 s:'(p :rest params)'),

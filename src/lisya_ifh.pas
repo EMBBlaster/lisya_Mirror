@@ -30,6 +30,7 @@ function ifh_set_include        (const A, B: TVList): boolean;
 function ifh_equal_sets         (const A, B: TVList): boolean;
 
 function ifh_map(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
+function ifh_map_tail(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
 function ifh_filter(const PL: TVList; call: TCallProc; P: TTypePredicate): TValue; inline;
 function ifh_fold(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): TValue;
 
@@ -397,6 +398,31 @@ finally
     expr.Free;
 end;
 end;
+
+function ifh_map_tail(call: TCallProc; P: TVSubprogram; PL: TVList): TVList;
+var expr: TVList;
+    i, j: integer;
+begin try try
+    expr := nil;
+    result := TVList.Create;
+    if PL.Count=0 then Exit;
+    result.SetCapacity(PL.L[0].Count);
+
+    expr := TVList.Create([P.Copy]);
+    for i := 0 to PL.high do expr.Add(nil);
+    for i := 0 to PL.L[0].high do begin
+        for j := 0 to PL.high do expr[j+1] := PL.L[j].subseq(i);
+        result.Add(call(expr));
+    end;
+except
+    FreeAndNil(result);
+    raise;
+end;
+finally
+    expr.Free;
+end;
+end;
+
 //------------------------------------------------------------------------------
 function ifh_filter(const PL: TVList; call: TCallProc; P: TTypePredicate): TValue; inline;
 var expr: TVList; c: TValue; i: integer;
