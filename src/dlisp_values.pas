@@ -805,6 +805,23 @@ type
 
     TVQueue = TVPointer<TQueue>;
 
+    { TVArray }
+
+    TVArray<T> = class (TValue)
+        dims: TIntegers;
+        data: array of T;
+        constructor Create(size: TIntegers);
+        destructor Destroy; override;
+
+        function Copy: TValue;
+        function AsString: unicodestring; override;
+        function Hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
+
+        function GetEelement(const n: TIntegers): T;
+        procedure SetElement(const n: TIntegers; V: T);
+    end;
+
 
 
 procedure Assign(var v1, v2: TValue);
@@ -873,6 +890,65 @@ end;
 function TVPointer<T>.equal(V: TValue): boolean;
 begin
     result := (V is TVPointer<T>) and (target=(V as TVPointer<T>).target);
+end;
+
+{ TVArray }
+
+constructor TVArray<T>.Create(size: TIntegers);
+var d: integer; elt_count: integer;
+begin
+    dims := size;
+    elt_count := 1;
+    for d := 0 to high(dims) do elt_count := elt_count * dims[d];
+    SetLength(data, elt_count);
+end;
+
+destructor TVArray<T>.Destroy;
+begin
+    SetLength(data, 0);
+    inherited Destroy;
+end;
+
+function TVArray<T>.Copy: TValue;
+begin
+    result := TVArray<T>.Create(dims);
+    (result as TVArray<T>).data:= system.Copy(data);
+end;
+
+function TVArray<T>.AsString: unicodestring;
+var d: integer; ind: TIntegers;
+begin
+    result := '#<ARRAY ';
+
+end;
+
+function TVArray<T>.Hash: DWORD;
+begin
+    raise ELE.Create('HASH not implemented','internal');
+    Result:=inherited Hash;
+end;
+
+function TVArray<T>.equal(V: TValue): boolean;
+var d, i: integer; va: TVArray<T>;
+begin
+    result := (V is TVArray<T>);
+    if not result then Exit;
+    va := V as TVArray<T>;
+    result := Length(dims) = Length(va.dims);
+    if not result then exit;
+    for d := 0 to high(dims) do result := result and (dims[d] = va.dims[d]);
+    if not result then exit;
+    for i := 0 to high(data) do result := result and (data[i] = va.data[i]);
+end;
+
+function TVArray<T>.GetEelement(const n: TIntegers): T;
+begin
+
+end;
+
+procedure TVArray<T>.SetElement(const n: TIntegers; V: T);
+begin
+
 end;
 
 
@@ -2637,6 +2713,7 @@ end;
 procedure TVList.Append(VL: TVList);
 begin
     CopyOnWrite;
+    VL.CopyOnWrite;
 
     fL.expand(fL.count+VL.fL.count);
     move(VL.fL.V[0],fL.V[fL.count],SizeOf(TValue)*VL.fL.count);

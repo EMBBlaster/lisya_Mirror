@@ -110,11 +110,11 @@ begin
         path.Delimiter := PathSeparator;
         path.DelimitedText := GetEnvironmentVariable('LISYA_PATH');
 
-    for i := 0 to path.Count-1 do begin
-        sdir := path[i]+DirectorySeparator;
-        result := sdir+ename; if FileExists(result) then Exit;
-        result := sdir+rname; if FileExists(result) then Exit;
-    end;
+        for i := 0 to path.Count-1 do begin
+            sdir := path[i]+DirectorySeparator;
+            result := sdir+ename; if FileExists(result) then Exit;
+            result := sdir+rname; if FileExists(result) then Exit;
+        end;
     finally
         path.Free;
     end;

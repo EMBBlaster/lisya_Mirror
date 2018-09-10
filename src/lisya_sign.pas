@@ -58,7 +58,7 @@ try
 
     case sign.mode of
         spmReq, spmOpt: begin
-            if PL.Count>Length(sign.p) then error('слишком много параметров', PL);
+            if PL.Count>Length(sign.p) then error('Too many arguments supplied', PL);
             for i := sign.required_count to PL.Count-1 do result[i] := PL[i];
         end;
         spmKey: begin
