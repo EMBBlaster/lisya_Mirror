@@ -336,7 +336,7 @@
     (assertion (= (crc8 (bytes 15 38)) 230) "crc8 4")
     (assertion (= (crc8 (bytes 15 38 40)) 213) "crc8 5"))
 
-(log \errors
+(log \errors)
 (block
     ; ошибка в CONCATENATE приводила к повреждению аргументов
     (var l1 \(1))

@@ -30,7 +30,7 @@ procedure AddPackage(P: TPackage);
 function FindPackage(name: unicodestring): TPackage;
 procedure FreePackages;
 
-function FindLisyaFile(name: unicodestring): unicodestring;
+function FindLisyaFile(name: unicodestring; cur_dir: boolean = false): unicodestring;
 //function FindPackageFile(name: unicodestring; out expr: TVList): boolean;
 
 //TODO: в пакете хранится его стэк целиком (хотя он не нужен)
@@ -92,12 +92,18 @@ begin
 end;
 
 
-function FindLisyaFile(name: unicodestring): unicodestring;
+function FindLisyaFile(name: unicodestring; cur_dir: boolean): unicodestring;
 var oname,ename,rname, sdir: unicodestring; i: integer; path: TStringList;
 begin
      oname := DirSep(name);
      ename := ChangeFileExt(DirSep(name),'.lisya');
      rname := ChangeFileExt(DirSep(name),'.лися');
+
+     if cur_dir then begin
+        result := oname; if FileExists(result) then Exit;
+        result := ename; if FileExists(result) then Exit;
+        result := rname; if FileExists(result) then Exit;
+     end;
      //поиск в папке стартового скрипта
      if (ParamCount>0) then begin
         sdir := ExtractFilePath(ExpandFileName(paramStr(1)));

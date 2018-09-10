@@ -80,7 +80,7 @@ begin
     result := false;
     if filename='-' then begin prompt := false; REPL; result := true; exit; end;
 
-    fn := FindLisyaFile(filename);
+    fn := FindLisyaFile(filename, true);
     if fn='' then raise ELE.Create(filename, 'script not found');
     try
         result := root_evaluation_flow.oph_execute_file(fn);
