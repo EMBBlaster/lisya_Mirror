@@ -81,8 +81,8 @@ begin
     if filename='-' then begin prompt := false; REPL; result := true; exit; end;
 
     fn := FindLisyaFile(filename, true);
-    if fn='' then raise ELE.Create(filename, 'script not found');
     try
+        if fn='' then raise ELE.Create(filename, 'script not found');
         result := root_evaluation_flow.oph_execute_file(fn);
     except
         on E:ELE do begin

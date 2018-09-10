@@ -44,7 +44,6 @@ type
       SynEdit2: TSynEdit;
       tabs: TPageControl;
       Panel: TPanel;
-      SaveDialog1: TSaveDialog;
     SynEdit1: TSynEdit;
     procedure Action_CloseTabExecute(Sender: TObject);
     procedure Action_executeExecute(Sender: TObject);
@@ -175,7 +174,7 @@ begin
     if tabs.PageCount=0 then Exit;
     if ts=nil then tab := tabs.ActivePage else tab := ts;
     if GetSaveDialog(tab).Execute
-    then result := quick_save
+    then result := quick_save(ts)
     else result := false;
 end;
 
@@ -185,6 +184,8 @@ var sd: TSaveDialog; tab: TTabSheet;
 begin
     if tabs.PageCount=0 then Exit;
     if ts=nil then tab := tabs.ActivePage else tab := ts;
+    result := tab.Caption[Length(tab.Caption)]<>'*';
+    if result then Exit;
     sd := GetSaveDialog(tab);
 
     if sd.FileName<>'' then begin
@@ -193,7 +194,7 @@ begin
         if tab.Tag=1 then tab.Caption:=#$25b6+' '+tab.Caption;
         result := true;
     end
-    else result := save_as();
+    else result := save_as(tab);
 end;
 
 function Tmain_form.save_all: boolean;
@@ -250,12 +251,12 @@ begin
     sd := GetSaveDialog(tab);
 
     p := TProcess.Create(nil);
-    p.CommandLine:=
     {$IFDEF WINDOWS}
-        UnicodeToWinCP(ExtractFilePath(Application.ExeName)+'lisya.exe'
-            +' "'+SaveDialog1.FileName+'"');
+    p.Executable := UnicodeToWinCP(ExtractFilePath(Application.ExeName)+'lisya.exe';
+    p.Parameters.Add(UnicodeToWinCP(sd.FileName));
     {$ELSE}
-        ExtractFilePath(Application.ExeName)+'lisya'+' "'+sd.FileName+'"';
+    p.Executable := ExtractFilePath(Application.ExeName)+'lisya';
+    p.Parameters.Add(sd.FileName);
     {$ENDIF}
     p.CurrentDirectory:=ExtractFilePath(sd.FileName);
     p.Options:=[poNewConsole,poNewProcessGroup];

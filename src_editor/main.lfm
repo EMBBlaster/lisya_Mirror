@@ -1102,10 +1102,4 @@ object main_form: Tmain_form
     left = 440
     top = 40
   end
-  object SaveDialog1: TSaveDialog
-    DefaultExt = '.*.lisya'
-    Filter = 'Лися|*.lisya|*|*.*'
-    left = 440
-    top = 96
-  end
 end
