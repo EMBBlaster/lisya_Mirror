@@ -1795,7 +1795,7 @@ begin
     result := V.constant;
 end;
 
-{$IFDEF ELT}
+
 function TVChainPointer.value: TValue;
 var i: integer;
 begin
@@ -1806,20 +1806,8 @@ begin
         result := (V.V as TVCompound).Elt(index, i);
     end;
 end;
-{$ELSE}
-function TVChainPointer.value: TValue;
-var i: integer; tmp : TVCompound;
-begin
-    if Length(index)=0
-    then result := V.V.Copy
-    else begin
-        tmp := V.V as TVCompound;
-        for i := 0 to high(index)-1 do tmp := tmp.look[index[i]] as TVCompound;
-        result := tmp[index[high(index)]];
-    end;
-end;
-{$ENDIF}
-{$IFDEF ELT}
+
+
 function TVChainPointer.look: TValue;
 var i: integer;
 begin
@@ -1831,23 +1819,6 @@ begin
     end;
 end;
 
-{$ELSE}
-function TVChainPointer.look: TValue;
-var i: integer;
-begin
-    if Length(index)=0
-    then result := V.V
-    else begin
-        result := V.V;
-        for i := 0 to high(index)-1 do
-            result := (result as TVCompound).look[index[i]];
-        //костыль
-        if result is TVSequenceOfPrimitive
-        then result := primitive
-        else result := (result as TVCompound).look[index[high(index)]];
-    end;
-end;
-{$ENDIF}
 
 procedure TVChainPointer.add_index(i: integer);
 begin
@@ -1855,7 +1826,7 @@ begin
     index[high(index)] := i;
 end;
 
-{$IFDEF ELT}
+
 procedure TVChainPointer.set_target(_V: TValue);
 var tmp: TVCompound; i: integer;
 begin
@@ -1870,22 +1841,6 @@ begin
     end;
 end;
 
-{$ELSE}
-procedure TVChainPointer.set_target(_V: TValue);
-var tmp: TVCompound; i: integer;
-begin
-    if V.constant then raise ELE.Create('target is not variable');
-    if Length(index)=0 then begin
-        V.V.Free;
-        V.V := _V;
-    end
-    else begin
-        tmp := V.V as TVCompound;
-        for i := 0 to high(index)-1 do tmp := tmp.look[index[i]] as TVCompound;
-        tmp[index[high(index)]] := _V;
-    end;
-end;
-{$ENDIF}
 
 procedure TVChainPointer.CopyOnWrite;
 var obj: TValue; i: integer;
@@ -2855,8 +2810,6 @@ begin
     S := S + _s.S;
     _s.Free;
 end;
-
-
 
 
 { TVInteger }
