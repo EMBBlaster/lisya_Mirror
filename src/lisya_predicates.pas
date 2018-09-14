@@ -85,6 +85,8 @@ function tpListOfSymbols                            (V: TValue): boolean;
 
 function tpListOrSymbol                             (V: TValue): boolean;
 
+function tpListOrQueue                              (V: TValue): boolean;
+
 function tpMacro                                    (V: TValue): boolean;
 
 function tpNIL                                      (V: TValue): boolean;
@@ -227,6 +229,8 @@ function vpKeyword_FIRST                            (V: TValue): boolean;
 function vpKeyword_FLAG                             (V: TValue): boolean;
 
 function vpKeyword_HTML                             (V: TValue): boolean;
+
+function vpKeyword_INTEGER                          (V: TValue): boolean;
 
 function vpKeyword_KEY                              (V: TValue): boolean;
 
@@ -590,6 +594,11 @@ end;
 function tpListOrSymbol(V: TValue): boolean;
 begin
     result := (V is TVList) or (V is TVSymbol);
+end;
+
+function tpListOrQueue(V: TValue): boolean;
+begin
+    result := (V is TVList) or (V is TVQueue);
 end;
 
 function tpMacro(V: TValue): boolean;
@@ -990,6 +999,11 @@ end;
 function vpKeyword_HTML(V: TValue): boolean;
 begin
     result := vphKeywordName(V, ':HTML');
+end;
+
+function vpKeyword_INTEGER(V: TValue): boolean;
+begin
+    result := vphKeywordNames(V, [':INTEGER',':ЦЕЛОЕ']);
 end;
 
 function vpKeyword_KEY                              (V: TValue): boolean;

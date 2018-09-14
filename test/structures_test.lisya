@@ -12,6 +12,7 @@
     (set (key h "v2") v2)
     (set (elt h "v3") v3)
 
+
     (assertion (and
         (= (key h "v1") v1)
         (= (key h "v2") v2)

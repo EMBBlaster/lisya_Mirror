@@ -69,6 +69,7 @@ type
         function oph_eval_indices(V, target: TValue): TValue;
         function oph_index(target: TVSequence; i: TValue): integer;
         procedure oph_eval_link_for_modification(out CP: TVChainPointer; P: TValue);
+        function oph_eval_target(P: TValue; tp: TTypePredicate): TValue;
 
         function opl_elt(PL: TVList): TVChainPointer;
         function opl_key(PL: TVList): TVChainPointer;
@@ -113,6 +114,7 @@ type
         procedure fill_subprogram_stack(sp: TVRoutine; symbols: TVList);
 
         function call(PL: TVList): TValue;
+        function callv(PL: TValue): TValue; inline;
         function call_procedure(PL: TVList): TValue; //inline;
         function call_macro({%H-}PL: TVList): TValue;
         function call_internal(PL: TVList): TValue; //inline;
@@ -312,60 +314,60 @@ begin
 end;
 
 
-procedure ifh_elt(var C: TVCompound; ind: TValue; call: TCallProc; var indices: TIntegers);
-var index, f_ind: TValue; expr, il: TVList; i: integer;
-begin try
-    index := nil;
-    f_ind := nil;
-    if tpSubprogram(ind)
-    then try
-        expr := TVList.Create([ind, C], false);
-        f_ind := call(expr);
-        index := f_ind;
-    finally
-        expr.free;
-    end
-    else index := ind;
-
-    if tpListNotEmpty(index) then begin
-        il := index as TVList;
-        ifh_elt(C, il.look[0], call, indices);
-        for i := 1 to il.high do begin
-            C := C.look[indices[high(indices)]] as TVCompound;
-            ifh_elt(C, il.look[i], call, indices);
-        end;
-    end
-    else
-
-    if tpSequence(C) and tpInteger(index) then begin
-        i := (index as TVInteger).fI;
-        if (i>=0) and (i<c.Count)
-        then append_integer(indices, i)
-        else
-            if (i<0) and (i>=-C.Count)
-            then append_integer(indices, C.Count+i)
-            else
-                raise ELE.Create('index out of bounds', 'out of bounds');
-    end
-    else
-
-    if tpSequence(C) and (C.Count>0) and (vpSymbol_LAST(index) or vpKeyword_LAST(index))
-    then  append_integer(indices, C.Count-1)
-    else
-
-    if tpRecord(C) and tpSymbol(index)
-    then append_integer(indices, (C as TVRecord).index_of((index as TVSymbol).N))
-    else
-
-    if tpHashTable(C)
-    then append_integer(indices, (C as TVHashTable).GetIndex(index))
-    else
-
-    raise ELE.InvalidParameters;
-
-finally
-    f_ind.Free;
-end; end;
+//procedure ifh_elt(var C: TVCompound; ind: TValue; call: TCallProc; var indices: TIntegers);
+//var index, f_ind: TValue; expr, il: TVList; i: integer;
+//begin try
+//    index := nil;
+//    f_ind := nil;
+//    if tpSubprogram(ind)
+//    then try
+//        expr := TVList.Create([ind, C], false);
+//        f_ind := call(expr);
+//        index := f_ind;
+//    finally
+//        expr.free;
+//    end
+//    else index := ind;
+//
+//    if tpListNotEmpty(index) then begin
+//        il := index as TVList;
+//        ifh_elt(C, il.look[0], call, indices);
+//        for i := 1 to il.high do begin
+//            C := C.look[indices[high(indices)]] as TVCompound;
+//            ifh_elt(C, il.look[i], call, indices);
+//        end;
+//    end
+//    else
+//
+//    if tpSequence(C) and tpInteger(index) then begin
+//        i := (index as TVInteger).fI;
+//        if (i>=0) and (i<c.Count)
+//        then append_integer(indices, i)
+//        else
+//            if (i<0) and (i>=-C.Count)
+//            then append_integer(indices, C.Count+i)
+//            else
+//                raise ELE.Create('index out of bounds', 'out of bounds');
+//    end
+//    else
+//
+//    if tpSequence(C) and (C.Count>0) and (vpSymbol_LAST(index) or vpKeyword_LAST(index))
+//    then  append_integer(indices, C.Count-1)
+//    else
+//
+//    if tpRecord(C) and tpSymbol(index)
+//    then append_integer(indices, (C as TVRecord).index_of((index as TVSymbol).N))
+//    else
+//
+//    if tpHashTable(C)
+//    then append_integer(indices, (C as TVHashTable).GetIndex(index))
+//    else
+//
+//    raise ELE.InvalidParameters;
+//
+//finally
+//    f_ind.Free;
+//end; end;
 
 
 function ifh_div_sequence(s: TVSequence; d: integer): TVList;
@@ -937,6 +939,23 @@ begin
         end;
     end;
     result := TVDuration.Create(d);
+end;
+
+function if_matrix              (const PL: TVList; {%H-}call: TCallProc): TValue;
+var  w, h, i, j: integer;
+begin
+    case params_is(PL, result, [
+        vpIntegerNotNegative, vpIntegerNotNegative, vpKeyword_INTEGER, tpListOfIntegers]) of
+        1: begin
+            w := PL.I[0];
+            h := PL.I[1];
+            if PL.L[3].Count<>(w*h) then raise ELE.Create('size not match','invalid parameters');
+            result := TVMatrixInteger.Create(w,h);
+            for j:=0 to h-1 do
+                for i := 0 to w-1 do (result as TVMatrixInteger).SetElement(i,j, PL.L[3].I[j*w+i]);
+        end;
+    end;
+
 end;
 
 function if_datetime            (const PL: TVList; {%H-}call: TCallProc): TValue;
@@ -2081,8 +2100,9 @@ begin
     end;
 end;
 
+
 function if_element             (const PL: TVList; {%H-}call: TCallProc): TValue;
-var C: TVCompound; i: TIntegers;
+var C: TVCompound; cp: TIntegers; i: integer; il: TValues;
 begin
     case params_is(PL, result, [
         tpCompound, tpNIL,
@@ -2090,11 +2110,11 @@ begin
         1: result := PL[0];
         2: begin
             C := PL.look[0] as TVCompound;
-            i := nil;
-            ifh_elt(C, PL.look[1], call, i);
-            if i=nil
-            then result := TVList.Create
-            else result := C[i[high(i)]];
+            cp := nil;
+            i := 0;
+            C.InitIndices(il, PL.look[1]);
+            C.EvalLink(il, cp, TEvalProc(call));
+            result := C.Elt(cp, i);
         end;
     end;
 end;
@@ -3454,7 +3474,26 @@ begin
 end;
 
 
-const int_fun_count = 186;
+function if_test_elt            (const PL: TVList; {%H-}call: TCallProc): TValue;
+var s: TVCompound; il: TValues; cp: TIntegers; i: integer;
+begin
+    case params_is(PL, result, [
+        tpString, tpAny,
+        tpList, tpAny]) of
+        1,2: begin
+            WriteLn(PL.AsString);
+            s := PL.look[0] as TVCompound;
+            s.InitIndices(il, PL.L[1]);
+            cp := nil;
+            s.EvalLink(il,cp,TEvalProc(call));
+            i := 0;
+            result := s.Elt(cp,i);
+        end;
+    end;
+end;
+
+
+const int_fun_count = 188;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3492,6 +3531,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'DEG';                       f:if_deg;                   s:'(r)'),
 (n:'COMPLEX';                   f:if_complex;               s:'(r i)'),
 (n:'DURATION';                  f:if_duration;              s:'(:optional h m s ms)'),
+(n:'MATRIX';                    f:if_matrix;                s:'(w h type :rest data)'),
 (n:'DATE-TIME ДАТА-ВРЕМЯ';      f:if_datetime;              s:'(year month day :optional h m s ms)'),
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 (n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
@@ -3668,7 +3708,9 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'REGEXP:MATCH';              f:if_regexp_match;          s:'(s expr :key from)'),
 
 (n:'?';                         f:if_if;                    s:'(cnd a :optional b)'),
-(n:'F-IF-NIL';                  f:if_if_nil;                s:'(cnd a)')
+(n:'F-IF-NIL';                  f:if_if_nil;                s:'(cnd a)'),
+
+(n:'TEST-ELT';                  f:if_test_elt;              s:'(s :rest indices)')
 
 );
 
@@ -4052,7 +4094,39 @@ begin
     CP.CopyOnWrite;
 end;
 
+function TEvaluationFlow.oph_eval_target(P: TValue; tp: TTypePredicate): TValue;
+var CP: TVChainPointer;
+begin try
+    result := nil;
+    CP := nil;
+    CP := eval_link(P);
+    if CP.constant then raise ELE.Create('target is not variable');
+    result := CP.look;
+    if not tp(result) then raise ELE.InvalidParameters('target '+result.AsString);
+finally
+    CP.Free;
+end; end;
 
+{$IFDEF ELT}
+function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
+var ind: TVList; il: TValues; i: integer;
+begin try
+    result := nil;
+    ind := TVList.Create();
+    result := eval_link(PL.look[1]);
+
+    ind.SetCapacity(PL.Count-2);
+    for i := 2 to PL.high do ind.Add(eval(PL[i]));
+    TVCompound.InitIndices(il, ind);
+    if (Length(il)>0) and result.target_is_compound then begin
+       (result.look as TVCompound).EvalLink(il, result.index, self.callv);
+    end;
+finally
+    ind.Free;
+end;
+end;
+
+{$ELSE}
 function TEvaluationFlow.opl_elt(PL: TVList): TVChainPointer;
 var i: integer; ind: TVList; C: TVCompound;
 begin
@@ -4075,7 +4149,7 @@ finally
     ind.Free;
 end;
 end;
-
+{$ENDIF}
 
 function TEvaluationFlow.opl_key(PL: TVList): TVChainPointer;
 var i: integer; L: TVList; HT: TVHashTable; key: TValue;
@@ -4120,6 +4194,7 @@ finally
     key.Free;
 end;
 end;
+
 
 function TEvaluationFlow.eval_link(P: TValue): TVChainPointer;
 var i: integer; head: TValue;
@@ -4217,6 +4292,15 @@ finally
 end;
 end;
 
+{$IFDEF ELT}
+function TEvaluationFlow.op_pop                     (PL: TVList): TValue;
+var target: TValue;
+begin
+    target := oph_eval_target(PL.look[1], tpListOrQueue);
+    if tpList(target) then result := (target as TVList).POP;
+    if tpQueue(target) then result := (target as TVQueue).target.pop as TValue;
+end;
+{$ELSE}
 function TEvaluationFlow.op_pop                     (PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
@@ -4230,7 +4314,28 @@ finally
     CP.Free;
 end;
 end;
+{$ENDIF}
 
+{$IFDEF ELT}
+function TEvaluationFlow.op_push                    (PL: TVList): TValue;
+var i: integer; target: TValue; elts: TVList;
+begin
+    result := nil;
+    target := oph_eval_target(PL.look[1], tpListOrQueue);
+
+    elts := TVList.Create;
+    try for i := 2 to PL.High do elts.Add(eval(PL[i]));
+    except elts.Free; raise; end;
+    if tpList(target) then (target as TVList).Append(elts);
+    if tpQueue(target) then begin
+        for i := 0 to elts.high do (target as TVQueue).target.push(elts.look[i]);
+        elts.Free;
+    end;
+
+    result := TVT.Create;
+end;
+
+{$ELSE}
 function TEvaluationFlow.op_push                    (PL: TVList): TValue;
 var i: integer; CP: TVChainPointer; target: TValue; elts: TVList;
 begin
@@ -4253,6 +4358,7 @@ finally
     CP.Free;
 end;
 end;
+{$ENDIF}
 
 function TEvaluationFlow.op_const                   (PL: TVList): TValue;
 var tmp: TValue;
@@ -4333,10 +4439,35 @@ begin
     if result=nil then result := TVT.Create;
 end;
 
+{$IFDEF ELT}
+function TEvaluationFlow.op_default                 (PL: TVList): TValue;
+var CP: TVChainPointer; target: TValue;
+begin
+    result := TVT.Create;
+    if (PL.Count<>3) or not tpOrdinarySymbol(PL.look[1])
+    then raise ELE.malformed('DEFAULT');
 
+    CP := eval_link(PL.look[1]);
+    target := CP.look; //TODO: в большинстве случаев это излишний вызов CopyOnWrite
+try
+    if tpNIL(target)
+    then
+        if CP.constant
+        then
+            stack.new_var(PL.SYM[1], eval(PL[2]), true)
+        else begin
+            CP.set_target(eval(PL[2]));
+        end;
+finally
+    CP.Free;
+end;
+end;
+
+{$ELSE}
 function TEvaluationFlow.op_default                 (PL: TVList): TValue;
 var CP: TVChainPointer;
 begin
+    result := TVT.Create;
     if (PL.Count<>3) or not tpOrdinarySymbol(PL.look[1])
     then raise ELE.malformed('DEFAULT');
 
@@ -4351,27 +4482,32 @@ try
             CP.CopyOnWrite;
             CP.set_target(eval(PL[2]));
         end;
-
-    result := TVT.Create;
 finally
     CP.Free;
 end;
 end;
+{$ENDIF}
 
 function TEvaluationFlow.op_delete(PL: TVList): TValue;
 var CP: TVChainPointer; marks: array of boolean;
-    indices, target, ind: TVList; arg: TValue;
+    indices, target, ind: TVList; arg, tmp: TValue;
     i, j: integer;
 begin
     if PL.Count<>3 then raise ELE.Malformed('DELETE');
     arg := nil;
     ind := nil;
     indices := nil;
+    CP := nil;
 try
+    {$IFDEF ELT}
+    target := oph_eval_target(PL.look[1], tpList) as TVList;
+    {$ELSE}
     oph_eval_link_for_modification(CP, PL.look[1]);
 
     if not tpList(CP.look) then raise ELE.Create('target is not list');
     target := CP.look as TVList;
+    {$ENDIF}
+
 
     arg := oph_eval_indices(eval(PL[2]), target);
 
@@ -4506,7 +4642,24 @@ begin
     end;
 end;
 
+{$IFDEF ELT}
+function TEvaluationFlow.op_set                     (PL: TVList): TValue;
+var CP :TVChainPointer;
+begin
+    result := nil;
+    if (PL.Count<3) or (PL.Count>3) then raise ELE.InvalidParameters;
+try
+    CP := nil;
+    CP := eval_link(PL.look[1]);
+    CP.set_target(eval(PL[2]));
+    result := TVT.Create;
+finally
+    CP.Free;
+end;
 
+end;
+
+{$ELSE}
 function TEvaluationFlow.op_set                     (PL: TVList): TValue;
 var CP :TVChainPointer;
 begin try
@@ -4521,7 +4674,7 @@ begin try
 finally
     FreeAndNil(CP);
 end end;
-
+{$ENDIF}
 
 function TEvaluationFlow.op_try(PL: TVList): TValue;
 var exception_frame_start, i: integer; ec, eh: unicodestring;
@@ -4843,10 +4996,15 @@ var CP: TVChainPointer; target: TVList; arg: TValue; i: integer;
 begin
     if PL.Count<>4 then raise ELE.Malformed('INSERT');
     arg := nil;
+    CP := nil;
 try
+    {$IFDEF ELT}
+    target := oph_eval_target(PL.look[1], tpList) as TVList;
+    {$ELSE}
     oph_eval_link_for_modification(CP, PL.look[1]);
     if not tpList(CP.look) then raise ELE.Create('target is not list');
     target := CP.look as TVList;
+    {$ENDIF}
 
     arg := oph_eval_indices(eval(PL[2]), target);
 
@@ -4984,7 +5142,30 @@ finally
 end;
 end;
 
+{$IFDEF ELT}
+function TEvaluationFlow.op_append(PL: TVList): TValue;
+var i: integer; target: TValue;
+begin
+    result := TVT.Create;
+    if PL.Count<3 then raise ELE.InvalidParameters;
 
+    target := oph_eval_target(PL.look[1], tpSequence);
+
+    if target is TVString
+    then
+        for i := 2 to PL.high do (target as TVString).Append(eval(PL[i]) as TVString)
+
+    else if target is TVList
+    then
+        for i := 2 to PL.high do (target as TVList).Append(eval(PL[i]) as TVList)
+
+    else if target is TVBytes
+    then
+        for i := 2 to PL.high do (target as TVBytes).Append(eval(PL[i]) as TVBytes)
+
+    else raise ELE.InvalidParameters;
+end;
+{$ELSE}
 function TEvaluationFlow.op_append(PL: TVList): TValue;
 var CP: TVChainPointer; i: integer;
 begin
@@ -5017,6 +5198,7 @@ finally
     FreeAndNil(CP);
 end
 end;
+{$ENDIF}
 
 
 function TEvaluationFlow.op_assemble(PL: TVList): TValue;
@@ -5370,6 +5552,11 @@ begin
    if head.ClassType = TVOperator then result := call_operator(PL)
    else
    result := eval(PL.Copy);
+end;
+
+function TEvaluationFlow.callv(PL: TValue): TValue;
+begin
+    call(PL as TVList);
 end;
 
 

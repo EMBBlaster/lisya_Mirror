@@ -30,6 +30,8 @@ type
     end;
     TValues = array of TValue;
 
+    TEvalProc = function (V: TValue): TValue of object;
+
     { TVInternal }
 
     TVInternal = class (TValue)
@@ -286,6 +288,7 @@ type
         procedure set_target(_V: TValue);
         procedure CopyOnWrite;
         procedure set_last_index(i: integer);
+        function target_is_compound: boolean;
     end;
 
 
@@ -297,9 +300,20 @@ type
         procedure SetItem(index: integer; _V: TValue); virtual; abstract;
         function LookItem(index: integer): TValue; virtual; abstract;
     public
+        primitive: boolean;
         property items[index: integer]: TValue read GetItem write SetItem; default;
         property look[index: integer]: TValue read LookItem;
         function Count: integer; virtual; abstract;
+
+
+        procedure EvalSelector(var il: TValues; call: TEvalProc);
+        class procedure InitIndices(var il: TValues; indices: TValue);
+
+        function EvalIndex(var il: TValues): integer; virtual;
+        function Elt(var cp: TIntegers; var i: integer): TValue; virtual;
+        function Target(var cp: TIntegers; var i: integer): TValue; virtual;
+        procedure SetElt(var cp: TIntegers; var i: integer; V: TValue); virtual;
+        procedure EvalLink(var il: TValues; var cp: TIntegers; call: TEvalProc); virtual;
     end;
 
 
@@ -313,14 +327,14 @@ type
 
     { TVCompoundOfPrimitive }
 
-    TVCompoundOfPrimitive = class (TVSequence)
+    TVSequenceOfPrimitive = class (TVSequence)
         function LookItem({%H-}index: integer): TValue; override;
     end;
 
 
     { TVString }
 
-    TVString = class (TVCompoundOfPrimitive)
+    TVString = class (TVSequenceOfPrimitive)
     private
         function GetItem(index: integer): TValue; override;
         procedure SetItem(index: integer; _V: TValue); override;
@@ -333,12 +347,12 @@ type
         function hash: DWORD; override;
         function equal(V: TValue): boolean; override;
 
-
         function Count: integer; override;
         function crc32: DWORD;
 
         function subseq(istart: integer; iend: integer = -1): TValue; override;
         procedure Append(_s: TVString);
+
     end;
 
 
@@ -411,12 +425,15 @@ type
         function CAR: TValue;
         function CDR: TVList;
         function phantom_CDR: TVList;
+
+        procedure SetElt(var cp: TIntegers; var i: integer; V: TValue); override;
+        function Target(var cp: TIntegers; var i: integer): TValue; override;
     end;
 
 
     { TVBytes }
 
-    TVBytes = class (TVCompoundOfPrimitive)
+    TVBytes = class (TVSequenceOfPrimitive)
     private
         function GetByte(Index: Integer): Int64;
         procedure SetByte(Index: Integer; V: Int64);
@@ -486,6 +503,8 @@ type
         //TODO: сравнение записей должно быть независимым от порядка слотов
         function index_of(nN: integer): integer;
         function get_n_of(index: unicodestring): integer;
+
+        function EvalIndex(var il: TValues): integer; override;
     end;
 
 
@@ -527,6 +546,10 @@ type
         function GetKeys: TVList;
 
         function Count: integer; override;
+
+        function EvalIndex(var il: TValues): integer; override;
+        procedure SetElt(var cp: TIntegers; var i: integer; V: TValue); override;
+        function Target(var cp: TIntegers; var i: integer): TValue; override;
     end;
 
     { TVSymbolStack }
@@ -641,9 +664,8 @@ type
     end;
 
 
-    type TEvalProc = function (V: TValue): TValue of Object;
-    type TCallProc = function (V: TVList): TValue of Object;
-    type TInternalFunctionBody = function (const PL: TVList; call: TCallProc): TValue;
+    TCallProc = function (V: TVList): TValue of object;
+    TInternalFunctionBody = function (const PL: TVList; call: TCallProc): TValue;
 
     { TVInternalSubprogram }
 
@@ -805,23 +827,40 @@ type
 
     TVQueue = TVPointer<TQueue>;
 
-    { TVArray }
 
-    TVArray<T> = class (TValue)
-        dims: TIntegers;
+    { TVMatrix }
+
+    TVMatrix<T> = class (TVCompound)
+    private
+        //function GetItem(index: integer): TValue; virtual;
+        //procedure SetItem(index: integer; _V: TValue); virtual;
+        //function LookItem(index: integer): TValue; virtual;
+    public
+        w,h: integer;
         data: array of T;
-        constructor Create(size: TIntegers);
+        constructor Create(_w, _h: integer; _d: array of T); overload;
+        constructor Create(_w, _h: integer); overload;
         destructor Destroy; override;
 
-        function Copy: TValue;
-        function AsString: unicodestring; override;
+        //property items[index: integer]: TValue read GetItem write SetItem; default;
+        //property look[index: integer]: TValue read LookItem;
+        //function Count: integer; virtual; abstract;
+
         function Hash: DWORD; override;
         function equal(V: TValue): boolean; override;
 
-        function GetEelement(const n: TIntegers): T;
-        procedure SetElement(const n: TIntegers; V: T);
+        function GetEelement(i,j: integer): T;
+        procedure SetElement(i,j: integer; V: T);
     end;
 
+
+
+    { TVMatrixInteger }
+
+    TVMatrixInteger = class(TVMatrix<Int64>)
+        function Copy: TValue; override;
+        function AsString: unicodestring; override;
+    end;
 
 
 procedure Assign(var v1, v2: TValue);
@@ -840,7 +879,26 @@ implementation
 
 uses lisya_predicates, lisya_gc;
 
+procedure push_index(var il: TValues; V: TValue);
+var L: TVList; i: integer;
+begin
+    if V is TVList
+    then begin
+        L := V as TVList;
+        SetLength(il, Length(il)+L.Count);
+        for i := 0 downto L.high do il[high(il)-i] := L[i];
+    end
+    else begin
+        SetLength(il, Length(il)+1);
+        il[high(il)] := V.Copy;
+    end;
+end;
 
+function pop_index(var il: TValues): TValue;
+begin
+    result := il[high(il)];
+    SetLength(il, Length(il)-1);
+end;
 
 procedure Assign(var v1, v2: TValue);
 begin
@@ -892,63 +950,165 @@ begin
     result := (V is TVPointer<T>) and (target=(V as TVPointer<T>).target);
 end;
 
-{ TVArray }
 
-constructor TVArray<T>.Create(size: TIntegers);
-var d: integer; elt_count: integer;
+{ TVMatrix }
+
+constructor TVMatrix<T>.Create(_w, _h: integer; _d: array of T);
 begin
-    dims := size;
-    elt_count := 1;
-    for d := 0 to high(dims) do elt_count := elt_count * dims[d];
-    SetLength(data, elt_count);
+    w := _w;
+    h := _h;
+    SetLength(data, w*h);
+    move(_d[0], data[0], w*h*SizeOf(T));
 end;
 
-destructor TVArray<T>.Destroy;
+constructor TVMatrix<T>.Create(_w, _h: integer);
 begin
-    SetLength(data, 0);
+    w := _w;
+    h := _h;
+    SetLength(data, w*h);
+    FillChar(data[0], SizeOf(T)*w*h, 0);
+end;
+
+destructor TVMatrix<T>.Destroy;
+begin
     inherited Destroy;
 end;
 
-function TVArray<T>.Copy: TValue;
-begin
-    result := TVArray<T>.Create(dims);
-    (result as TVArray<T>).data:= system.Copy(data);
-end;
 
-function TVArray<T>.AsString: unicodestring;
-var d: integer; ind: TIntegers;
-begin
-    result := '#<ARRAY ';
 
-end;
-
-function TVArray<T>.Hash: DWORD;
+function TVMatrix<T>.Hash: DWORD;
 begin
-    raise ELE.Create('HASH not implemented','internal');
+  raise ELE.Create('HASH not implemented','internal');
     Result:=inherited Hash;
 end;
 
-function TVArray<T>.equal(V: TValue): boolean;
-var d, i: integer; va: TVArray<T>;
+function TVMatrix<T>.equal(V: TValue): boolean;
+var vm: TVMatrix<T>;
 begin
-    result := (V is TVArray<T>);
+    result := (V is TVMatrix<T>);
     if not result then Exit;
-    va := V as TVArray<T>;
-    result := Length(dims) = Length(va.dims);
+    vm := V as TVMatrix<T>;
+    result := (w=vm.w) and (h=vm.h);
     if not result then exit;
-    for d := 0 to high(dims) do result := result and (dims[d] = va.dims[d]);
-    if not result then exit;
-    for i := 0 to high(data) do result := result and (data[i] = va.data[i]);
+    CompareMem(@data[0], @vm.data[0], SizeOf(T)*w*h);
 end;
 
-function TVArray<T>.GetEelement(const n: TIntegers): T;
+function TVMatrix<T>.GetEelement(i, j: integer): T;
 begin
-
+    result := data[i*h+j];
 end;
 
-procedure TVArray<T>.SetElement(const n: TIntegers; V: T);
+procedure TVMatrix<T>.SetElement(i, j: integer; V: T);
 begin
+    data[i*h+j] := V;
+end;
 
+{ TVCompound }
+
+procedure TVCompound.EvalSelector(var il: TValues; call: TEvalProc);
+var expr: TVList; P, res: TValue;
+begin
+     if not (il[high(il)] is TVSubprogram) then Exit;
+try
+    //если текущий селектор является подпрограммой, то нужно заменить её
+    //результатом вызова
+    res := nil;
+    p := pop_index(il);
+    expr := TVList.Create([p, self],false);
+    res := call(expr);
+    push_index(il,res);
+finally
+    expr.Free;
+    res.Free;
+    p.Free;
+end;
+end;
+
+function TVCompound.EvalIndex(var il: TValues): integer;
+var ind: TValue;
+begin
+    ind := pop_index(il);
+try
+    if (ind is TVInteger) then result := (ind as TVInteger).fI
+    else
+
+    if vpKeyword_LAST(ind) or vpSymbol_LAST(ind) then result := -1
+    else
+
+    raise ELE.InvalidParameters('invalid index '+ind.AsString);
+
+    if result<0 then result := Count + result;
+finally
+    ind.Free;
+end; end;
+
+class procedure TVCompound.InitIndices(var il: TValues; indices: TValue);
+var L: TVList; i: integer;
+begin
+    L := indices as TVList;
+    for i := L.high downto 0 do push_index(il, L.look[i]);
+end;
+
+function TVCompound.Elt(var cp: TIntegers; var i: integer): TValue;
+var n: integer;
+begin
+    n := cp[i];
+    Inc(i);
+    if i=Length(cp)
+    then result := items[n]
+    else result := (look[n] as TVCompound).Elt(cp, i);
+end;
+
+function TVCompound.Target(var cp: TIntegers; var i: integer): TValue;
+var n: integer;
+begin
+    n := cp[i];
+    Inc(i);
+    if i=Length(cp)
+    then result := look[n]
+    else result := (look[n] as TVCompound).Target(cp, i);
+end;
+
+procedure TVCompound.SetElt(var cp: TIntegers; var i: integer; V: TValue);
+var n: integer;
+begin
+    n := cp[i];
+    Inc(i);
+    if i=Length(cp)
+    then items[n] := V
+    else (look[n] as TVCompound).SetElt(cp, i, V);
+end;
+
+procedure TVCompound.EvalLink(var il: TValues; var cp: TIntegers; call: TEvalProc);
+var n: integer;
+begin
+    EvalSelector(il, call);
+    n := EvalIndex(il);
+    append_integer(cp, n);
+    if Length(il)>0 then (look[n] as TVCompound).EvalLink(il,cp,call);
+end;
+
+
+
+
+
+{ TVMatrixInteger }
+
+function TVMatrixInteger.AsString: unicodestring;
+var i,j: integer;
+begin
+    Result:= '#<MATRIX '+IntToStr(w)+'x'+IntToStr(h)+' ';
+    for j := 0 to h-1 do begin
+        result := result+'[';
+        for i := 0 to w-1 do result := result + ' '+IntToStr(data[i*h+j]);
+        result := result+']';
+    end;
+    result := result+']';
+end;
+
+function TVMatrixInteger.Copy: TValue;
+begin
+    result:= TVMatrixInteger.Create(w,h, data);
 end;
 
 
@@ -1076,9 +1236,9 @@ begin
 end;
 
 
-{ TVCompoundOfPrimitive }
+{ TVSequenceOfPrimitive }
 
-function TVCompoundOfPrimitive.LookItem(index: integer): TValue;
+function TVSequenceOfPrimitive.LookItem(index: integer): TValue;
 begin
     result := nil;
     raise ELE.Create('look for item of '+self.ClassName, 'internal');
@@ -1274,6 +1434,7 @@ begin
     SetLength(index, 2);
     index[0].k:=-1;
     index[1].k:=-1;
+    primitive := false;
 end;
 
 constructor TVHashTable.CreateEmpty;
@@ -1281,6 +1442,7 @@ begin
     data := nil;
     keys := nil;
     SetLength(index, 0);
+    primitive := false;
 end;
 
 destructor TVHashTable.Destroy;
@@ -1350,6 +1512,28 @@ end;
 function TVHashTable.Count: integer;
 begin
     result := data.Count;
+end;
+
+function TVHashTable.EvalIndex(var il: TValues): integer;
+var ind: TValue;
+begin
+    ind := pop_index(il);
+try
+    result := self.GetIndex(ind);
+finally
+    ind.Free;
+end; end;
+
+procedure TVHashTable.SetElt(var cp: TIntegers; var i: integer; V: TValue);
+begin
+    CopyOnWrite;
+    inherited SetElt(cp, i, V);
+end;
+
+function TVHashTable.Target(var cp: TIntegers; var i: integer): TValue;
+begin
+    CopyOnWrite;
+    result := inherited Target(cp, i);
 end;
 
 
@@ -1611,6 +1795,18 @@ begin
     result := V.constant;
 end;
 
+{$IFDEF ELT}
+function TVChainPointer.value: TValue;
+var i: integer;
+begin
+    if Length(index)=0
+    then result := V.V.Copy
+    else begin
+        i := 0;
+        result := (V.V as TVCompound).Elt(index, i);
+    end;
+end;
+{$ELSE}
 function TVChainPointer.value: TValue;
 var i: integer; tmp : TVCompound;
 begin
@@ -1622,7 +1818,20 @@ begin
         result := tmp[index[high(index)]];
     end;
 end;
+{$ENDIF}
+{$IFDEF ELT}
+function TVChainPointer.look: TValue;
+var i: integer;
+begin
+    if Length(index)=0
+    then result := V.V
+    else begin
+        i := 0;
+        result := (V.V as TVCompound).Target(index, i);
+    end;
+end;
 
+{$ELSE}
 function TVChainPointer.look: TValue;
 var i: integer;
 begin
@@ -1633,11 +1842,12 @@ begin
         for i := 0 to high(index)-1 do
             result := (result as TVCompound).look[index[i]];
         //костыль
-        if result is TVCompoundOfPrimitive
+        if result is TVSequenceOfPrimitive
         then result := primitive
         else result := (result as TVCompound).look[index[high(index)]];
     end;
 end;
+{$ENDIF}
 
 procedure TVChainPointer.add_index(i: integer);
 begin
@@ -1645,6 +1855,22 @@ begin
     index[high(index)] := i;
 end;
 
+{$IFDEF ELT}
+procedure TVChainPointer.set_target(_V: TValue);
+var tmp: TVCompound; i: integer;
+begin
+    if V.constant then raise ELE.Create('target is not variable');
+    if Length(index)=0 then begin
+        V.V.Free;
+        V.V := _V;
+    end
+    else begin
+        i := 0;
+        (V.V as TVCompound).SetElt(index, i, _V);
+    end;
+end;
+
+{$ELSE}
 procedure TVChainPointer.set_target(_V: TValue);
 var tmp: TVCompound; i: integer;
 begin
@@ -1659,6 +1885,7 @@ begin
         tmp[index[high(index)]] := _V;
     end;
 end;
+{$ENDIF}
 
 procedure TVChainPointer.CopyOnWrite;
 var obj: TValue; i: integer;
@@ -1677,6 +1904,16 @@ end;
 procedure TVChainPointer.set_last_index(i: integer);
 begin
     index[high(index)] := i;
+end;
+
+function TVChainPointer.target_is_compound: boolean;
+var i: integer; tmp: TVCompound;
+begin
+    if length(index)=0 then begin result := V.V is TVCompound; exit; end;
+    tmp := V.V as TVCompound;
+    for i := 0 to high(index)-1 do tmp :=  tmp.look[index[i]] as TVCompound;
+    if tmp.primitive then begin result := false; exit; end;
+    result := tmp.look[index[high(index)]] is TVCompound;
 end;
 
 
@@ -1779,6 +2016,7 @@ end;
 constructor TVBytes.Create;
 begin
     SetLength(fBytes,0);
+    primitive := true;
 end;
 
 destructor TVBytes.Destroy;
@@ -2151,12 +2389,14 @@ begin
         unames[i] := symbol_n(names[i]);
         slots.Add(TVList.Create);
     end;
+    primitive := false;
 end;
 
 constructor TVRecord.Create;
 begin
     SetLength(unames, 0);
     slots := TObjectList.Create(true);
+    primitive := false;
 end;
 
 destructor TVRecord.Destroy;
@@ -2277,6 +2517,18 @@ function TVRecord.get_n_of(index: unicodestring): integer;
 begin
     result := index_of(symbol_n(index));
 end;
+
+function TVRecord.EvalIndex(var il: TValues): integer;
+var ind: TValue;
+begin
+    ind := pop_index(il);
+try
+    if (ind is TVSymbol)
+    then result := self.index_of((ind as TVSymbol).N)
+    else raise ELE.InvalidParameters('invalid record selector: '+ind.AsString);
+finally
+    ind.Free;
+end; end;
 
 
 { TVOperator }
@@ -2542,6 +2794,7 @@ end;
 constructor TVString.Create(S: unicodestring);
 begin
     self.S := S;
+    primitive := true;
 end;
 
 destructor TVString.Destroy;
@@ -2602,6 +2855,8 @@ begin
     S := S + _s.S;
     _s.Free;
 end;
+
+
 
 
 { TVInteger }
@@ -2855,6 +3110,7 @@ end;
 constructor TVList.Create;
 begin
     fL := TListBody.Create(false);
+    primitive := false;
 end;
 
 constructor TVList.Create(VL: array of TValue; free_objects: boolean);
@@ -2863,11 +3119,13 @@ begin
     SetLength(fL.V, Length(VL));
     move(VL[0],fL.V[0],sizeOf(TValue)*Length(VL));
     fL.Count := Length(VL);
+    primitive := false;
 end;
 
 constructor TVList.Create(body: TListBody);
 begin
     fL := body;
+    primitive := false;
 end;
 
 destructor TVList.Destroy;
@@ -2975,6 +3233,20 @@ begin
     for i:=1 to fL.Count-1 do result.fL.V[i-1] := fL.V[i];
     result.fL.count := fL.count-1;
 end;
+
+
+procedure TVList.SetElt(var cp: TIntegers; var i: integer; V: TValue);
+begin
+    CopyOnWrite;
+    inherited SetElt(cp, i, V);
+end;
+
+function TVList.Target(var cp: TIntegers; var i: integer): TValue;
+begin
+    CopyOnWrite;
+    result := inherited Target(cp, i);
+end;
+
 
 
 initialization
