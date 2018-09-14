@@ -286,9 +286,8 @@ type
         function look: TValue;
         procedure add_index(i: integer);
         procedure set_target(_V: TValue);
-        procedure CopyOnWrite;
         procedure set_last_index(i: integer);
-        function target_is_compound: boolean;
+        function target_is_compound1: boolean;
     end;
 
 
@@ -1085,7 +1084,11 @@ begin
     EvalSelector(il, call);
     n := EvalIndex(il);
     append_integer(cp, n);
-    if Length(il)>0 then (look[n] as TVCompound).EvalLink(il,cp,call);
+    if (Length(il)>0) then begin
+      if look[n] is TVCompound
+      then (look[n] as TVCompound).EvalLink(il,cp,call)
+      else raise ELE.InvalidParameters(look[n].AsString+' is not compound');
+    end;
 end;
 
 
@@ -1842,26 +1845,12 @@ begin
 end;
 
 
-procedure TVChainPointer.CopyOnWrite;
-var obj: TValue; i: integer;
-begin
-    obj := self.V.V;
-    if obj is TVList then (obj as TVList).CopyOnWrite;
-    if obj is TVHashTable then (obj as TVHashTable).CopyOnWrite;
-    for i := 0 to high(index)-1 do begin
-        obj := (obj as TVCompound).look[index[i]];
-        if (obj is TVList) then (obj as TVList).CopyOnWrite;
-        if obj is TVHashTable then (obj as TVHashTable).CopyOnWrite;
-    end;
-end;
-
-
 procedure TVChainPointer.set_last_index(i: integer);
 begin
     index[high(index)] := i;
 end;
 
-function TVChainPointer.target_is_compound: boolean;
+function TVChainPointer.target_is_compound1: boolean;
 var i: integer; tmp: TVCompound;
 begin
     if length(index)=0 then begin result := V.V is TVCompound; exit; end;

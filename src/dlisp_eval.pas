@@ -4030,7 +4030,7 @@ begin try
     ind.SetCapacity(PL.Count-2);
     for i := 2 to PL.high do ind.Add(eval(PL[i]));
     TVCompound.InitIndices(il, ind);
-    if (Length(il)>0) and result.target_is_compound then begin
+    if (Length(il)>0) and result.target_is_compound1 then begin
        (result.look as TVCompound).EvalLink(il, result.index, self.callv);
     end;
 finally
