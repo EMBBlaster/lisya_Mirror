@@ -296,7 +296,7 @@ begin
     WaitFor;
     fflow.Free;
     fResult.Free;
-    //fExpr.Free;
+    fExpr.Free;
     inherited;
 end;
 

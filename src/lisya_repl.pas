@@ -57,7 +57,7 @@ begin
             expr := nil;
             expr := read_from_string(input_string);
             res := nil;
-            res := root_evaluation_flow.Eval(expr);
+            res := root_evaluation_flow.Eval_and_free(expr);
             if prompt then begin Write('= '); print(res, nil); WriteLn(); end;
             FreeAndNil(res);
         except

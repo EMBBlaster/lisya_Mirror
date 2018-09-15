@@ -31,9 +31,11 @@ end;
 procedure inplace_operators(body: TVList);
 var op: TVOperator; i: integer;
 begin
+    WriteLn('>>>> ', body.AsString);
     if body.Count=0 then Exit;
 
     op := nil;
+    body.CopyOnWrite;
     if tpOrdinarySymbol(body.look[0]) then begin
         op := eval_operator(body.sym[0]);
         if op<>nil then begin

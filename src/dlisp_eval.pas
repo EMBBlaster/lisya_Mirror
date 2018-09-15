@@ -126,6 +126,7 @@ type
         function eval_link(P: TValue): TVChainPointer;
 
         function eval(V: TValue): TValue;
+        function eval_and_free(V: TValue): TValue;
     end;
 
 function eval_operator(s: TVSymbol): TVOperator;
@@ -3823,7 +3824,7 @@ begin
 
     while (pc<PL.Count) do begin
         FreeAndNil(V);
-        V := eval(PL[pc]);
+        V := eval(PL.look[pc]);
         Inc(pc);
         if tpGoto(V)
         then begin
@@ -3894,7 +3895,7 @@ begin
             if ((expr is TVSymbol) and ((expr as TVSymbol).uname='REPL'))
             then begin expr.Free; result := false; break; end;
 
-            res := eval(expr);
+            res := eval_and_free(expr);
             if res is TVReturn then break;
             FreeAndNil(res);
         end;
@@ -3940,7 +3941,7 @@ var pack: TPackage;
             and (((expr as TVList).uname[0]='PACKAGE') or ((expr as TVList).uname[0]='ПАКЕТ'))
             and ((expr as TVList).look[1] is TVSymbol)
             and ((expr as TVList).uname[1]=UnicodeUpperCase(name))
-        then eval(expr).Free
+        then eval_and_free(expr).Free
         else raise ELE.Create(fn+' is not package '+name,'package');
     finally
         f.Free;
@@ -3960,7 +3961,7 @@ begin
 try
     built_in_stream := TLStream.FindBuiltIn(UnicodeLowerCase(name)){%H-};
     if built_in_stream.active then begin
-        eval(read(built_in_stream)).Free;
+        eval_and_free(read(built_in_stream)).Free;
         bind_pack;
         Exit;
     end;
@@ -4030,7 +4031,7 @@ begin try
     result := eval_link(PL.look[1]);
 
     ind.SetCapacity(PL.Count-2);
-    for i := 2 to PL.high do ind.Add(eval(PL[i]));
+    for i := 2 to PL.high do ind.Add(eval(PL.look[i]));
     TVCompound.InitIndices(il, ind);
     if (Length(il)>0) and result.target_is_compound1 then begin
        (result.look as TVCompound).EvalLink(il, result.index, self.callv);
@@ -4046,7 +4047,7 @@ begin try
     result := nil;
     key := nil;
     result := eval_link(PL.look[1]);
-    key := eval(PL[2]);
+    key := eval(PL.look[2]);
 
     if tpList(result.look)
     then begin
@@ -4110,16 +4111,16 @@ begin try
 
     try
         if tpListNotEmpty(P) then begin
-            head := eval((P as TVList)[0]);
+            head := eval((P as TVList).look[0]);
             if tpOperator(head) then begin
                 case (head as TVOperator).op_enum of
                     oeELT: result := opl_elt(P as TVList);
                     oeKEY: result := opl_key(P as TVList);
-                    else result := TVChainPointer.Create(NewVariable(eval(P.Copy), true));
+                    else result := TVChainPointer.Create(NewVariable(eval(P), true));
                 end;
                 exit;
             end;
-            result := TVChainPointer.Create(NewVariable(eval(P.Copy), true));
+            result := TVChainPointer.Create(NewVariable(eval(P), true));
             exit;
         end;
     finally
@@ -4142,7 +4143,7 @@ begin
     result := TVT.Create;
     for pc := 1 to PL.count-1 do begin
         FreeAndNil(result);
-        result := eval(PL[pc]);
+        result := eval(PL.look[pc]);
         if tpNIL(result) then exit;
     end;
 end;
@@ -4163,7 +4164,7 @@ begin
 try
     expr := nil;
     result := nil;
-    expr := eval(PL[1]);
+    expr := eval(PL.look[1]);
 
     for i := 2 to PL.High do
         if equal(expr, PL.L[i].look[0])
@@ -4198,7 +4199,7 @@ begin
     target := oph_eval_target(PL.look[1], tpListOrQueue);
 
     elts := TVList.Create;
-    try for i := 2 to PL.High do elts.Add(eval(PL[i]));
+    try for i := 2 to PL.High do elts.Add(eval(PL.look[i]));
     except elts.Free; raise; end;
     if tpList(target) then (target as TVList).Append(elts);
     if tpQueue(target) then begin
@@ -4218,7 +4219,7 @@ begin
 
     try
         tmp := nil;
-        tmp := eval(PL[2]);
+        tmp := eval(PL.look[2]);
         oph_bind(PL.look[1], tmp, true);
     finally
         tmp.Free;
@@ -4256,7 +4257,7 @@ begin
     end;
 
     if (PL.Count=3) and vpKeyword_PRINT_HASH_TABLE(PL.look[1]) then begin
-        tmp := eval(PL[2]);
+        tmp := eval(PL.look[2]);
         (tmp as TVHashTable).print;
         tmp.Free;
         exit;
@@ -4271,13 +4272,13 @@ begin
     {$ENDIF}
 
     if params(3, vpKeyword_PRINT_LINKS) then begin
-        tmp := eval(PL[2]);
+        tmp := eval(PL.look[2]);
         print_links(tmp);
         tmp.Free;
     end;
 
     if params(3, vpKeyword_SEPARATE) then begin
-        tmp := eval(PL[2]);
+        tmp := eval(PL.look[2]);
         result := separate(tmp);
         tmp.Free;
     end;
@@ -4304,9 +4305,9 @@ try
     then
         if CP.constant
         then
-            stack.new_var(PL.SYM[1], eval(PL[2]), true)
+            stack.new_var(PL.SYM[1], eval(PL.look[2]), true)
         else begin
-            CP.set_target(eval(PL[2]));
+            CP.set_target(eval(PL.look[2]));
         end;
 finally
     CP.Free;
@@ -4315,7 +4316,7 @@ end; end;
 
 function TEvaluationFlow.op_delete(PL: TVList): TValue;
 var marks: array of boolean;
-    indices, target, ind: TVList; arg, tmp: TValue;
+    indices, target, ind: TVList; arg: TValue;
     i, j: integer;
 begin
     if PL.Count<>3 then raise ELE.Malformed('DELETE');
@@ -4326,7 +4327,7 @@ begin
 try
     target := oph_eval_target(PL.look[1], tpList) as TVList;
 
-    arg := oph_eval_indices(eval(PL[2]), target);
+    arg := oph_eval_indices(eval(PL.look[2]), target);
 
     if tpList(arg)
     then indices:=arg as TVList
@@ -4384,7 +4385,7 @@ begin
 
     sclass := '';
     if PL.Count>1 then try
-        eclass := eval(PL[1]);
+        eclass := eval(PL.look[1]);
         if tpString(eclass)
         then sclass := (eclass as TVString).S
         else raise ELE.InvalidParameters;
@@ -4394,7 +4395,7 @@ begin
 
     smsg := '';
     if PL.Count>2 then try
-        emsg := eval(PL[2]);
+        emsg := eval(PL.look[2]);
         if tpString(emsg)
         then smsg := (emsg as TVString).S
         else raise ELE.InvalidParameters;
@@ -4447,7 +4448,7 @@ begin
     try
         result := nil;
         fn := nil;
-        fn := eval(PL[1]);
+        fn := eval(PL.look[1]);
 
         if not tpString(fn) then raise ELE.InvalidParameters;
 
@@ -4468,7 +4469,7 @@ begin
 try
     CP := nil;
     CP := eval_link(PL.look[1]);
-    CP.set_target(eval(PL[2]));
+    CP.set_target(eval(PL.look[2]));
     result := TVT.Create;
 finally
     CP.Free;
@@ -4482,7 +4483,7 @@ begin
 
     result := nil;
     try
-        result := eval(PL[1]);
+        result := eval(PL.look[1]);
     except on E:ELE do //eval может выбросить только ELisyaError
         try
             exception_frame_start := stack.Count;
@@ -4516,7 +4517,7 @@ begin
 
     result := nil;
     case PL.Count of
-        2: result := TVReturn.Create(eval(PL[1]));
+        2: result := TVReturn.Create(eval(PL.look[1]));
         1: result := TVReturn.Create(TVList.Create);
     end;
 end;
@@ -4531,7 +4532,7 @@ begin try
 
     for i := 1 to PL.Count-1 do begin
         FreeAndNil(tmp);
-        tmp := eval(PL.L[i][0]);
+        tmp := eval(PL.L[i].look[0]);
         if not tpNIL(tmp)
         then begin
             FreeAndNil(tmp);
@@ -4563,7 +4564,7 @@ var i, frame_start, high_i, low_i: integer;
         op_var := sequence;
         CP := eval_link(E.look[1]);
         if not (CP.look is TVSequence) then raise ELE.InvalidParameters;
-        l := eval(E[2]);
+        l := eval(E.look[2]);
         case E.Count of
             3: if vpIntegerNotNegative(l) then begin
                 low_i := (l as TVInteger).fI;
@@ -4576,7 +4577,7 @@ var i, frame_start, high_i, low_i: integer;
                 end
                 else raise ELE.InvalidParameters;
             4: begin
-                h := eval(E[3]);
+                h := eval(E.look[3]);
                 if vpIntegerNotNegative(l) and vpIntegerNotNegative(h) then begin
                     low_i := (l as TVInteger).fI;
                     high_i := (h as TVInteger).fI-1;
@@ -4757,20 +4758,20 @@ begin
     then raise ELE.malformed('IF');
 try
     condition := nil;
-    condition := eval(PL[1]);
+    condition := eval(PL.look[1]);
 
     if not tpNIL(condition)
     then begin
         if vpListHeaded_THEN(PL.look[2])
         then result := oph_block(PL.L[2], 1, false)
-        else result := eval(PL[2]);
+        else result := eval(PL.look[2]);
     end
     else
         if PL.Count=4
         then begin
             if vpListHeaded_ELSE(PL.look[3])
             then result := oph_block(PL.L[3], 1, false)
-            else result := eval(PL[3]);
+            else result := eval(PL.look[3]);
         end
         else result := TVList.Create;
 finally
@@ -4782,11 +4783,11 @@ function TEvaluationFlow.op_if_nil                  (PL: TVList): TValue;
 begin
     if PL.Count<>3 then raise ELE.malformed('IF-NIL');
 
-    result := eval(PL[1]);
+    result := eval(PL.look[1]);
     if tpNIL(result)
     then begin
         FreeAndNil(result);
-        result := eval(PL[2])
+        result := eval(PL.look[2])
     end;
 end;
 
@@ -4798,7 +4799,7 @@ begin
 try
     target := oph_eval_target(PL.look[1], tpList) as TVList;
 
-    arg := oph_eval_indices(eval(PL[2]), target);
+    arg := oph_eval_indices(eval(PL.look[2]), target);
 
     if tpInteger(arg)
     then i := (arg as TVInteger).fI
@@ -4810,7 +4811,7 @@ try
 
     if (i<0) or (i>target.Count) then ELE.InvalidParameters;
 
-    target.insert(i, eval(PL[3]));
+    target.insert(i, eval(PL.look[3]));
 
     result := TVT.Create;
 finally
@@ -4839,12 +4840,12 @@ begin
     VPL := PL.L[1];
     try
         old_v := TVList.Create;
-        for i := 0 to VPL.High do old_v.Add(eval(VPL.L[i][0]));
+        for i := 0 to VPL.High do old_v.Add(eval(VPL.L[i].look[0]));
 
         try
             count := 0;
             for i := 0 to VPL.High do begin
-                stack.set_var(VPL.L[i].SYM[0], eval(VPL.L[i][1]));
+                stack.set_var(VPL.L[i].SYM[0], eval(VPL.L[i].look[1]));
                 Inc(count);
             end;
 
@@ -4892,7 +4893,7 @@ begin
     result := TVList.Create;
     for pc := 1 to PL.count-1 do begin
         FreeAndNil(result);
-        result := eval(PL[pc]);
+        result := eval(PL.look[pc]);
         if not tpNIL(result) then exit;
     end;
 end;
@@ -4943,15 +4944,15 @@ begin
 
     if target is TVString
     then
-        for i := 2 to PL.high do (target as TVString).Append(eval(PL[i]) as TVString)
+        for i := 2 to PL.high do (target as TVString).Append(eval(PL.look[i]) as TVString)
 
     else if target is TVList
     then
-        for i := 2 to PL.high do (target as TVList).Append(eval(PL[i]) as TVList)
+        for i := 2 to PL.high do (target as TVList).Append(eval(PL.look[i]) as TVList)
 
     else if target is TVBytes
     then
-        for i := 2 to PL.high do (target as TVBytes).Append(eval(PL[i]) as TVBytes)
+        for i := 2 to PL.high do (target as TVBytes).Append(eval(PL.look[i]) as TVBytes)
 
     else raise ELE.InvalidParameters;
 end;
@@ -4964,12 +4965,12 @@ function TEvaluationFlow.op_assemble(PL: TVList): TValue;
         result := TVList.Create;
         for i := from to L.high do begin
             if vpListHeaded_VALUE(L.look[i])
-            then result.Add(eval(L.L[i][1]))
+            then result.Add(eval(L.L[i].look[1]))
 
             else if vpListHeaded_INSET(L.look[i])
             then try
                 tmp := nil;
-                tmp := eval(L.L[i][1]);
+                tmp := eval(L.L[i].look[1]);
                 if not tpList(tmp) then raise ELE.Malformed('INSET');
                 for j := 0 to (tmp as TVList).high do
                     result.Add((tmp as TVList)[j]);
@@ -5035,7 +5036,7 @@ try
     result := fun;
     fun.sign1 := ifh_build_sign(PL.L[sign_pos]);
     fun.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
-    inplace_operators(fun.body);
+    //inplace_operators(fun.body);
     fun.stack := TVSymbolStack.Create(nil);
     try
         sl := lisya_optimizer.extract_body_symbols(fun.body,PL.L[sign_pos]);
@@ -5110,7 +5111,8 @@ try
     result := proc;
     proc.sign1 := ifh_build_sign(PL.L[sign_pos]);
     proc.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
-    inplace_operators(proc.body); //оптимизация необязательна
+
+    //inplace_operators(proc.body); //оптимизация необязательна
     proc.stack := TVSymbolStack.Create(nil);
     try
         sl := extract_body_symbols(proc.body);
@@ -5145,7 +5147,7 @@ begin
             else raise ELE.Malformed('VAR');
         3: try
                 tmp := nil;
-                tmp := eval(PL[2]);
+                tmp := eval(PL.look[2]);
                 oph_bind(PL.look[1], tmp, false);
             finally
                 FreeAndNil(tmp);
@@ -5158,7 +5160,7 @@ function TEvaluationFlow.op_when(PL: TVList): TValue;
 begin
     if PL.Count<2 then raise ELE.malformed('WHEN');
 
-    result := eval(PL[1]);
+    result := eval(PL.look[1]);
 
     if not tpNIL(result)
     then begin
@@ -5175,7 +5177,7 @@ try
     result := TVList.Create;
     V := nil;
     cond := nil;
-    cond := eval(PL[1]);
+    cond := eval(PL.look[1]);
     while not tpNIL(cond) do begin
         V := oph_block(PL, 2, true);
 
@@ -5186,7 +5188,7 @@ try
         end;
         FreeAndNil(V);
         FreeAndNil(cond);
-        cond := eval(PL[1]);
+        cond := eval(PL.look[1]);
     end;
 finally
     FreeAndNil(cond);
@@ -5307,12 +5309,12 @@ begin
    else
    if head.ClassType = TVOperator then result := call_operator(PL)
    else
-   result := eval(PL.Copy);
+   result := eval(PL);
 end;
 
 function TEvaluationFlow.callv(PL: TValue): TValue;
 begin
-    call(PL as TVList);
+    result := call(PL as TVList);
 end;
 
 
@@ -5458,12 +5460,12 @@ try
         for i := 0 to min(proc.sign1.required_count,PL.Count-1)-1 do
             params.Add(eval_link(PL.look[i+1]));
         for i := min(proc.sign1.required_count,PL.Count-1) to PL.high-1 do
-            params.Add(eval(PL[i+1]));
+            params.Add(eval(PL.look[i+1]));
     end
     else
 
     if proc is TVFunction
-    then for i := 1 to PL.high do params.Add(eval(PL[i]));
+    then for i := 1 to PL.high do params.Add(eval(PL.look[i]));
 
     result := call_procedure(params);
 finally
@@ -5480,7 +5482,7 @@ begin try
     PLI := TVList.Create([PL[0]]);
     PLI.SetCapacity(PL.Count);
 
-    for i := 1 to PL.high do PLI.Add(eval(PL[i]));
+    for i := 1 to PL.high do PLI.Add(eval(PL.look[i]));
 
     result := call(PLI);
 finally
@@ -5500,21 +5502,25 @@ begin
 end;
 {$ENDIF}
 
+
+//{$DEFINE EVALPARAMMOD}
+
 function TEvaluationFlow.eval(V: TValue): TValue;
 var PL: TVList;
     head: TValue;
     PV: PVariable;
     type_v: (selfEval, symbol, list, unexpected);
     estack: unicodestring;
+    {$IFDEF EVALPARAMMOD} h: DWORD; {$ENDIF}
 
 label return;
 begin try
     {$IFDEF EVAL_DEBUG_PRINT}
     indent; WriteLn('eval>> ',V.AsString);
-    //stack.print(78);
     inc(eval_indent);
     {$ENDIF}
 
+    {$IFDEF EVALPARAMMOD} h := V.hash;{$ENDIF}
     result := nil;
 
     if tpSelfEvaluating(V)
@@ -5531,8 +5537,7 @@ begin try
     case type_v of
 
         selfEval: begin
-          result := V;
-          V := nil;
+          result := V.Copy;
         end;
 
         symbol: begin
@@ -5549,7 +5554,7 @@ begin try
                 if result is TVMacroSymbol
                 then try
                     PL := TVList.Create([result]);
-                    result := eval(procedure_call(PL));
+                    result := eval_and_free(procedure_call(PL));
                 finally
                     FreeAndNil(PL);
                 end;
@@ -5559,36 +5564,41 @@ begin try
 
         end;
 
-        list: begin
-            (V as TVList)[0] := eval((V as TVList)[0]);
-            head := (V as TVList).look[0];
+        list: try
+            PL := (V as TVList).phantom_copy;
+            head := eval(PL.look[0]);
+            PL[0] := head;
 
             if tpInternalFunction(head)
-            then result := eval_parameters(call_internal, V as TVList)
+            then result := eval_parameters(call_internal, PL)
             else
 
             if tpPredicate(head)
-            then result := eval_parameters(call_predicate, V as TVList)
+            then result := eval_parameters(call_predicate, PL)
             else
 
             if tpOperator(head)
-            then result := call_operator(V as TVList)
+            then result := call_operator(PL)
             else
 
             if tpProcedure(head)
-            then result := procedure_call(V as TVList)
+            then result := procedure_call(PL)
             else
 
             if tpFunction(head)
-            then result := procedure_call(V as TVList)
+            then result := procedure_call(PL)
             else
 
             if tpMacro(head)
-            then result := eval(procedure_call(V as TVList))
+            then result := eval_and_free(procedure_call(PL))
             else
 
             raise ELE.Create(head.AsString+' is not subprogram');
+        finally
+            PL.Free;
+            head.Free;
         end;
+
 
         unexpected: raise ELE.Create('невычисляемый параметр');
     end;
@@ -5600,9 +5610,7 @@ return:
    Dec(eval_indent);
    indent; writeLn('=  ',result.asString);
    {$ENDIF}
-   //WriteLn(V.AsString);
-   FreeAndNil(V);
-
+   {$IFDEF EVALPARAMMOD} if h<>V.hash then raise ELE.Create('модификация аргумента');{$ENDIF}
 except
     on E:ELisyaError do begin
        // WriteLn('eval ELE>> ', E.Eclass,'  ', e.Message);
@@ -5610,7 +5618,6 @@ except
        //WriteLn('1>> ',E.EStack);
        E.EStack := V.AsString+LineEnding+'=> '+E.EStack;
        //WriteLn('2>> ',E.EStack);
-        V.Free;
         raise ELE.Create(E.Message, E.EClass, E.EStack);
     end;
     on E:Exception do begin
@@ -5627,6 +5634,14 @@ except
 end;
 end;
 
+function TEvaluationFlow.eval_and_free(V: TValue): TValue;
+begin
+    try
+        result := eval(V);
+    finally
+        V.Free;
+    end;
+end;
 
 
 initialization

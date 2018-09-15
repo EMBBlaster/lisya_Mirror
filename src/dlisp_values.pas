@@ -424,6 +424,7 @@ type
         function CAR: TValue;
         function CDR: TVList;
         function phantom_CDR: TVList;
+        function phantom_copy: TVList;
 
         procedure SetElt(var cp: TIntegers; var i: integer; V: TValue); override;
         function Target(var cp: TIntegers; var i: integer): TValue; override;
@@ -3174,6 +3175,15 @@ begin
     SetLength(result.fL.V, fL.Count-1);
     for i:=1 to fL.Count-1 do result.fL.V[i-1] := fL.V[i];
     result.fL.count := fL.count-1;
+end;
+
+function TVList.phantom_copy: TVList;
+begin
+    result := TVList.Create;
+    result.fL.phantom:=true;
+    SetLength(result.fL.V, fL.Count);
+    move(fL.V[0], result.fL.V[0], SizeOf(TValue)*fL.count);
+    result.fL.count := fL.count;
 end;
 
 
