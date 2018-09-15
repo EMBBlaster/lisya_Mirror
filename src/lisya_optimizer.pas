@@ -25,13 +25,14 @@ const restricted_ops = [oeAPPEND, oeASSEMBLE, oeBLOCK, oeBREAK, oeCONST, oeCONTI
 procedure inplace_operators_in_tail(body: TVList);
 var i: integer;
 begin
+    body.CopyOnWrite;
     for i := 1 to body.high do if tpList(body.look[i]) then inplace_operators(body.L[i]);
 end;
 
 procedure inplace_operators(body: TVList);
 var op: TVOperator; i: integer;
 begin
-    WriteLn('>>>> ', body.AsString);
+    //WriteLn('>>>> ', body.AsString);
     if body.Count=0 then Exit;
 
     op := nil;

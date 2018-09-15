@@ -5036,7 +5036,7 @@ try
     result := fun;
     fun.sign1 := ifh_build_sign(PL.L[sign_pos]);
     fun.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
-    //inplace_operators(fun.body);
+    inplace_operators(fun.body);
     fun.stack := TVSymbolStack.Create(nil);
     try
         sl := lisya_optimizer.extract_body_symbols(fun.body,PL.L[sign_pos]);
@@ -5112,7 +5112,7 @@ try
     proc.sign1 := ifh_build_sign(PL.L[sign_pos]);
     proc.body := PL.Subseq(sign_pos+1, PL.Count) as TVList;
 
-    //inplace_operators(proc.body); //оптимизация необязательна
+    inplace_operators(proc.body); //оптимизация необязательна
     proc.stack := TVSymbolStack.Create(nil);
     try
         sl := extract_body_symbols(proc.body);
