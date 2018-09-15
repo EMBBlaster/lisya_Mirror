@@ -26,6 +26,9 @@ procedure xml_write(s: TLStream; xml: TVList; declaration: boolean = true);
 function xml_from_string(s: unicodestring): TVList;
 function xml_to_string(xml: TVList): unicodestring;
 
+function decode(s: unicodestring): unicodestring;
+function encode(s: unicodestring): unicodestring;
+
 
 implementation
 

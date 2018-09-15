@@ -3150,6 +3150,7 @@ begin
 end;
 
 
+
 function if_xml_read            (const PL: TVList; {%H-}call: TCallProc): TValue;
 begin
     case params_is(PL, result, [
@@ -3173,6 +3174,26 @@ begin
         2: result := TVString.Create(xml_to_string(PL.L[1]));
     end;
 end;
+
+
+function if_xml_encode          (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpString]) of
+        1: result := TVString.Create(lisya_xml.encode(PL.S[0]));
+    end;
+end;
+
+
+function if_xml_decode          (const PL: TVList; {%H-}call: TCallProc): TValue;
+begin
+    case params_is(PL, result, [
+        tpString]) of
+        1: result := TVString.Create(lisya_xml.decode(PL.S[0]));
+    end;
+end;
+
+
 
 function if_sql_mysql_connection(const PL: TVList; {%H-}call: TCallProc): TValue;
 var database, username, host, password: unicodestring; port: integer;
@@ -3418,7 +3439,7 @@ end;
 
 
 
-const int_fun_count = 187;
+const int_fun_count = 189;
 var int_fun_sign: array[1..int_fun_count] of TSubprogramSignature;
 const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'RECORD?';                   f:if_structure_p;           s:'(s :optional type)'),
@@ -3622,6 +3643,8 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 
 (n:'XML:READ';                  f:if_xml_read;              s:'(stream)'),
 (n:'XML:WRITE';                 f:if_xml_write;             s:'(stream xml)'),
+(n:'XML:ENCODE';                f:if_xml_encode;            s:'(s)'),
+(n:'XML:DECODE';                f:if_xml_decode;            s:'(s)'),
 
 (n:'SQL:MYSQL-CONNECTION';      f:if_sql_mysql_connection;  s:'(database :key host port username password)'),
 (n:'SQL:QUERY';                 f:if_sql_query;             s:'(db :rest q)'),
@@ -5535,9 +5558,7 @@ begin try
 
     case type_v of
 
-        selfEval: begin
-          result := V.Copy;
-        end;
+        selfEval: result := V.Copy;
 
         symbol: begin
             result := eval_operator(V as TVSymbol);
@@ -5597,7 +5618,6 @@ begin try
             PL.Free;
             head.Free;
         end;
-
 
         unexpected: raise ELE.Create('невычисляемый параметр');
     end;
