@@ -4385,6 +4385,7 @@ begin
 
     sclass := '';
     if PL.Count>1 then try
+        eclass := nil;
         eclass := eval(PL.look[1]);
         if tpString(eclass)
         then sclass := (eclass as TVString).S
