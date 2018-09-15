@@ -4373,15 +4373,15 @@ begin
 end;
 
 function TEvaluationFlow.op_error(PL: TVList): TValue;
-var emsg, eclass: TValue; smsg,sclass,sstack: unicodestring;
+var eclass: TValue; smsg,sclass,sstack: unicodestring;
     P: PVariable;
     sym_eclass, sym_emsg, sym_estack: TVSymbol;
+    i: integer; msgL: TVList;
 begin
     result:=nil;
     //если задан класс [и сообщение] то вызывается новое исключение
     //если параметры не заданы, то в текущем стеке ищется ранее возникшее исключение
     //стэк исключения всегда ищется в стеке и если не найден принимается пустым
-    if PL.Count>3 then raise ELE.Malformed('ERROR');
 
     sclass := '';
     if PL.Count>1 then try
@@ -4395,12 +4395,11 @@ begin
 
     smsg := '';
     if PL.Count>2 then try
-        emsg := eval(PL.look[2]);
-        if tpString(emsg)
-        then smsg := (emsg as TVString).S
-        else raise ELE.InvalidParameters;
+        msgL := TVList.Create;
+        for i := 2 to PL.high do msgL.Add(eval(PL.look[i]));
+        smsg := ifh_format(msgL);
     finally
-        emsg.Free;
+        msgL.Free;
     end;
 
     sstack := '';
@@ -4425,7 +4424,7 @@ begin
         sym_eclass.Free;
     end;
 
-    if PL.Count=1 then try
+    if PL.Count<3 then try
         sym_emsg := TVSymbol.Create('EXCEPTION-MESSAGE');
         P := nil;
         P := stack.find_ref_or_nil1(sym_emsg);
@@ -4464,7 +4463,6 @@ function TEvaluationFlow.op_set                     (PL: TVList): TValue;
 var CP :TVChainPointer;
 begin
     result := nil;
-    //TODO: set не падает если устанавливает параметр функции переданный по значению
     if (PL.Count<3) or (PL.Count>3) then raise ELE.InvalidParameters;
 try
     CP := nil;
