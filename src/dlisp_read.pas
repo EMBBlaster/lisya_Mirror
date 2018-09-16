@@ -175,7 +175,7 @@ end;
 
 
 function str_is_float(s: unicodestring; out f: double): boolean;
-const ml: array[1..19] of record n: unicodestring; v: real; end = (
+const ml: array[1..21] of record n: unicodestring; v: real; end = (
     (n:'п';  v:1e-12),  (n:'p'; v:1e-12),
     (n:'н';  v:1e-9),   (n:'n'; v:1e-9),
     (n:'мк'; v:1e-6),   (n:'u'; v:1e-6),
@@ -184,7 +184,8 @@ const ml: array[1..19] of record n: unicodestring; v: real; end = (
     (n:'М';  v:1e6),    (n:'M'; v:1e6),
     (n:'Г';  v:1e9),    (n:'G'; v:1e9),
     (n:'Т';  v:1e12),   (n:'T'; v:1e12),
-    (n:'гр'; v:pi/180),  (n:'deg'; v:pi/180), (n:'°'; v:pi/180));
+    (n:'гр'; v:pi/180),  (n:'deg'; v:pi/180), (n:'°'; v:pi/180),
+    (n:'pi'; v:pi),     (n:'π'; v:pi));
 var i: integer; fs: TFormatSettings; m: double; ss: unicodestring;
     function str_at_end(ss: unicodestring): boolean;
     begin

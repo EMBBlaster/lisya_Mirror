@@ -3806,6 +3806,7 @@ begin
     result.new_var('BOM', TVString.Create(BOM), true);
     result.new_var('_', TVSymbol.Create('_'));
     result.new_var('PI', TVFloat.Create(pi));
+    result.new_var('Π', TVFloat.Create(pi));
     result.new_var('SQRT2', TVFloat.Create(sqrt(2)), true);
     result.new_var('SQRT3', TVFloat.Create(sqrt(3)), true);
 end;

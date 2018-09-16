@@ -90,7 +90,7 @@ initialization
     re_integer.Compile;
 
     re_float := TRegExpr.Create(
-    '^[-+]?[0-9]+(_[0-9]+)*([.,][0-9]+(_[0-9]+)*)?([eE][-+]?[0-9]+|([пpнnuмmкkМMГGТT°]|мк|гр|deg))?$');
+    '^[-+]?[0-9]+(_[0-9]+)*([.,][0-9]+(_[0-9]+)*)?([eE][-+]?[0-9]+|([пpнnuмmкkМMГGТT°π]|мк|гр|deg|pi))?$');
     re_float.Compile;
 
     re_complex_alg := TRegExpr.Create('^[-+]?'+expr_exp+'[-+][iм]'+expr_exp+'$');
