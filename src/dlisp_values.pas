@@ -4,6 +4,7 @@
 
 {$ASSERTIONS ON}
 
+
 interface
 
 uses
@@ -552,6 +553,45 @@ type
         function Target(var cp: TIntegers; var i: integer): TValue; override;
     end;
 
+
+    { TVMatrix }
+    function pop_index(var il: TValues): TValue; //должно быть объявлено тут иначе дженерик не компилируется
+
+    type TVMatrix<T> = class (TVCompound)
+    private
+        function LookItem(index: integer): TValue; override;
+    public
+        w,h: integer;
+        data: array of T;
+        constructor Create(_w, _h: integer; _d: array of T); overload;
+        constructor Create(_w, _h: integer); overload;
+        destructor Destroy; override;
+
+        function Count: integer; override;
+
+        function Hash: DWORD; override;
+        function equal(V: TValue): boolean; override;
+
+        function GetElement(i,j: integer): T;
+        procedure SetElement(i,j: integer; V: T);
+
+        function EvalIndex(var il: TValues): integer; override;
+    end;
+
+
+
+    { TVMatrixInteger }
+
+    TVMatrixInteger = class(TVMatrix<Int64>)
+    private
+        function GetItem(index: integer): TValue; override;
+        procedure SetItem(index: integer; _V: TValue); override;
+    public
+        function Copy: TValue; override;
+        function AsString: unicodestring; override;
+    end;
+
+
     { TVSymbolStack }
 
     TVSymbolStack = class (TValue)
@@ -828,39 +868,7 @@ type
     TVQueue = TVPointer<TQueue>;
 
 
-    { TVMatrix }
 
-    TVMatrix<T> = class (TVCompound)
-    private
-        //function GetItem(index: integer): TValue; virtual;
-        //procedure SetItem(index: integer; _V: TValue); virtual;
-        //function LookItem(index: integer): TValue; virtual;
-    public
-        w,h: integer;
-        data: array of T;
-        constructor Create(_w, _h: integer; _d: array of T); overload;
-        constructor Create(_w, _h: integer); overload;
-        destructor Destroy; override;
-
-        //property items[index: integer]: TValue read GetItem write SetItem; default;
-        //property look[index: integer]: TValue read LookItem;
-        //function Count: integer; virtual; abstract;
-
-        function Hash: DWORD; override;
-        function equal(V: TValue): boolean; override;
-
-        function GetEelement(i,j: integer): T;
-        procedure SetElement(i,j: integer; V: T);
-    end;
-
-
-
-    { TVMatrixInteger }
-
-    TVMatrixInteger = class(TVMatrix<Int64>)
-        function Copy: TValue; override;
-        function AsString: unicodestring; override;
-    end;
 
 
 procedure Assign(var v1, v2: TValue);
@@ -873,11 +881,14 @@ function op_null(V: TValue): boolean;
 var
     _ : TVSymbol;
     kwFLAG, kwKEY, kwOPTIONAL, kwREST: TVKeyword;
+    primitive: TVPrimitive;
 
 
 implementation
 
 uses lisya_predicates, lisya_gc;
+
+{$R+}
 
 procedure push_index(var il: TValues; V: TValue);
 var L: TVList; i: integer;
@@ -896,6 +907,8 @@ end;
 
 function pop_index(var il: TValues): TValue;
 begin
+    result := nil;
+    if Length(il)=0 then raise ELE.InvalidParameters('not enought selectors');
     result := il[high(il)];
     SetLength(il, Length(il)-1);
 end;
@@ -959,6 +972,7 @@ begin
     h := _h;
     SetLength(data, w*h);
     move(_d[0], data[0], w*h*SizeOf(T));
+    primitive := true;
 end;
 
 constructor TVMatrix<T>.Create(_w, _h: integer);
@@ -967,13 +981,13 @@ begin
     h := _h;
     SetLength(data, w*h);
     FillChar(data[0], SizeOf(T)*w*h, 0);
+    primitive := true;
 end;
 
 destructor TVMatrix<T>.Destroy;
 begin
     inherited Destroy;
 end;
-
 
 
 function TVMatrix<T>.Hash: DWORD;
@@ -993,7 +1007,7 @@ begin
     CompareMem(@data[0], @vm.data[0], SizeOf(T)*w*h);
 end;
 
-function TVMatrix<T>.GetEelement(i, j: integer): T;
+function TVMatrix<T>.GetElement(i, j: integer): T;
 begin
     result := data[i*h+j];
 end;
@@ -1001,6 +1015,32 @@ end;
 procedure TVMatrix<T>.SetElement(i, j: integer; V: T);
 begin
     data[i*h+j] := V;
+end;
+
+
+function TVMatrix<T>.LookItem(index: integer): TValue;
+begin
+  result := nil;
+  raise ELE.Create('look for item of '+self.ClassName, 'internal');
+end;
+
+
+function TVMatrix<T>.Count: integer;
+begin
+    result := Length(data);
+end;
+
+function TVMatrix<T>.EvalIndex(var il: TValues): integer;
+var ind_i, ind_j: TValue;
+begin
+    ind_i := pop_index(il);
+    ind_j := pop_index(il);
+try
+    result := (ind_i as TVInteger).fI*h + (ind_j as TVInteger).fI;
+finally
+    ind_i.Free;
+    ind_j.Free;
+end;
 end;
 
 { TVCompound }
@@ -1108,6 +1148,16 @@ begin
         result := result+']';
     end;
     result := result+']';
+end;
+
+function TVMatrixInteger.GetItem(index: integer): TValue;
+begin
+    result := TVInteger.Create(data[index]);
+end;
+
+procedure TVMatrixInteger.SetItem(index: integer; _V: TValue);
+begin
+    data[index] := (_V as TVInteger).fI;
 end;
 
 function TVMatrixInteger.Copy: TValue;
@@ -2914,7 +2964,7 @@ begin
     VL.CopyOnWrite;
 
     fL.expand(fL.count+VL.fL.count);
-    move(VL.fL.V[0],fL.V[fL.count],SizeOf(TValue)*VL.fL.count);
+    {$R-}move(VL.fL.V[0],fL.V[fL.count],SizeOf(TValue)*VL.fL.count);{$R+}
     fL.count:= fL.Count+VL.fL.count;
 
     if not fL.phantom
@@ -3060,7 +3110,7 @@ constructor TVList.Create(VL: array of TValue; free_objects: boolean);
 begin
     fL := TListBody.Create(not free_objects);
     SetLength(fL.V, Length(VL));
-    move(VL[0],fL.V[0],sizeOf(TValue)*Length(VL));
+    {$R-} move(VL[0],fL.V[0],sizeOf(TValue)*Length(VL)); {$R+}
     fL.Count := Length(VL);
     primitive := false;
 end;
@@ -3199,7 +3249,7 @@ begin
     result := inherited Target(cp, i);
 end;
 
-
+{$R-}
 
 initialization
     _ := TVSymbol.Create('_');
@@ -3207,6 +3257,7 @@ initialization
     kwKEY := TVKeyword.Create(':KEY');
     kwOPTIONAL := TVKeyword.Create(':OPTIONAL');
     kwREST := TVKeyword.Create(':REST');
+    primitive := TVPrimitive.Create;
 
 finalization
     kwREST.Free;
@@ -3214,5 +3265,6 @@ finalization
     kwKEY.Free;
     kwFLAG.Free;
     _.Free;
+    primitive.Free;
 
 end.  //3477 3361 3324 3307 2938  2911 2988 3079 2885

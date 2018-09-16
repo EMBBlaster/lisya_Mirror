@@ -1,7 +1,7 @@
 object main_form: Tmain_form
-  Left = 475
+  Left = 463
   Height = 443
-  Top = 241
+  Top = 233
   Width = 730
   Caption = 'Новый'
   ClientHeight = 443
