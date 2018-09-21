@@ -19,7 +19,7 @@ interface
 uses
   SynEdit, Forms, StdCtrls, ActnList, Dialogs, ExtCtrls, lisya_highlighter,
   Classes, process, SysUtils, SynEditTypes, Controls, LCLType, ComCtrls
-
+  , SimpleIPC
   {$IFDEF WINDOWS}, LazUnicode {$ENDIF}
   ;
 
@@ -28,6 +28,7 @@ type
   { Tmain_form }
 
   Tmain_form = class(TForm)
+      Action_IPCMessage: TAction;
       Action_SearchPanel: TAction;
       Action_SetMain: TAction;
       Action_CloseTab: TAction;
@@ -42,12 +43,15 @@ type
       ActionList1: TActionList;
       Edit_search: TEdit;
       OpenDialog: TOpenDialog;
+      IPCServer: TSimpleIPCServer;
       SynEdit2: TSynEdit;
       tabs: TPageControl;
       Panel: TPanel;
     SynEdit1: TSynEdit;
+    Timer1: TTimer;
     procedure Action_CloseTabExecute(Sender: TObject);
     procedure Action_executeExecute(Sender: TObject);
+    procedure Action_IPCMessageExecute(Sender: TObject);
     procedure Action_NEWExecute(Sender: TObject);
     procedure Action_openExecute(Sender: TObject);
     procedure Action_quick_saveExecute(Sender: TObject);
@@ -57,6 +61,7 @@ type
     procedure Action_searchExecute(Sender: TObject);
     procedure Action_SearchPanelExecute(Sender: TObject);
     procedure Action_SetMainExecute(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
     procedure Edit_searchKeyPress(Sender: TObject; var Key: char);
     procedure Edit_searchKeyUp(Sender: TObject; var Key: Word;
         Shift: TShiftState);
@@ -66,6 +71,7 @@ type
     procedure SynEditChange(Sender: TObject);
     procedure Search(back: boolean = false);
     procedure tabsCloseTabClicked(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
   private
     function confirm_saving: boolean;
     function save_as(ts: TTabSheet=nil): boolean;
@@ -87,11 +93,20 @@ implementation
 { Tmain_form }
 
 procedure Tmain_form.FormCreate(Sender: TObject);
-var i: integer;
+var i: integer; IPCClient: TSimpleIPCClient;
 begin
+    IPCClient := TSimpleIPCClient.Create(self);
+    IPCClient.ServerID:='lisya_editor';
+    if IPCClient.ServerRunning and (paramCount>0) then begin
+        IPCClient.Active:=true;
+        for i := 1 to paramCount do IPCClient.SendStringMessage(ExpandFileName(paramStr(i)));
+        IPCClient.Active:=false;
+        Application.Terminate;
+    end;
+
     SynEdit1.Highlighter := TSynLisya.Create(Self);
     for i := 1 to paramCount do begin
-        OpenDialog.Filename := paramStr(1);
+        OpenDialog.Filename := paramStr(i);
         Action_NEWExecute(OpenDialog);
     end;
 
@@ -100,6 +115,9 @@ begin
     else Caption := ExpandFileName('.');
 
     if paramCount=0 then Action_NewExecute(nil);
+
+    IPCServer.StartServer;
+    //Timer1.Enabled:=true;
 end;
 
 procedure Tmain_form.SynEditChange(Sender: TObject);
@@ -149,6 +167,16 @@ end;
 procedure Tmain_form.tabsCloseTabClicked(Sender: TObject);
 begin
     close_tab(sender as TTabSheet);
+end;
+
+procedure Tmain_form.Timer1Timer(Sender: TObject);
+begin
+    if IPCServer.PeekMessage(0,true) then begin
+        OpenDialog.FileName:=IPCServer.StringMessage;
+        IPCServer.Active:=false;
+        Action_NEWExecute(OpenDialog);
+        IPCServer.Active:=true;
+    end;
 end;
 
 function Tmain_form.confirm_saving: boolean;
@@ -267,6 +295,11 @@ begin
     p.Free;
 end;
 
+procedure Tmain_form.Action_IPCMessageExecute(Sender: TObject);
+begin
+    //ShowMessage('ipc');
+end;
+
 procedure Tmain_form.Action_CloseTabExecute(Sender: TObject);
 begin
     close_tab(tabs.ActivePage);
@@ -354,6 +387,16 @@ begin
         tabs.ActivePage.Tag:=1;
         tabs.ActivePage.Caption:=#$25b6+' '+tabs.ActivePage.Caption;
     end;
+end;
+
+procedure Tmain_form.Button1Click(Sender: TObject);
+var IPCClient: TSimpleIPCClient;
+begin
+    IPCClient := TSimpleIPCClient.Create(main_form);
+    IPCClient.ServerID:='lisya_editor';
+    IPCClient.Active:=true;
+    IPCClient.SendStringMessage('work/1.lisya');
+    //IPCClient.Free;
 end;
 
 procedure Tmain_form.Edit_searchKeyPress(Sender: TObject; var Key: char);

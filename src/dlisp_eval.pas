@@ -888,14 +888,14 @@ function if_matrix              (const PL: TVList; {%H-}call: TCallProc): TValue
 var  w, h, i, j: integer;
 begin
     case params_is(PL, result, [
-        vpIntegerNotNegative, vpIntegerNotNegative, vpKeyword_INTEGER, tpListOfIntegers]) of
+        vpIntegerNotNegative, vpIntegerNotNegative, tpListOfIntegers]) of
         1: begin
             w := PL.I[0];
             h := PL.I[1];
-            if PL.L[3].Count<>(w*h) then raise ELE.Create('size not match','invalid parameters');
+            if PL.L[2].Count<>(w*h) then raise ELE.Create('size not match','invalid parameters');
             result := TVMatrixInteger.Create(w,h);
             for j:=0 to h-1 do
-                for i := 0 to w-1 do (result as TVMatrixInteger).SetElement(i,j, PL.L[3].I[j*w+i]);
+                for i := 0 to w-1 do (result as TVMatrixInteger).SetElement(i,j, PL.L[2].I[j*w+i]);
         end;
     end;
 
@@ -3477,7 +3477,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'DEG';                       f:if_deg;                   s:'(r)'),
 (n:'COMPLEX';                   f:if_complex;               s:'(r i)'),
 (n:'DURATION';                  f:if_duration;              s:'(:optional h m s ms)'),
-(n:'MATRIX';                    f:if_matrix;                s:'(w h type :rest data)'),
+(n:'MATRIX';                    f:if_matrix;                s:'(w h :rest data)'),
 (n:'DATE-TIME ДАТА-ВРЕМЯ';      f:if_datetime;              s:'(year month day :optional h m s ms)'),
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 (n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
@@ -3796,6 +3796,9 @@ begin
     end;
 
     //загрузка констант
+    result.new_var('МЕДВЕДЬ', TVString.Create('Медведь'), true);
+    result.new_var('ВОДКА', TVString.Create('Употребление спиртных напитков вредит вашему здоровью'), true);
+    result.new_var('БАЛАЛАЙКА', TVString.Create('Балалайка'), true);
     result.new_var('EXECUTABLE-PATH', TVString.Create(ExtractFilePath(paramstr(0))), true);
     result.new_var('COMMAND-LINE', oph_command_line, true);
     result.new_var('NL', TVString.Create(LineEnding), true);

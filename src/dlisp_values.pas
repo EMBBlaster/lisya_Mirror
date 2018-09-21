@@ -881,7 +881,6 @@ function op_null(V: TValue): boolean;
 var
     _ : TVSymbol;
     kwFLAG, kwKEY, kwOPTIONAL, kwREST: TVKeyword;
-    primitive: TVPrimitive;
 
 
 implementation
@@ -3257,7 +3256,6 @@ initialization
     kwKEY := TVKeyword.Create(':KEY');
     kwOPTIONAL := TVKeyword.Create(':OPTIONAL');
     kwREST := TVKeyword.Create(':REST');
-    primitive := TVPrimitive.Create;
 
 finalization
     kwREST.Free;
@@ -3265,6 +3263,5 @@ finalization
     kwKEY.Free;
     kwFLAG.Free;
     _.Free;
-    primitive.Free;
 
 end.  //3477 3361 3324 3307 2938  2911 2988 3079 2885

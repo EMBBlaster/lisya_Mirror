@@ -1,7 +1,7 @@
 object main_form: Tmain_form
-  Left = 463
+  Left = 472
   Height = 443
-  Top = 233
+  Top = 234
   Width = 730
   Caption = 'Новый'
   ClientHeight = 443
@@ -1100,11 +1100,30 @@ object main_form: Tmain_form
       OnExecute = Action_SearchPanelExecute
       ShortCut = 16454
     end
+    object Action_IPCMessage: TAction
+      Caption = 'Action_IPCMessage'
+      OnExecute = Action_IPCMessageExecute
+    end
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.*.лися'
     Filter = 'Лися|*.lisya|*.лися|*.лися'
     left = 440
     top = 40
+  end
+  object IPCServer: TSimpleIPCServer
+    Active = False
+    ServerID = 'lisya_editor'
+    Global = True
+    OnMessage = Action_IPCMessageExecute
+    left = 600
+    top = 48
+  end
+  object Timer1: TTimer
+    Enabled = False
+    Interval = 200
+    OnTimer = Timer1Timer
+    left = 144
+    top = 92
   end
 end
