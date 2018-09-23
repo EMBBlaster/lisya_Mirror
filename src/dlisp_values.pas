@@ -1008,12 +1008,12 @@ end;
 
 function TVMatrix<T>.GetElement(i, j: integer): T;
 begin
-    result := data[i*h+j];
+    result := data[w*j+i];
 end;
 
 procedure TVMatrix<T>.SetElement(i, j: integer; V: T);
 begin
-    data[i*h+j] := V;
+    data[w*j+i] := V;
 end;
 
 
@@ -1035,7 +1035,7 @@ begin
     ind_i := pop_index(il);
     ind_j := pop_index(il);
 try
-    result := (ind_i as TVInteger).fI*h + (ind_j as TVInteger).fI;
+    result := (ind_j as TVInteger).fI*w + (ind_i as TVInteger).fI;
 finally
     ind_i.Free;
     ind_j.Free;

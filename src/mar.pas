@@ -10,6 +10,8 @@ uses
 type
     TStringArray = array of unicodestring;
     TIntegers = array of integer;
+    TIntegers64 = array of Int64;
+    TDoubles = array of double;
 
 function PosU(const ss, s: unicodestring; offset: integer = 1): integer;
 function SplitString(S: unicodestring; separator: unicodestring = ' '): TStringArray;

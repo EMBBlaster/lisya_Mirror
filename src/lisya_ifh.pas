@@ -37,6 +37,9 @@ function ifh_fold(call: TCallProc; P: TVSubprogram; PL: TVList; b,e: integer): T
 function ifh_like (str1, str2: unicodestring): integer;
 function ifh_strings_mismatch(s1,s2: unicodestring): integer;
 
+function ifh_matrix_mul(w1: integer; m1: TIntegers64; m2: TIntegers64): TIntegers64; overload;
+function ifh_matrix_mul(m1: TVMatrixInteger; m2: TVMatrixInteger): TVMatrixInteger; overload;
+
 implementation
 
 type THashes = array of DWORD;
@@ -521,6 +524,31 @@ begin
     if (mm=0) and (Length(s1)<>Length(s2)) then mm := Length(s_short)+1;
 
     result := mm-1;
+end;
+
+////////////////////////////////////////////////////////////////////////////////
+// matrix //////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+function ifh_matrix_mul(w1: integer; m1: TIntegers64; m2: TIntegers64): TIntegers64;
+var i,j, k,h1, h2, w2, h, w: integer;
+begin
+    h1 := length(m1) div w1;
+    h2 := w1;
+    w2 := length(m2) div h2;
+    h := h1;
+    w := w2;
+    SetLength(result, w*h);
+    for j := 0 to h-1 do
+        for i := 0 to w-1 do begin
+            result[i*w+j] := 0;
+            for k := 0 to w1-1 do
+            result[i*w+j] := result[i*w+j]+m1[j*w1+k]*m2[w2*k+i];
+        end;
+end;
+
+function ifh_matrix_mul(m1: TVMatrixInteger; m2: TVMatrixInteger): TVMatrixInteger;
+begin
+    result := TVMatrixInteger.Create(m2.w, m1.h, ifh_matrix_mul(m1.w, m1.data, m2.data));
 end;
 
 

@@ -337,6 +337,8 @@ function vpListLambdaExpression                     (V: TValue): boolean;
 
 function vpListMatrix                               (V: TValue): boolean;
 
+function vpListMatrixInteger                        (V: TValue): boolean;
+
 function vpListOfByte                               (V: TValue): boolean;
 
 function vpListOfDurationsForMul                    (V: TValue): boolean;
@@ -364,6 +366,9 @@ function vpOperatorVarDeclaration                   (V: TValue): boolean;
 function vpOperatorVarOrConst                       (V: TValue): boolean;
 
 function vpOperatorRoutine                          (V: TValue): boolean;
+
+
+function vpPairOfMatrixInteger                      (V: TValue): boolean;
 
 
 function vpRangeNotNegative                         (V: TValue): boolean;
@@ -1314,6 +1319,18 @@ begin
     end;
 end;
 
+function vpListMatrixInteger(V: TValue): boolean;
+var L: TVList; i: integer;
+begin
+    result := vpListOfListsEqualLength(V);
+    if not result then Exit;
+    L := V as TVList;
+    for i := 0 to L.high do begin
+        result := tpListOfIntegers(L.L[i]);
+        if not result then Exit;
+    end;
+end;
+
 function vpListOfByte                               (V: Tvalue): boolean;
 begin
     result := tphListOf(V, vpIntegerByte);
@@ -1456,6 +1473,17 @@ begin
     result := (V is TVOperator)
         and ((V as TVOperator).op_enum in
             [oePROCEDURE, oeMACRO, oeMACRO_SYMBOL, oeFUNCTION]);
+end;
+
+function vpPairOfMatrixInteger(V: TValue): boolean;
+var L: TVList;
+begin
+    result := V is TVList;
+    if not result then Exit;
+    L := V as TVList;
+    result := L.Count=2;
+    if not result then Exit;
+    result := (L.look[0] is TVMatrixInteger) and (L.look[1] is TVMatrixInteger);
 end;
 
 function vpRangeNotNegative                         (V: TValue): boolean;

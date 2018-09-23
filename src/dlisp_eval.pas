@@ -460,11 +460,12 @@ begin
     fres := 1.0;
     A := PL.L[0];
     case params_is(PL, result, [
-        tpListOfIntegers,
-        tpListOfReals,
-        tpListOfNumbers,
-        tpListOfLists,
-        vpListOfDurationsForMul]) of
+    {1} tpListOfIntegers,
+    {2} tpListOfReals,
+    {3} tpListOfNumbers,
+    {4} tpListOfLists,
+    {5} vpListOfDurationsForMul,
+    {6} vpPairOfMatrixInteger]) of
         1: begin
             for i := 0 to A.high do ires := ires * A.I[i];
             result := TVInteger.Create(ires);
@@ -487,6 +488,7 @@ begin
                 else fres := fres * A.F[i];
             result := TVDuration.Create(fres);
         end;
+        6: result := ifh_matrix_mul(A.look[0] as TVMatrixInteger, A.look[1] as TVMatrixInteger);
     end;
 end;
 
@@ -885,17 +887,20 @@ begin
 end;
 
 function if_matrix              (const PL: TVList; {%H-}call: TCallProc): TValue;
-var  w, h, i, j: integer;
+var  w, h, i, j: integer; data: TVList;
 begin
     case params_is(PL, result, [
-        vpIntegerNotNegative, vpIntegerNotNegative, tpListOfIntegers]) of
-        1: begin
-            w := PL.I[0];
-            h := PL.I[1];
-            if PL.L[2].Count<>(w*h) then raise ELE.Create('size not match','invalid parameters');
+        tpNIL,
+        vpListMatrixInteger]) of
+        1: result := TVMatrixInteger.Create(0,0);
+        2: begin
+            data := PL.L[0];
+            w := data.L[0].Count;
+            h := data.Count;
             result := TVMatrixInteger.Create(w,h);
             for j:=0 to h-1 do
-                for i := 0 to w-1 do (result as TVMatrixInteger).SetElement(i,j, PL.L[2].I[j*w+i]);
+                for i := 0 to w-1 do
+                    (result as TVMatrixInteger).SetElement(i,j,  data.L[j].I[i]);
         end;
     end;
 
@@ -3477,7 +3482,7 @@ const int_fun: array[1..int_fun_count] of TInternalFunctionRec = (
 (n:'DEG';                       f:if_deg;                   s:'(r)'),
 (n:'COMPLEX';                   f:if_complex;               s:'(r i)'),
 (n:'DURATION';                  f:if_duration;              s:'(:optional h m s ms)'),
-(n:'MATRIX';                    f:if_matrix;                s:'(w h :rest data)'),
+(n:'MATRIX';                    f:if_matrix;                s:'(:rest data)'),
 (n:'DATE-TIME ДАТА-ВРЕМЯ';      f:if_datetime;              s:'(year month day :optional h m s ms)'),
 (n:'HASH ОКРОШКА ХЭШ';          f:if_hash;                  s:'(a)'),
 (n:'SPLIT-STRING';              f:if_split_string;          s:'(s :optional separator)'),
