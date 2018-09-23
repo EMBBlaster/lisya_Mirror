@@ -335,6 +335,8 @@ function vpListKeywordValue                         (V: TValue): boolean;
 
 function vpListLambdaExpression                     (V: TValue): boolean;
 
+function vpListMatrix                               (V: TValue): boolean;
+
 function vpListOfByte                               (V: TValue): boolean;
 
 function vpListOfDurationsForMul                    (V: TValue): boolean;
@@ -1298,6 +1300,18 @@ begin
     result := (L.Count>=2) and (L.look[0] is TVOperator)
         and ((L.look[0] as TVOperator).op_enum in [oePROCEDURE, oeFUNCTION, oeMACRO])
         and tpList(L.look[1]);
+end;
+
+function vpListMatrix(V: TValue): boolean;
+var L: TVList; i: integer;
+begin
+    result := vpListOfListsEqualLength(V);
+    if not result then Exit;
+    L := V as TVList;
+    for i := 0 to L.high do begin
+        result := tpListOfNumbers(L.L[i]);
+        if not result then Exit;
+    end;
 end;
 
 function vpListOfByte                               (V: Tvalue): boolean;
